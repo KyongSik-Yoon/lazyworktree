@@ -12,6 +12,7 @@ from typing import List, Optional, Iterable
 from textual import on, work, events
 from textual.app import App, ComposeResult
 from textual.binding import Binding
+from textual.css.query import NoMatches
 from textual.command import DiscoveryHit, Hit, Provider
 from textual.containers import Container, Horizontal, Vertical
 from textual.widgets import (
@@ -214,6 +215,12 @@ class GitWtStatus(App):
         row_key = table.coordinate_to_cell_key((table.cursor_row, 0)).row_key
         return str(row_key.value)
 
+    def _try_query_one(self, selector, expect_type):
+        try:
+            return self.query_one(selector, expect_type)
+        except NoMatches:
+            return None
+
     def on_focus(self, event) -> None:
         if isinstance(event.widget, (DataTable, RichLog)): self._set_focused_pane(event.widget)
 
@@ -413,8 +420,10 @@ class GitWtStatus(App):
             except: pass
 
     def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
-        table = self.query_one("#worktree-table", DataTable)
-        log_table = self.query_one("#log-pane", DataTable)
+        table = self._try_query_one("#worktree-table", DataTable)
+        log_table = self._try_query_one("#log-pane", DataTable)
+        if table is None or log_table is None:
+            return
         data_table = getattr(event, "data_table", None) or getattr(event, "control", None)
         if data_table is log_table: self.open_commit_view(); return
         if data_table is not None and data_table is not table: return
@@ -422,7 +431,9 @@ class GitWtStatus(App):
         self._select_worktree(path)
 
     def on_data_table_row_highlighted(self, event: DataTable.RowHighlighted) -> None:
-        table = self.query_one("#worktree-table", DataTable)
+        table = self._try_query_one("#worktree-table", DataTable)
+        if table is None:
+            return
         data_table = getattr(event, "data_table", None) or getattr(event, "control", None)
         if data_table is not None and data_table is not table: return
         self.update_details_view()

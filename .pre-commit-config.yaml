@@ -1,0 +1,23 @@
+default_install_hook_types: ["pre-push"]
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: check-added-large-files
+      - id: check-ast
+      - id: check-json
+      - id: check-merge-conflict
+      - id: check-symlinks
+      - id: check-toml
+      - id: check-yaml
+      - id: detect-private-key
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+      - id: mixed-line-ending
+  - repo: local
+    hooks:
+      - id: tests
+        name: pytest
+        entry: python3 scripts/pre_commit_tests.py
+        language: system
+        pass_filenames: false
