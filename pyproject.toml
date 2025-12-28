@@ -9,5 +9,9 @@ dependencies = ["rich>=14.2.0", "textual>=6.11.0", "PyYAML>=6.0.1"]
 [project.scripts]
 lazyworktree = "main:main"
 
+[tool.setuptools]
+packages = ["lazyworktree"]
+py-modules = ["main"]
+
 [tool.uv]
 package = true
