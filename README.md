@@ -30,6 +30,18 @@ A Textual-based TUI for managing Git worktrees efficiently. Visualize status, ma
 - **delta**: For syntax-highlighted diffs.
 - **lazygit**: For full TUI git control.
 
+## Run
+
+### Directly with uvx
+
+no drama no worries, just install uv from your favorite method and run:
+
+```shell
+uvx git+https://github.com/chmouel/lazyworktree@main
+```
+
+this will run `lazyworktree` directly without installing anything globally.
+
 ## Installation
 
 ### Using uv (Recommended)
@@ -116,3 +128,22 @@ The following environment variables are available to your commands:
 Worktrees are expected to be organized under
 `~/.local/share/worktrees/<repo_name>` by default, though the script attempts
 to resolve locations via `gh repo view`.
+
+### Global Config (YAML)
+
+lazyworktree reads `~/.config/lazyworktree/config.yaml` (or `.yml`) for default
+settings. Example:
+
+```yaml
+worktree_dir: ~/.local/share/worktrees
+init_commands:
+  - link_topsymlinks
+terminate_commands:
+  - echo "Cleaning up $WORKTREE_NAME"
+```
+
+Notes:
+
+- `--worktree-dir` overrides `worktree_dir`.
+- `init_commands` and `terminate_commands` run before any repo-specific `.wt`
+  commands (if present).
