@@ -328,6 +328,78 @@ class CommitScreen(ModalScreen[None]):
         self.query_one("#diff", VerticalScroll).scroll_end(animate=False)
 
 
+class TrustScreen(ModalScreen[str]):
+    CSS = """
+    TrustScreen {
+        align: center middle;
+    }
+    #dialog {
+        grid-size: 2;
+        grid-gutter: 1 2;
+        grid-rows: auto 1fr auto;
+        padding: 0 1;
+        width: 70;
+        height: 80%;
+        border: thick $background 80%;
+        background: $surface;
+    }
+    #question {
+        column-span: 2;
+        content-align: center middle;
+        padding: 1;
+    }
+    #commands-view {
+        column-span: 2;
+        border: solid $secondary;
+        height: 1fr;
+        margin: 1;
+    }
+    #buttons {
+        column-span: 2;
+        layout: horizontal;
+        align: center middle;
+        height: auto;
+    }
+    Button {
+        margin: 0 1;
+    }
+    """
+
+    def __init__(self, file_path: str, commands: list[str]):
+        super().__init__()
+        self.file_path = file_path
+        self.commands_text = "\n".join(commands)
+
+    def compose(self) -> ComposeResult:
+        with Container(id="dialog"):
+            yield Label(
+                f"The repository config '{self.file_path}' defines the following commands.\n"
+                "This file has changed or hasn't been trusted yet.\n"
+                "Do you trust these commands to run?",
+                id="question",
+            )
+            with VerticalScroll(id="commands-view"):
+                yield Static(
+                    Syntax(self.commands_text, "bash", theme="monokai", word_wrap=True)
+                )
+            with Container(id="buttons"):
+                yield Button("Trust & Run", variant="success", id="trust")
+                yield Button("Block (Skip)", variant="warning", id="block")
+                yield Button("Cancel Operation", variant="error", id="cancel")
+
+    @on(Button.Pressed, "#trust")
+    def action_trust(self):
+        self.dismiss("trust")
+
+    @on(Button.Pressed, "#block")
+    def action_block(self):
+        self.dismiss("block")
+
+    @on(Button.Pressed, "#cancel")
+    def action_cancel(self):
+        self.dismiss("cancel")
+
+
 class FocusableRichLog(RichLog):
     can_focus = True
 

@@ -10,12 +10,11 @@
 # ///
 
 import os
+from dataclasses import replace
 
 import click
 
-import lazyworktree.app as app_module
 from lazyworktree.config import load_config
-import lazyworktree.models as models
 from lazyworktree.app import GitWtStatus
 
 
@@ -34,9 +33,14 @@ def main(worktree_dir: str | None, initial_filter: tuple[str, ...]) -> None:
         resolved_dir = os.path.expanduser(worktree_dir)
     elif config.worktree_dir:
         resolved_dir = os.path.expanduser(config.worktree_dir)
-    if resolved_dir:
-        models.WORKTREE_DIR = resolved_dir
-        app_module.WORKTREE_DIR = resolved_dir
+
+    if not resolved_dir:
+        # Fallback to default if not specified anywhere
+        resolved_dir = os.path.expanduser("~/.local/share/worktrees")
+
+    # Update config with the authoritative worktree_dir
+    config = replace(config, worktree_dir=resolved_dir)
+
     filter_value = " ".join(initial_filter).strip()
     app = GitWtStatus(initial_filter=filter_value, config=config)
     run_result = app.run()

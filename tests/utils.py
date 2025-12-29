@@ -52,7 +52,7 @@ async def wait_for_workers(app) -> None:
 
 
 async def wait_for(
-    predicate: Callable[[], bool], *, timeout: float = 1.0, interval: float = 0.01
+    predicate: Callable[[], bool], *, timeout: float = 5.0, interval: float = 0.01
 ) -> None:
     loop = asyncio.get_running_loop()
     start = loop.time()

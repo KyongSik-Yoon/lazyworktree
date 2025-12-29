@@ -101,6 +101,20 @@ The following environment variables are available to your commands:
 - `WORKTREE_PATH`: Path to the new worktree being created or removed.
 - `WORKTREE_NAME`: Name of the worktree (directory name).
 
+### Security: Trust on First Use (TOFU)
+
+Since `.wt` files allow executing arbitrary commands found in a repository, `lazyworktree` implements a **Trust on First Use** security model to prevent malicious repositories from running code on your machine automatically.
+
+- **First Run**: When `lazyworktree` encounters a new or modified `.wt` file, it will pause and display the commands it intends to run. You can **Trust** (run and save), **Block** (skip for now), or **Cancel** the operation.
+- **Trusted**: Once trusted, commands run silently in the background until the `.wt` file changes again.
+- **Persistence**: Trusted file hashes are stored in `~/.local/share/lazyworktree/trusted.json`.
+
+You can configure this behavior in `config.yaml` via the `trust_mode` setting:
+
+- **`tofu`** (Default): Prompts for confirmation on new or changed files. Secure and usable.
+- **`never`**: Never runs commands from `.wt` files. Safest for untrusted environments.
+- **`always`**: Always runs commands without prompting. Useful for personal/internal environments but risky.
+
 ### Special Commands
 
 - `link_topsymlinks`: This is a high-level automation command that:
@@ -140,6 +154,7 @@ sort_by_active: true
 auto_fetch_prs: false
 max_untracked_diffs: 10
 max_diff_chars: 200000
+trust_mode: "tofu" # Options: "tofu" (default), "never", "always"
 init_commands:
   - link_topsymlinks
 terminate_commands:

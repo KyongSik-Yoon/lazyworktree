@@ -66,7 +66,7 @@ def fake_repo(tmp_path: Path) -> FakeRepo:
     _git(["worktree", "add", str(wt1), "feature1"], cwd=repo, env=env)
     _git(["worktree", "add", str(wt2), "feature2"], cwd=repo, env=env)
 
-    (wt1 / "scratch.txt").write_text("dirty\n", encoding="utf-8")
+    (wt1 / "README.md").write_text("dirty\n", encoding="utf-8")
     (wt2 / "README.md").write_text("change\n", encoding="utf-8")
     _git(["add", "README.md"], cwd=wt2, env=env)
 

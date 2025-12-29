@@ -27,6 +27,5 @@ class WorktreeInfo:
     divergence: str = ""
 
 
-WORKTREE_DIR = "~/.local/share/worktrees"
 LAST_SELECTED_FILENAME = ".last-selected"
 CACHE_FILENAME = ".worktree-cache.json"

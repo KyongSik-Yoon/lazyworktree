@@ -3,6 +3,11 @@ sort_by_active: true
 auto_fetch_prs: false
 max_untracked_diffs: 10
 max_diff_chars: 200000
+
+# Security setting for executing commands from .wt files
+# Options: "tofu" (default - ask on first use/change), "never", "always"
+trust_mode: "tofu"
+
 init_commands:
   - link_topsymlinks
 terminate_commands:

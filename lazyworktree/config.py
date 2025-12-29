@@ -73,6 +73,7 @@ class AppConfig:
     auto_fetch_prs: bool = False
     max_untracked_diffs: int = 10
     max_diff_chars: int = 200_000
+    trust_mode: str = "tofu"
 
 
 def _parse_config(data: object) -> AppConfig:
@@ -89,6 +90,11 @@ def _parse_config(data: object) -> AppConfig:
     auto_fetch_prs = _coerce_bool(data.get("auto_fetch_prs"), False)
     max_untracked_diffs = _coerce_int(data.get("max_untracked_diffs"), 10)
     max_diff_chars = _coerce_int(data.get("max_diff_chars"), 200_000)
+
+    trust_mode = str(data.get("trust_mode", "tofu")).strip().lower()
+    if trust_mode not in {"tofu", "never", "always"}:
+        trust_mode = "tofu"
+
     if max_untracked_diffs < 0:
         max_untracked_diffs = 0
     if max_diff_chars < 0:
@@ -101,6 +107,7 @@ def _parse_config(data: object) -> AppConfig:
         auto_fetch_prs=auto_fetch_prs,
         max_untracked_diffs=max_untracked_diffs,
         max_diff_chars=max_diff_chars,
+        trust_mode=trust_mode,
     )
 
 

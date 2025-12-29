@@ -2,9 +2,8 @@ import pytest
 
 from textual.widgets import DataTable, Input, RichLog
 
-import lazyworktree.app as app_module
-import lazyworktree.models as models
 from lazyworktree.app import GitWtStatus
+from lazyworktree.config import AppConfig
 from lazyworktree.screens import CommitScreen, HelpScreen
 
 from tests.utils import wait_for, wait_for_workers
@@ -12,11 +11,10 @@ from tests.utils import wait_for, wait_for_workers
 
 @pytest.mark.asyncio
 async def test_tui_keyboard_flow(fake_repo, monkeypatch) -> None:
-    monkeypatch.setattr(app_module, "WORKTREE_DIR", str(fake_repo.worktree_root.parent))
-    monkeypatch.setattr(models, "WORKTREE_DIR", str(fake_repo.worktree_root.parent))
     monkeypatch.chdir(fake_repo.root)
 
-    app = GitWtStatus()
+    config = AppConfig(worktree_dir=str(fake_repo.worktree_root.parent))
+    app = GitWtStatus(config=config)
     async with app.run_test() as pilot:
         await wait_for_workers(app)
         table = app.query_one("#worktree-table", DataTable)
@@ -65,11 +63,10 @@ async def test_tui_keyboard_flow(fake_repo, monkeypatch) -> None:
 
 @pytest.mark.asyncio
 async def test_tui_commit_view_and_create_worktree(fake_repo, monkeypatch) -> None:
-    monkeypatch.setattr(app_module, "WORKTREE_DIR", str(fake_repo.worktree_root.parent))
-    monkeypatch.setattr(models, "WORKTREE_DIR", str(fake_repo.worktree_root.parent))
     monkeypatch.chdir(fake_repo.root)
 
-    app = GitWtStatus()
+    config = AppConfig(worktree_dir=str(fake_repo.worktree_root.parent))
+    app = GitWtStatus(config=config)
     async with app.run_test() as pilot:
         await wait_for_workers(app)
         table = app.query_one("#worktree-table", DataTable)

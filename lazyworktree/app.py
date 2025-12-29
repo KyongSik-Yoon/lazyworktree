@@ -6,6 +6,7 @@ import webbrowser
 import shutil
 import re
 import yaml
+from pathlib import Path
 from typing import List, Optional, Iterable
 
 from textual import on, work, events
@@ -14,6 +15,7 @@ from textual.binding import Binding
 from textual.css.query import NoMatches
 from textual.command import DiscoveryHit, Hit, Provider
 from textual.containers import Container, Horizontal, Vertical
+from textual.timer import Timer
 from textual.widgets import (
     DataTable,
     Footer,
@@ -28,14 +30,16 @@ from rich.console import Group
 from rich.syntax import Syntax
 
 from .config import AppConfig, normalize_command_list
-from .models import WorktreeInfo, WORKTREE_DIR, LAST_SELECTED_FILENAME, CACHE_FILENAME
+from .models import WorktreeInfo, LAST_SELECTED_FILENAME, CACHE_FILENAME
 from .git_service import GitService
+from .security import TrustManager, TrustStatus
 from .screens import (
     ConfirmScreen,
     InputScreen,
     HelpScreen,
     CommitScreen,
     FocusableRichLog,
+    TrustScreen,
 )
 
 
@@ -161,12 +165,78 @@ class GitWtStatus(App):
         self._config = config or AppConfig()
         self.sort_by_active = self._config.sort_by_active
         self._auto_fetch_prs_done = False
+        self._trust_manager = TrustManager()
+        self._debounce_timer: Optional[Timer] = None
 
     def _notify_once(self, key: str, message: str, severity: str = "error") -> None:
         if key in self._notified_errors:
             return
         self._notified_errors.add(key)
         self.notify(message, severity=severity)
+
+    @property
+    def worktree_dir(self) -> str:
+        # Should be guaranteed by main.py, but fallback just in case
+        return self._config.worktree_dir or os.path.expanduser(
+            "~/.local/share/worktrees"
+        )
+
+    async def _get_repo_commands(
+        self, repo_root: str, command_type: str
+    ) -> Optional[List[str]]:
+        """
+        Retrieves commands from repo-local .wt file with TOFU (Trust On First Use).
+        Returns:
+            - List[str]: The commands to run (empty if none or blocked).
+            - None: If the operation should be CANCELLED.
+        """
+        trust_mode = self._config.trust_mode
+        if trust_mode == "never":
+            return []
+
+        config_path = os.path.join(repo_root, ".wt")
+        if not os.path.exists(config_path):
+            return []
+
+        try:
+            with open(config_path, "r", encoding="utf-8") as f:
+                data = yaml.safe_load(f) or {}
+            commands = normalize_command_list(data.get(command_type))
+        except Exception as e:
+            self.notify(f"Error loading .wt config: {e}", severity="error")
+            return []
+
+        if not commands:
+            return []
+
+        if trust_mode == "always":
+            return commands
+
+        path_obj = Path(config_path)
+        trust_status = self._trust_manager.check_trust(path_obj)
+
+        if trust_status == TrustStatus.TRUSTED:
+            return commands
+
+        # If untrusted, ask user
+        loop = asyncio.get_running_loop()
+        future = loop.create_future()
+
+        def on_dismiss(result: str):
+            future.set_result(result)
+
+        self.push_screen(TrustScreen(config_path, commands), on_dismiss)
+
+        # This will pause execution of this coroutine until user clicks a button
+        result = await future
+
+        if result == "trust":
+            self._trust_manager.trust_file(path_obj)
+            return commands
+        elif result == "block":
+            return []
+        else:  # cancel / escape
+            return None
 
     def compose(self) -> ComposeResult:
         yield Header()
@@ -340,12 +410,12 @@ class GitWtStatus(App):
 
     def _last_selected_file(self) -> str:
         repo_key = self._get_repo_key()
-        repo_root = os.path.expanduser(f"{WORKTREE_DIR}/{repo_key}")
+        repo_root = os.path.expanduser(f"{self.worktree_dir}/{repo_key}")
         return os.path.join(repo_root, LAST_SELECTED_FILENAME)
 
     def _cache_file(self) -> str:
         repo_key = self._get_repo_key()
-        repo_root = os.path.expanduser(f"{WORKTREE_DIR}/{repo_key}")
+        repo_root = os.path.expanduser(f"{self.worktree_dir}/{repo_key}")
         return os.path.join(repo_root, CACHE_FILENAME)
 
     def _load_cache(self) -> dict:
@@ -537,7 +607,10 @@ class GitWtStatus(App):
         )
         if data_table is not None and data_table is not table:
             return
-        self.update_details_view()
+
+        if self._debounce_timer:
+            self._debounce_timer.stop()
+        self._debounce_timer = self.set_timer(0.2, self.update_details_view)
 
     def action_open_pr(self) -> None:
         table = self.query_one("#worktree-table", DataTable)
@@ -890,11 +963,25 @@ class GitWtStatus(App):
                 return
             self.notify(f"Creating worktree {name}...")
             repo_key = self._get_repo_key()
-            new_path_root = os.path.expanduser(f"{WORKTREE_DIR}/{repo_key}")
+            new_path_root = os.path.expanduser(f"{self.worktree_dir}/{repo_key}")
             new_path = os.path.join(new_path_root, name)
             os.makedirs(new_path_root, exist_ok=True)
             try:
                 main_path = await self._get_main_worktree_path()
+
+                # Check security/trust before doing heavy lifting if possible,
+                # but 'git worktree add' creates the dir.
+                # Actually, hooks run AFTER. So we can run the command first?
+                # No, if the user cancels trust, we might want to abort the whole thing
+                # or just not run the hooks.
+                # The user intent "Cancel" usually means "Stop", but if we already created the WT...
+                # Ideally, check trust first.
+
+                repo_cmds = await self._get_repo_commands(main_path, "init_commands")
+                if repo_cmds is None:
+                    self.notify("Operation cancelled")
+                    return
+
                 process = await asyncio.create_subprocess_exec(
                     "git", "worktree", "add", new_path, name
                 )
@@ -902,19 +989,10 @@ class GitWtStatus(App):
                 if process.returncode != 0:
                     self.notify(f"Failed to create worktree {name}", severity="error")
                     return
+
                 init_commands = list(self._config.init_commands)
-                config_path = os.path.join(main_path, ".wt")
-                if os.path.exists(config_path):
-                    try:
-                        with open(config_path, "r") as f:
-                            config = yaml.safe_load(f) or {}
-                        init_commands.extend(
-                            normalize_command_list(config.get("init_commands"))
-                        )
-                    except Exception as config_err:
-                        self.notify(
-                            f"Error loading .wt config: {config_err}", severity="error"
-                        )
+                init_commands.extend(repo_cmds)
+
                 if init_commands:
                     env = os.environ.copy()
                     env["WORKTREE_BRANCH"] = name
@@ -1104,19 +1182,17 @@ class GitWtStatus(App):
             self.notify(f"Deleting {wt.branch}...")
             try:
                 main_path = await self._get_main_worktree_path()
+
+                repo_cmds = await self._get_repo_commands(
+                    main_path, "terminate_commands"
+                )
+                if repo_cmds is None:
+                    self.notify("Operation cancelled")
+                    return
+
                 terminate_commands = list(self._config.terminate_commands)
-                config_path = os.path.join(main_path, ".wt")
-                if os.path.exists(config_path):
-                    try:
-                        with open(config_path, "r") as f:
-                            config = yaml.safe_load(f) or {}
-                        terminate_commands.extend(
-                            normalize_command_list(config.get("terminate_commands"))
-                        )
-                    except Exception as config_err:
-                        self.notify(
-                            f"Error loading .wt config: {config_err}", severity="error"
-                        )
+                terminate_commands.extend(repo_cmds)
+
                 if terminate_commands:
                     env = os.environ.copy()
                     env["WORKTREE_BRANCH"] = wt.branch
@@ -1172,19 +1248,17 @@ class GitWtStatus(App):
             self.notify(f"Absorbing {wt.branch}...")
             try:
                 main_path = await self._get_main_worktree_path()
+
+                repo_cmds = await self._get_repo_commands(
+                    main_path, "terminate_commands"
+                )
+                if repo_cmds is None:
+                    self.notify("Operation cancelled")
+                    return
+
                 terminate_commands = list(self._config.terminate_commands)
-                config_path = os.path.join(main_path, ".wt")
-                if os.path.exists(config_path):
-                    try:
-                        with open(config_path, "r") as f:
-                            config = yaml.safe_load(f) or {}
-                        terminate_commands.extend(
-                            normalize_command_list(config.get("terminate_commands"))
-                        )
-                    except Exception as config_err:
-                        self.notify(
-                            f"Error loading .wt config: {config_err}", severity="error"
-                        )
+                terminate_commands.extend(repo_cmds)
+
                 if terminate_commands:
                     env = os.environ.copy()
                     env["WORKTREE_BRANCH"] = wt.branch
