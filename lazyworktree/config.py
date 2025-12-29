@@ -85,7 +85,7 @@ def _parse_config(data: object) -> AppConfig:
         worktree_dir = worktree_dir.strip() or None
     else:
         worktree_dir = None
-    
+
     debug_log = data.get("debug_log")
     if isinstance(debug_log, str):
         debug_log = debug_log.strip() or None

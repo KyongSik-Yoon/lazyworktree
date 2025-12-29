@@ -1077,18 +1077,47 @@ class GitWtStatus(App):
 
                 self.log_debug(f"Creating worktree {name} at {new_path}")
                 process = await asyncio.create_subprocess_exec(
-                    "git", "worktree", "add", new_path, name,
+                    "git",
+                    "worktree",
+                    "add",
+                    new_path,
+                    name,
                     stdout=asyncio.subprocess.PIPE,
-                    stderr=asyncio.subprocess.PIPE
+                    stderr=asyncio.subprocess.PIPE,
                 )
                 stdout, stderr = await process.communicate()
-                
+
                 if process.returncode != 0:
                     err_msg = stderr.decode(errors="replace").strip()
-                    self.log_debug(f"Failed to create worktree {name}. Exit code: {process.returncode}\nStderr: {err_msg}")
-                    self.notify(f"Failed to create worktree {name}: {err_msg}", severity="error")
-                    return
-                
+                    # If the branch doesn't exist (invalid reference), try creating it as a new branch with -b
+                    if "invalid reference" in err_msg:
+                        self.log_debug(
+                            f"Branch {name} not found, trying to create new branch..."
+                        )
+                        process = await asyncio.create_subprocess_exec(
+                            "git",
+                            "worktree",
+                            "add",
+                            "-b",
+                            name,
+                            new_path,
+                            stdout=asyncio.subprocess.PIPE,
+                            stderr=asyncio.subprocess.PIPE,
+                        )
+                        stdout, stderr = await process.communicate()
+                        if process.returncode != 0:
+                            err_msg = stderr.decode(errors="replace").strip()
+
+                    if process.returncode != 0:
+                        self.log_debug(
+                            f"Failed to create worktree {name}. Exit code: {process.returncode}\nStderr: {err_msg}"
+                        )
+                        self.notify(
+                            f"Failed to create worktree {name}: {err_msg}",
+                            severity="error",
+                        )
+                        return
+
                 self.log_debug(f"Worktree {name} created successfully")
 
                 init_commands = list(self._config.init_commands)

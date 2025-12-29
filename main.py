@@ -50,7 +50,7 @@ def main(
     updates = {"worktree_dir": resolved_dir}
     if debug_log:
         updates["debug_log"] = os.path.expanduser(debug_log)
-    
+
     config = replace(config, **updates)
 
     filter_value = " ".join(initial_filter).strip()
