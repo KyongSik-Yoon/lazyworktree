@@ -57,6 +57,7 @@ async def test_tui_keyboard_flow(fake_repo, monkeypatch) -> None:
 
         await pilot.press("d")
         await wait_for_workers(app)
+        await wait_for(lambda: len(status_log.lines) > 0)
         await wait_for(lambda: getattr(app.focused, "id", None) == "status-pane")
         assert len(status_log.lines) > 0
 
