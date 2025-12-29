@@ -7,7 +7,8 @@ from lazyworktree.screens import InputScreen
 
 
 @pytest.mark.asyncio
-async def test_create_worktree_failure_tui(fake_repo, tmp_path):
+async def test_create_worktree_failure_tui(fake_repo, tmp_path, monkeypatch):
+    monkeypatch.chdir(fake_repo.root)
     debug_log = tmp_path / "debug.log"
     config = AppConfig(
         worktree_dir=str(fake_repo.worktree_root.parent), debug_log=str(debug_log)
