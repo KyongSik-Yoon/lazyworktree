@@ -169,3 +169,15 @@ Notes:
 - Set `sort_by_active` to `false` to sort by path.
 - Set `auto_fetch_prs` to `true` to fetch PR data on startup.
 - Use `max_untracked_diffs: 0` to hide untracked diffs; `max_diff_chars: 0` disables truncation.
+
+## Copyright
+
+[Apache-2.0](./LICENSE)
+
+## Authors
+
+### Chmouel Boudjnah
+
+- 🐘 Fediverse - <[@chmouel@chmouel.com](https://fosstodon.org/@chmouel)>
+- 🐦 Twitter - <[@chmouel](https://twitter.com/chmouel)>
+- 📝 Blog  - <[https://blog.chmouel.com](https://blog.chmouel.com)>
