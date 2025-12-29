@@ -131,7 +131,7 @@ class GitWtStatus(App):
         Binding("g", "lazygit", description="LazyGit", priority=True),
         Binding("r", "refresh", "Refresh"),
         Binding("f", "fetch", "Fetch", show=False),
-        Binding("p", "fetch_prs", "Fetch PRs", show=False),
+        Binding("p", "fetch_prs", "PR Info"),
         Binding("c", "create", "Create", show=False),
         Binding("d", "diff", "Diff"),
         Binding("D", "delete", "Delete"),
