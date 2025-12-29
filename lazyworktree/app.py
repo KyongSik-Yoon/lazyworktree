@@ -53,6 +53,7 @@ class GitWtStatusCommands(Provider):
         ("Create worktree", "create", "Create a new worktree"),
         ("Rename worktree", "rename", "Rename selected worktree"),
         ("Delete worktree", "delete", "Delete selected worktree"),
+        ("Prune merged", "prune_merged", "Delete all merged worktrees"),
         ("Absorb worktree", "absorb", "Merge worktree to main and delete it"),
         ("View diff", "diff", "View full diff of changes"),
         ("Fetch remotes", "fetch", "Fetch all remotes"),
@@ -139,6 +140,7 @@ class GitWtStatus(App):
         Binding("m", "rename", "Rename", show=False),
         Binding("d", "diff", "Diff"),
         Binding("D", "delete", "Delete"),
+        Binding("X", "prune_merged", "Prune", show=False),
         Binding("s", "sort", "Sort", show=False),
         Binding("/", "filter", "Filter"),
         Binding("?", "help", "Help"),
@@ -1053,40 +1055,36 @@ class GitWtStatus(App):
         self.push_screen(HelpScreen())
 
     def action_create(self) -> None:
-        async def on_submit(name: Optional[str]):
-            if not name:
-                return
-            name = name.strip()
-            if not name:
-                return
-            self.notify(f"Creating worktree {name}...")
+        async def on_base_submit(name: str, base: Optional[str]):
+            base = base.strip() if base else ""
+            self.notify(f"Creating worktree {name} from {base or 'default'}...")
+
             repo_key = self._get_repo_key()
             new_path_root = os.path.expanduser(f"{self.worktree_dir}/{repo_key}")
             new_path = os.path.join(new_path_root, name)
             os.makedirs(new_path_root, exist_ok=True)
+
             try:
                 main_path = await self._get_main_worktree_path()
+                main_branch = await self.get_main_branch()
 
-                # Check security/trust before doing heavy lifting if possible,
-                # but 'git worktree add' creates the dir.
-                # Actually, hooks run AFTER. So we can run the command first?
-                # No, if the user cancels trust, we might want to abort the whole thing
-                # or just not run the hooks.
-                # The user intent "Cancel" usually means "Stop", but if we already created the WT...
-                # Ideally, check trust first.
+                # If base is empty, default to main_branch
+                target_base = base if base else main_branch
 
                 repo_cmds = await self._get_repo_commands(main_path, "init_commands")
                 if repo_cmds is None:
                     self.notify("Operation cancelled")
                     return
 
-                self.log_debug(f"Creating worktree {name} at {new_path}")
+                self.log_debug(
+                    f"Creating worktree {name} at {new_path} from {target_base}"
+                )
+
+                # Command: git worktree add -b <name> <path> <base>
+                cmd = ["git", "worktree", "add", "-b", name, new_path, target_base]
+
                 process = await asyncio.create_subprocess_exec(
-                    "git",
-                    "worktree",
-                    "add",
-                    new_path,
-                    name,
+                    *cmd,
                     stdout=asyncio.subprocess.PIPE,
                     stderr=asyncio.subprocess.PIPE,
                 )
@@ -1094,34 +1092,14 @@ class GitWtStatus(App):
 
                 if process.returncode != 0:
                     err_msg = stderr.decode(errors="replace").strip()
-                    # If the branch doesn't exist (invalid reference), try creating it as a new branch with -b
-                    if "invalid reference" in err_msg:
-                        self.log_debug(
-                            f"Branch {name} not found, trying to create new branch..."
-                        )
-                        process = await asyncio.create_subprocess_exec(
-                            "git",
-                            "worktree",
-                            "add",
-                            "-b",
-                            name,
-                            new_path,
-                            stdout=asyncio.subprocess.PIPE,
-                            stderr=asyncio.subprocess.PIPE,
-                        )
-                        stdout, stderr = await process.communicate()
-                        if process.returncode != 0:
-                            err_msg = stderr.decode(errors="replace").strip()
-
-                    if process.returncode != 0:
-                        self.log_debug(
-                            f"Failed to create worktree {name}. Exit code: {process.returncode}\nStderr: {err_msg}"
-                        )
-                        self.notify(
-                            f"Failed to create worktree {name}: {err_msg}",
-                            severity="error",
-                        )
-                        return
+                    self.log_debug(
+                        f"Failed to create worktree {name}. Exit code: {process.returncode}\nStderr: {err_msg}"
+                    )
+                    self.notify(
+                        f"Failed to create worktree {name}: {err_msg}",
+                        severity="error",
+                    )
+                    return
 
                 self.log_debug(f"Worktree {name} created successfully")
 
@@ -1140,9 +1118,28 @@ class GitWtStatus(App):
             except Exception as e:
                 self.notify(f"Error: {e}", severity="error")
 
+        async def on_name_submit(name: Optional[str]):
+            if not name:
+                return
+            name = name.strip()
+            if not name:
+                return
+
+            # Get main branch for default suggestion
+            main_branch = await self.get_main_branch()
+
+            self.push_screen(
+                InputScreen(
+                    f"Base branch for '{name}' (default: {main_branch}):",
+                    value=main_branch,
+                    placeholder=main_branch,
+                ),
+                lambda base: self.run_worker(on_base_submit(name, base)),
+            )
+
         self.push_screen(
             InputScreen("Enter new branch/worktree name:"),
-            lambda name: self.run_worker(on_submit(name)),
+            lambda name: self.run_worker(on_name_submit(name)),
         )
 
     async def _apply_delta(self, diff_text: str) -> tuple[str, bool]:
@@ -1346,6 +1343,50 @@ class GitWtStatus(App):
             lambda name: self.run_worker(do_rename(name)),
         )
 
+    async def _delete_worktree_routine(self, wt: WorktreeInfo) -> bool:
+        path = wt.path
+        branch = wt.branch
+        self.notify(f"Deleting {branch}...")
+        try:
+            main_path = await self._get_main_worktree_path()
+
+            repo_cmds = await self._get_repo_commands(main_path, "terminate_commands")
+            if repo_cmds is None:
+                self.notify(f"Operation cancelled for {branch}")
+                return False
+
+            terminate_commands = list(self._config.terminate_commands)
+            terminate_commands.extend(repo_cmds)
+
+            if terminate_commands:
+                env = os.environ.copy()
+                env["WORKTREE_BRANCH"] = branch
+                env["MAIN_WORKTREE_PATH"] = main_path
+                env["WORKTREE_PATH"] = path
+                env["WORKTREE_NAME"] = os.path.basename(path)
+                await self._run_wt_commands(terminate_commands, main_path, env)
+
+            removed = await self._run_command_checked(
+                ["git", "worktree", "remove", "--force", path],
+                cwd=None,
+                error_prefix=f"Failed to remove worktree {path}",
+            )
+            if not removed:
+                return False
+
+            deleted = await self._run_command_checked(
+                ["git", "branch", "-D", branch],
+                cwd=None,
+                error_prefix=f"Failed to delete branch {branch}",
+            )
+            if not deleted:
+                return False
+
+            return True
+        except Exception as e:
+            self.notify(f"Failed to delete {branch}: {e}", severity="error")
+            return False
+
     def action_delete(self) -> None:
         table = self.query_one("#worktree-table", DataTable)
         if table.row_count == 0:
@@ -1365,51 +1406,50 @@ class GitWtStatus(App):
         async def do_delete(confirm: Optional[bool]):
             if not confirm:
                 return
-            self.notify(f"Deleting {wt.branch}...")
-            try:
-                main_path = await self._get_main_worktree_path()
-
-                repo_cmds = await self._get_repo_commands(
-                    main_path, "terminate_commands"
-                )
-                if repo_cmds is None:
-                    self.notify("Operation cancelled")
-                    return
-
-                terminate_commands = list(self._config.terminate_commands)
-                terminate_commands.extend(repo_cmds)
-
-                if terminate_commands:
-                    env = os.environ.copy()
-                    env["WORKTREE_BRANCH"] = wt.branch
-                    env["MAIN_WORKTREE_PATH"] = main_path
-                    env["WORKTREE_PATH"] = path
-                    env["WORKTREE_NAME"] = os.path.basename(path)
-                    await self._run_wt_commands(terminate_commands, main_path, env)
-                removed = await self._run_command_checked(
-                    ["git", "worktree", "remove", "--force", path],
-                    cwd=None,
-                    error_prefix=f"Failed to remove worktree {path}",
-                )
-                if not removed:
-                    return
-                deleted = await self._run_command_checked(
-                    ["git", "branch", "-D", wt.branch],
-                    cwd=None,
-                    error_prefix=f"Failed to delete branch {wt.branch}",
-                )
-                if not deleted:
-                    return
+            success = await self._delete_worktree_routine(wt)
+            if success:
                 self.notify("Worktree deleted")
                 self.refresh_data()
-            except Exception as e:
-                self.notify(f"Failed to delete: {e}", severity="error")
 
         self.push_screen(
             ConfirmScreen(
                 f"Are you sure you want to delete worktree?\n\nPath: {path}\nBranch: {wt.branch}"
             ),
             lambda confirm: self.run_worker(do_delete(confirm)),
+        )
+
+    def action_prune_merged(self) -> None:
+        merged_wts = [
+            wt
+            for wt in self.worktrees
+            if wt.pr and wt.pr.state == "MERGED" and not wt.is_main
+        ]
+        if not merged_wts:
+            self.notify("No merged worktrees found.", severity="information")
+            return
+
+        async def do_prune(confirm: Optional[bool]):
+            if not confirm:
+                return
+
+            deleted_count = 0
+            for wt in merged_wts:
+                success = await self._delete_worktree_routine(wt)
+                if success:
+                    deleted_count += 1
+
+            if deleted_count > 0:
+                self.notify(f"Successfully pruned {deleted_count} worktrees")
+                self.refresh_data()
+
+        msg = "Are you sure you want to delete these merged worktrees?\n\n"
+        msg += "\n".join(f"- {wt.branch}" for wt in merged_wts[:10])
+        if len(merged_wts) > 10:
+            msg += f"\n...and {len(merged_wts) - 10} more"
+
+        self.push_screen(
+            ConfirmScreen(msg),
+            lambda confirm: self.run_worker(do_prune(confirm)),
         )
 
     def action_absorb(self) -> None:

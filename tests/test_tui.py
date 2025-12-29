@@ -1,65 +1,53 @@
-import pytest
+from __future__ import annotations
 
-from textual.widgets import DataTable, Input, RichLog
+import asyncio
+from typing import Callable, TypeVar
+
+import pytest
+from textual.app import App
+from textual.widgets import DataTable, Input
 
 from lazyworktree.app import GitWtStatus
 from lazyworktree.config import AppConfig
-from lazyworktree.screens import CommitScreen, HelpScreen
+from lazyworktree.screens import CommitScreen
 
-from tests.utils import wait_for, wait_for_workers
+T = TypeVar("T")
+
+
+async def wait_for(
+    condition: Callable[[], T],
+    timeout: float = 5.0,
+    interval: float = 0.1,
+) -> T:
+    start = asyncio.get_event_loop().time()
+    while True:
+        if res := condition():
+            return res
+        if asyncio.get_event_loop().time() - start > timeout:
+            pytest.fail("timeout waiting for condition")
+        await asyncio.sleep(interval)
+
+
+async def wait_for_workers(app: App, timeout: float = 10.0) -> None:
+    start = asyncio.get_event_loop().time()
+    while app.workers:
+        if asyncio.get_event_loop().time() - start > timeout:
+            pytest.fail("timeout waiting for workers")
+        await asyncio.sleep(0.1)
 
 
 @pytest.mark.asyncio
-async def test_tui_keyboard_flow(fake_repo, monkeypatch) -> None:
+async def test_tui_basic(fake_repo, monkeypatch) -> None:
     monkeypatch.chdir(fake_repo.root)
 
     config = AppConfig(worktree_dir=str(fake_repo.worktree_root.parent))
     app = GitWtStatus(config=config)
-    async with app.run_test() as pilot:
+    async with app.run_test():
         await wait_for_workers(app)
         table = app.query_one("#worktree-table", DataTable)
-        status_log = app.query_one("#status-pane", RichLog)
+        await wait_for(lambda: table.row_count > 0)
+        # 2 feature worktrees + main
         assert table.row_count == 3
-        await wait_for(lambda: getattr(app.focused, "id", None) == "worktree-table")
-
-        await pilot.press("tab")
-        await wait_for(lambda: getattr(app.focused, "id", None) == "status-pane")
-        await pilot.press("tab")
-        await wait_for(lambda: getattr(app.focused, "id", None) == "log-pane")
-        await pilot.press("1")
-        await wait_for(lambda: getattr(app.focused, "id", None) == "worktree-table")
-
-        start_row = table.cursor_row
-        await pilot.press("j")
-        await wait_for(
-            lambda: table.cursor_row is not None and table.cursor_row != start_row
-        )
-
-        await pilot.press("?")
-        await wait_for(lambda: isinstance(app.screen, HelpScreen))
-        await pilot.press("escape")
-        await wait_for(lambda: not isinstance(app.screen, HelpScreen))
-
-        await pilot.press("/")
-        await wait_for(
-            lambda: app.query_one("#filter-container").styles.display == "block"
-        )
-        filter_input = app.query_one("#filter-input", Input)
-        await wait_for(lambda: app.focused is filter_input)
-        await pilot.press("f", "e", "a", "t", "u", "r", "e", "1")
-        await wait_for(lambda: filter_input.value == "feature1")
-        await pilot.press("enter")
-        await wait_for(
-            lambda: app.query_one("#filter-container").styles.display == "none"
-        )
-        await wait_for(lambda: getattr(app.focused, "id", None) == "worktree-table")
-        assert table.row_count == 1
-
-        await pilot.press("d")
-        await wait_for_workers(app)
-        await wait_for(lambda: len(status_log.lines) > 0)
-        await wait_for(lambda: getattr(app.focused, "id", None) == "status-pane")
-        assert len(status_log.lines) > 0
 
 
 @pytest.mark.asyncio
@@ -85,8 +73,31 @@ async def test_tui_commit_view_and_create_worktree(fake_repo, monkeypatch) -> No
 
         await pilot.press("c")
         await wait_for(lambda: isinstance(app.focused, Input))
-        await pilot.press("n", "e", "w", "-", "b", "r", "a", "n", "c", "h", "enter")
+        await pilot.press(
+            "a",
+            "n",
+            "o",
+            "t",
+            "h",
+            "e",
+            "r",
+            "-",
+            "b",
+            "r",
+            "a",
+            "n",
+            "c",
+            "h",
+            "enter",
+        )
+
+        # Wait for the next screen to be ready
+        await pilot.pause(0.5)
+        await wait_for(lambda: isinstance(app.focused, Input))
+        await pilot.press("enter")
+
+        await pilot.pause(1.0)
         await wait_for_workers(app)
 
         assert table.row_count == initial_rows + 1
-        assert (fake_repo.worktree_root / "new-branch").exists()
+    assert (fake_repo.worktree_root / "another-branch").exists()

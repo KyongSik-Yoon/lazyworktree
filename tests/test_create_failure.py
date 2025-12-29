@@ -52,6 +52,11 @@ async def test_create_worktree_failure_tui(fake_repo, tmp_path, monkeypatch):
             # Type name and submit
             await pilot.press("n", "e", "w", "-", "f", "a", "i", "l", "enter")
 
+            # Wait for base InputScreen and hit enter again
+            await pilot.pause(0.5)
+            assert isinstance(app.screen, InputScreen)
+            await pilot.press("enter")
+
             # Wait for the worker to finish and notification to happen
             await pilot.pause(0.5)
 
