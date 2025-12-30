@@ -20,6 +20,7 @@ import (
 	"github.com/chmouel/lazyworktree/internal/git"
 	"github.com/chmouel/lazyworktree/internal/models"
 	"github.com/chmouel/lazyworktree/internal/security"
+	"github.com/muesli/reflow/wrap"
 )
 
 type (
@@ -849,7 +850,7 @@ func (m *AppModel) updateDetailsView() tea.Cmd {
 		if wt.Dirty {
 			// Automatically show diff when there are changes
 			diff := m.git.BuildThreePartDiff(m.ctx, wt.Path, m.config)
-			diff = m.git.ApplyDelta(diff)
+			diff = m.git.ApplyDelta(m.ctx, diff)
 			if diff != "" {
 				statusContent = statusContent + "\n\n" + diff
 			}
@@ -867,15 +868,25 @@ func (m *AppModel) debouncedUpdateDetailsView() tea.Cmd {
 	// Cancel any existing pending detail update
 	if m.detailUpdateCancel != nil {
 		m.detailUpdateCancel()
+		m.detailUpdateCancel = nil
 	}
 
 	// Get current selected index
 	m.pendingDetailsIndex = m.worktreeTable.Cursor()
 	selectedIndex := m.pendingDetailsIndex
 
+	ctx, cancel := context.WithCancel(context.Background())
+	m.detailUpdateCancel = cancel
+
 	return func() tea.Msg {
-		// Wait 200ms
-		time.Sleep(200 * time.Millisecond)
+		timer := time.NewTimer(200 * time.Millisecond)
+		defer timer.Stop()
+
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-timer.C:
+		}
 		return debouncedDetailsMsg{
 			selectedIndex: selectedIndex,
 		}
@@ -1000,7 +1011,7 @@ func (m *AppModel) showDiff() tea.Cmd {
 		// Build three-part diff (staged + unstaged + untracked)
 		diff := m.git.BuildThreePartDiff(m.ctx, wt.Path, m.config)
 		// Apply delta if available
-		diff = m.git.ApplyDelta(diff)
+		diff = m.git.ApplyDelta(m.ctx, diff)
 		return statusUpdatedMsg{
 			info:   m.buildInfoContent(wt),
 			status: fmt.Sprintf("Diff for %s:\n\n%s", wt.Branch, diff),
@@ -1016,7 +1027,7 @@ func (m *AppModel) showFullDiff() tea.Cmd {
 	wt := m.filteredWts[m.selectedIndex]
 	return func() tea.Msg {
 		diff := m.git.BuildThreePartDiff(m.ctx, wt.Path, m.config)
-		diff = m.git.ApplyDelta(diff)
+		diff = m.git.ApplyDelta(m.ctx, diff)
 		m.diffScreen = NewDiffScreen(fmt.Sprintf("Diff for %s", wt.Branch), diff, m.git.UseDelta())
 		m.currentScreen = screenDiff
 		return nil
@@ -1293,7 +1304,7 @@ func (m *AppModel) openCommitView() tea.Cmd {
 		metaRaw := m.git.RunGit(m.ctx, []string{"git", "show", "--quiet", "--pretty=format:%H%x1f%an%x1f%ae%x1f%ad%x1f%s%x1f%b", entry.sha}, wt.Path, []int{0}, false, false)
 		stat := m.git.RunGit(m.ctx, []string{"git", "show", "--stat", "--oneline", entry.sha}, wt.Path, []int{0}, false, false)
 		diff := m.git.RunGit(m.ctx, []string{"git", "show", "--patch", entry.sha}, wt.Path, []int{0}, false, false)
-		diff = m.git.ApplyDelta(diff)
+		diff = m.git.ApplyDelta(m.ctx, diff)
 
 		meta := parseCommitMeta(metaRaw)
 		return commitLoadedMsg{
@@ -1396,18 +1407,20 @@ func (m *AppModel) handleScreenKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 					if m.confirmAction != nil {
 						actionCmd = m.confirmAction()
 					}
-					m.currentScreen = screenNone
 					m.confirmScreen = nil
 					m.confirmAction = nil
+					if m.currentScreen == screenConfirm {
+						m.currentScreen = screenNone
+					}
 					if actionCmd != nil {
 						return m, actionCmd
 					}
 					return m, nil
 				} else {
 					// Action cancelled
-					m.currentScreen = screenNone
 					m.confirmScreen = nil
 					m.confirmAction = nil
+					m.currentScreen = screenNone
 					return m, nil
 				}
 			default:
@@ -1501,7 +1514,9 @@ func (m *AppModel) handleScreenKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				if close {
 					m.inputScreen = nil
 					m.inputSubmit = nil
-					m.currentScreen = screenNone
+					if m.currentScreen == screenInput {
+						m.currentScreen = screenNone
+					}
 				}
 				return m, cmd
 			}
@@ -1623,6 +1638,16 @@ func (m *AppModel) getWorktreeDir() string {
 // GetSelectedPath returns the selected worktree path (for shell integration)
 func (m *AppModel) GetSelectedPath() string {
 	return m.selectedPath
+}
+
+// Close releases background resources (cancel contexts, timers)
+func (m *AppModel) Close() {
+	if m.detailUpdateCancel != nil {
+		m.detailUpdateCancel()
+	}
+	if m.cancel != nil {
+		m.cancel()
+	}
 }
 
 func (m *AppModel) buildCommandEnv(branch, wtPath string) map[string]string {
@@ -2012,12 +2037,18 @@ func (m *AppModel) renderInnerBox(title, content string, width, height int) stri
 	if content == "" {
 		content = "No data available."
 	}
+
 	titleStyle := lipgloss.NewStyle().Foreground(colorMutedFg).Bold(true)
-	boxContent := lipgloss.JoinVertical(lipgloss.Left, titleStyle.Render(title), content)
+
 	style := baseInnerBoxStyle().Width(width)
 	if height > 0 {
 		style = style.Height(height)
 	}
+
+	innerWidth := max(1, width-style.GetHorizontalFrameSize())
+	wrappedContent := wrap.String(content, innerWidth)
+	boxContent := lipgloss.JoinVertical(lipgloss.Left, titleStyle.Render(title), wrappedContent)
+
 	return style.Render(boxContent)
 }
 

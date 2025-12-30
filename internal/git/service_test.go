@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/chmouel/lazyworktree/internal/config"
@@ -24,9 +25,17 @@ func TestNewService(t *testing.T) {
 	assert.NotNil(t, service.notify)
 	assert.NotNil(t, service.notifyOnce)
 
-	// Semaphore should have 24 slots
+	expectedSlots := runtime.NumCPU() * 2
+	if expectedSlots < 4 {
+		expectedSlots = 4
+	}
+	if expectedSlots > 32 {
+		expectedSlots = 32
+	}
+
+	// Semaphore should have the expected number of slots
 	count := 0
-	for i := 0; i < 24; i++ {
+	for i := 0; i < expectedSlots; i++ {
 		select {
 		case <-service.semaphore:
 			count++
@@ -34,7 +43,7 @@ func TestNewService(t *testing.T) {
 			// Can't drain more from semaphore
 		}
 	}
-	assert.Equal(t, 24, count)
+	assert.Equal(t, expectedSlots, count)
 }
 
 func TestUseDelta(t *testing.T) {
@@ -55,7 +64,7 @@ func TestApplyDelta(t *testing.T) {
 	service := NewService(notify, notifyOnce)
 
 	t.Run("empty diff returns empty", func(t *testing.T) {
-		result := service.ApplyDelta("")
+		result := service.ApplyDelta(context.Background(), "")
 		assert.Empty(t, result)
 	})
 
@@ -66,14 +75,14 @@ func TestApplyDelta(t *testing.T) {
 		defer func() { service.useDelta = origUseDelta }()
 
 		diff := "diff --git a/file.txt b/file.txt\n"
-		result := service.ApplyDelta(diff)
+		result := service.ApplyDelta(context.Background(), diff)
 		assert.Equal(t, diff, result)
 	})
 
 	t.Run("diff with delta available", func(t *testing.T) {
 		diff := "diff --git a/file.txt b/file.txt\n+added line\n"
 
-		result := service.ApplyDelta(diff)
+		result := service.ApplyDelta(context.Background(), diff)
 		// Result should either be the diff (if delta not available) or transformed by delta
 		assert.NotEmpty(t, result)
 		assert.Contains(t, result, "file.txt")

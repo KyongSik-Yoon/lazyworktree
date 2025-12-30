@@ -55,6 +55,7 @@ func main() {
 	}
 
 	model := app.NewAppModel(cfg, initialFilter)
+	defer model.Close()
 	p := tea.NewProgram(model, tea.WithAltScreen())
 
 	if _, err := p.Run(); err != nil {

@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -32,8 +33,16 @@ type Service struct {
 }
 
 func NewService(notify NotifyFn, notifyOnce NotifyOnceFn) *Service {
-	semaphore := make(chan struct{}, 24) // Limit to 24 concurrent operations
-	for i := 0; i < 24; i++ {
+	limit := runtime.NumCPU() * 2
+	if limit < 4 {
+		limit = 4
+	}
+	if limit > 32 {
+		limit = 32
+	}
+
+	semaphore := make(chan struct{}, limit) // Limit concurrent operations
+	for i := 0; i < limit; i++ {
 		semaphore <- struct{}{}
 	}
 
@@ -58,12 +67,12 @@ func (s *Service) detectDelta() {
 }
 
 // ApplyDelta pipes diff output through delta if available
-func (s *Service) ApplyDelta(diff string) string {
+func (s *Service) ApplyDelta(ctx context.Context, diff string) string {
 	if !s.useDelta || diff == "" {
 		return diff
 	}
 
-	cmd := exec.Command("delta", "--no-gitconfig", "--paging=never")
+	cmd := exec.CommandContext(ctx, "delta", "--no-gitconfig", "--paging=never")
 	cmd.Stdin = strings.NewReader(diff)
 	output, err := cmd.Output()
 	if err != nil {

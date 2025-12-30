@@ -43,7 +43,7 @@ func TestPRInfo(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert.NotNil(t, tt.prInfo)
-			assert.Greater(t, tt.prInfo.Number, 0)
+			assert.Positive(t, tt.prInfo.Number)
 			assert.NotEmpty(t, tt.prInfo.State)
 			assert.NotEmpty(t, tt.prInfo.Title)
 			assert.NotEmpty(t, tt.prInfo.URL)

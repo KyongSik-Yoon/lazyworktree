@@ -91,20 +91,6 @@ type DiffScreen struct {
 	viewport viewport.Model
 }
 
-func maxInt(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
-}
-
-func minInt(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}
-
 func NewConfirmScreen(message string) *ConfirmScreen {
 	return &ConfirmScreen{
 		message:        message,
@@ -358,13 +344,13 @@ Press p to fetch PR information from GitHub.
 	width := 80
 	height := 30
 	if maxWidth > 0 {
-		width = minInt(120, maxInt(60, maxWidth))
+		width = min(120, max(60, maxWidth))
 	}
 	if maxHeight > 0 {
-		height = minInt(60, maxInt(25, maxHeight))
+		height = min(60, max(25, maxHeight))
 	}
 
-	vp := viewport.New(width, maxInt(5, height-3))
+	vp := viewport.New(width, max(5, height-3))
 	fullLines := strings.Split(helpText, "\n")
 
 	ti := textinput.New()
@@ -373,7 +359,7 @@ Press p to fetch PR information from GitHub.
 	ti.Prompt = "/ "
 	ti.SetValue("")
 	ti.Blur()
-	ti.Width = maxInt(20, width-6)
+	ti.Width = max(20, width-6)
 
 	hs := &HelpScreen{
 		viewport:    vp,
@@ -461,6 +447,11 @@ func (s *HelpScreen) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	if s.searching {
 		s.searchInput, cmd = s.searchInput.Update(msg)
+		newQuery := strings.TrimSpace(s.searchInput.Value())
+		if newQuery != s.searchQuery {
+			s.searchQuery = newQuery
+			s.refreshContent()
+		}
 		return s, cmd
 	}
 
@@ -539,7 +530,7 @@ func (s *CommandPaletteScreen) applyFilter() {
 
 	// Reset cursor and scroll offset if list changes
 	if s.cursor >= len(s.filtered) {
-		s.cursor = maxInt(0, len(s.filtered)-1)
+		s.cursor = max(0, len(s.filtered)-1)
 	}
 	s.scrollOffset = 0
 }
@@ -597,10 +588,10 @@ func (s *HelpScreen) SetSize(maxWidth, maxHeight int) {
 	width := 80
 	height := 30
 	if maxWidth > 0 {
-		width = minInt(120, maxInt(60, maxWidth-4)) // -4 for margins
+		width = min(120, max(60, maxWidth-4)) // -4 for margins
 	}
 	if maxHeight > 0 {
-		height = minInt(60, maxInt(20, maxHeight-6)) // -6 for margins
+		height = min(60, max(20, maxHeight-6)) // -6 for margins
 	}
 	s.width = width
 	s.height = height
@@ -608,7 +599,7 @@ func (s *HelpScreen) SetSize(maxWidth, maxHeight int) {
 	// Update viewport size
 	// height - 4 for borders/header/footer
 	s.viewport.Width = s.width - 2
-	s.viewport.Height = maxInt(5, s.height-4)
+	s.viewport.Height = max(5, s.height-4)
 }
 
 func (s *HelpScreen) renderContent() string {
@@ -616,12 +607,13 @@ func (s *HelpScreen) renderContent() string {
 		return strings.Join(s.fullText, "\n")
 	}
 
-	query := strings.ToLower(s.searchQuery)
-	lineStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("229")).Background(lipgloss.Color("60")).Bold(true)
+	query := strings.ToLower(strings.TrimSpace(s.searchQuery))
+	highlightStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("229")).Background(lipgloss.Color("60")).Bold(true)
 	lines := []string{}
 	for _, line := range s.fullText {
-		if strings.Contains(strings.ToLower(line), query) {
-			lines = append(lines, lineStyle.Render(line))
+		lower := strings.ToLower(line)
+		if strings.Contains(lower, query) {
+			lines = append(lines, highlightMatches(line, lower, query, highlightStyle))
 		}
 	}
 
@@ -631,12 +623,37 @@ func (s *HelpScreen) renderContent() string {
 	return strings.Join(lines, "\n")
 }
 
+func highlightMatches(line, lowerLine, lowerQuery string, style lipgloss.Style) string {
+	if lowerQuery == "" {
+		return line
+	}
+
+	var b strings.Builder
+	searchFrom := 0
+	qLen := len(lowerQuery)
+
+	for {
+		idx := strings.Index(lowerLine[searchFrom:], lowerQuery)
+		if idx < 0 {
+			b.WriteString(line[searchFrom:])
+			break
+		}
+		start := searchFrom + idx
+		end := start + qLen
+		b.WriteString(line[searchFrom:start])
+		b.WriteString(style.Render(line[start:end]))
+		searchFrom = end
+	}
+
+	return b.String()
+}
+
 func (s *HelpScreen) View() string {
 	content := s.renderContent()
 
 	// Keep viewport sized to available area (minus header/search lines)
-	vHeight := maxInt(5, s.height-4) // -4 for borders/header/footer
-	s.viewport.Width = s.width - 2   // -2 for borders
+	vHeight := max(5, s.height-4)  // -4 for borders/header/footer
+	s.viewport.Width = s.width - 2 // -2 for borders
 	s.viewport.Height = vHeight
 	s.viewport.SetContent(content)
 
@@ -813,7 +830,7 @@ func (s *DiffScreen) View() string {
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(lipgloss.Color("12")).
 		Padding(1, 2).
-		Width(maxInt(80, s.viewport.Width)).
+		Width(max(80, s.viewport.Width)).
 		Render(content)
 }
 
@@ -977,13 +994,16 @@ func (s *WelcomeScreen) View() string {
 func NewCommitScreen(meta commitMeta, stat, diff string, useDelta bool) *CommitScreen {
 	vp := viewport.New(110, 60)
 
-	return &CommitScreen{
+	screen := &CommitScreen{
 		meta:     meta,
 		stat:     stat,
 		diff:     diff,
 		useDelta: useDelta,
 		viewport: vp,
 	}
+
+	screen.setViewportContent()
+	return screen
 }
 
 func (s *CommitScreen) Init() tea.Cmd {
@@ -1019,6 +1039,10 @@ func (s *CommitScreen) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 	s.viewport, cmd = s.viewport.Update(msg)
 	return s, cmd
+}
+
+func (s *CommitScreen) setViewportContent() {
+	s.viewport.SetContent(s.buildBody())
 }
 
 func (s *CommitScreen) buildBody() string {
@@ -1067,12 +1091,8 @@ func (s *CommitScreen) renderHeader() string {
 
 // View renders the commit screen
 func (s *CommitScreen) View() string {
-	width := maxInt(100, s.viewport.Width)
-	height := maxInt(30, s.viewport.Height)
-
-	// Set viewport content combining stats + diff; viewport scrolls the diff section
-	body := s.buildBody()
-	s.viewport.SetContent(body)
+	width := max(100, s.viewport.Width)
+	height := max(30, s.viewport.Height)
 
 	header := s.renderHeader()
 	content := lipgloss.JoinVertical(lipgloss.Left, header, s.viewport.View())
