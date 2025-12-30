@@ -349,11 +349,11 @@ func NewHelpScreen(maxWidth, maxHeight int) *HelpScreen {
 - A: Absorb worktree into main (merge + delete)
 - X: Prune merged PR worktrees
 - Ctrl+p: Command Palette
-- f: Fetch all remotes
+- R: Fetch all remotes
 - p: Fetch PR status from GitHub
 - r: Refresh list
 - s: Sort (toggle Name/Last Active)
-- /: Filter worktrees
+- f, /: Filter worktrees
 - g: Open LazyGit (or go to top if in diff pane)
 - ?: Show this help
 

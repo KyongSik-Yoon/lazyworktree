@@ -38,7 +38,8 @@ type (
 		status string
 		log    []commitLogEntry
 	}
-	refreshCompleteMsg  struct{}
+	refreshCompleteMsg       struct{}
+	fetchRemotesCompleteMsg struct{}
 	debouncedDetailsMsg struct {
 		selectedIndex int
 	}
@@ -285,6 +286,22 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.handleScreenKey(msg)
 		}
 
+		// Handle filter input first - when filtering, only escape/enter should exit
+		if m.showingFilter {
+			switch msg.String() {
+			case "enter", "esc":
+				m.showingFilter = false
+				m.filterInput.Blur()
+				m.worktreeTable.Focus()
+				return m, nil
+			default:
+				m.filterInput, cmd = m.filterInput.Update(msg)
+				m.filterQuery = m.filterInput.Value()
+				m.updateTable()
+				return m, cmd
+			}
+		}
+
 		switch msg.String() {
 		case "ctrl+c", "q":
 			if m.selectedPath != "" {
@@ -442,8 +459,14 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, nil
 
-		case "f":
+		case "R":
+			m.statusContent = "Fetching remotes..."
 			return m, m.fetchRemotes()
+
+		case "f":
+			m.showingFilter = true
+			m.filterInput.Focus()
+			return m, textinput.Blink
 
 		case "s":
 			m.sortByActive = !m.sortByActive
@@ -484,33 +507,12 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, m.showPruneMerged()
 
 		case "esc":
-			if m.showingFilter {
-				m.showingFilter = false
-				m.filterInput.Blur()
-				return m, nil
-			}
 			if m.currentScreen == screenPalette {
 				m.currentScreen = screenNone
 				m.paletteScreen = nil
 				return m, nil
 			}
 			return m, nil
-		}
-
-		// Handle filter input
-		if m.showingFilter {
-			switch msg.String() {
-			case "enter", "esc":
-				m.showingFilter = false
-				m.filterInput.Blur()
-				m.worktreeTable.Focus()
-				return m, nil
-			default:
-				m.filterInput, cmd = m.filterInput.Update(msg)
-				m.filterQuery = m.filterInput.Value()
-				m.updateTable()
-				return m, cmd
-			}
 		}
 
 		// Handle table input
@@ -586,6 +588,10 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.statusContent = fmt.Sprintf("Error: %v", msg.err)
 		}
 		return m, nil
+
+	case fetchRemotesCompleteMsg:
+		m.statusContent = "Remotes fetched"
+		return m, m.refreshWorktrees()
 
 	case pruneResultMsg:
 		if msg.err == nil && msg.worktrees != nil {
@@ -915,7 +921,7 @@ func (m *AppModel) fetchPRData() tea.Cmd {
 func (m *AppModel) fetchRemotes() tea.Cmd {
 	return func() tea.Msg {
 		m.git.RunGit(m.ctx, []string{"git", "fetch", "--all", "--quiet"}, "", []int{0}, false, false)
-		return refreshCompleteMsg{}
+		return fetchRemotesCompleteMsg{}
 	}
 }
 
