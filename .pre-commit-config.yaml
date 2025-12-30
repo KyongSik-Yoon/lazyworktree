@@ -1,7 +1,7 @@
 default_install_hook_types: ["pre-push"]
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.6.0
+    rev: v6.0.0
     hooks:
       - id: check-added-large-files
       - id: check-ast
@@ -21,9 +21,16 @@ repos:
         entry: golangci-lint run ./...
         language: system
         pass_filenames: false
-        types: [file, go]
+        types: [go]
       - id: formatting
-        language: system
         name: format with gofumpt
-        types: [file, go]
-        entry: gofumpt -w ./cmd/lazyworktree/ ./internal/
+        language: system
+        types: [go]
+        entry: gofumpt -l -w
+        pass_filenames: true
+      - id: testing
+        name: go test
+        language: system
+        types: [go]
+        entry: go test ./...
+        pass_filenames: false
