@@ -59,11 +59,8 @@ var (
 	colorAccentDim = lipgloss.Color("255") // vibrant cyan
 	colorBorder    = lipgloss.Color("241")
 	colorBorderDim = lipgloss.Color("238")
-	colorHeaderBg  = lipgloss.Color("234")
-	colorHeaderFg  = lipgloss.Color("255")
 	colorMutedFg   = lipgloss.Color("250")
 	colorTextFg    = lipgloss.Color("255")
-	colorPaneBg    = lipgloss.Color("235")
 	colorSuccessFg = lipgloss.Color("48")  // vibrant green
 	colorWarnFg    = lipgloss.Color("214") // vibrant orange
 	colorErrorFg   = lipgloss.Color("196") // vibrant red
@@ -88,7 +85,6 @@ type AppModel struct {
 	filterQuery   string
 	sortByActive  bool
 	prDataLoaded  bool
-	repoName      string
 	repoKey       string
 	currentScreen screenType
 	inputScreen   *InputScreen
@@ -308,7 +304,7 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+d", " ": // Page down
 			switch m.focusedPane {
 			case 1:
-				m.statusViewport.HalfViewDown()
+				m.statusViewport.HalfPageDown()
 				return m, nil
 			case 2:
 				m.logTable, cmd = m.logTable.Update(msg)
@@ -319,7 +315,7 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+u": // Page up
 			switch m.focusedPane {
 			case 1:
-				m.statusViewport.HalfViewUp()
+				m.statusViewport.HalfPageUp()
 				return m, nil
 			case 2:
 				m.logTable, cmd = m.logTable.Update(msg)
@@ -330,7 +326,7 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "pgdown":
 			switch m.focusedPane {
 			case 1:
-				m.statusViewport.ViewDown()
+				m.statusViewport.PageDown()
 				return m, nil
 			case 2:
 				m.logTable, cmd = m.logTable.Update(msg)
@@ -341,7 +337,7 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "pgup":
 			switch m.focusedPane {
 			case 1:
-				m.statusViewport.ViewUp()
+				m.statusViewport.PageUp()
 				return m, nil
 			case 2:
 				m.logTable, cmd = m.logTable.Update(msg)
@@ -834,7 +830,9 @@ func (m *AppModel) openLazyGit() tea.Cmd {
 	return func() tea.Msg {
 		cmd := exec.Command("lazygit")
 		cmd.Dir = wt.Path
-		cmd.Run()
+		if err := cmd.Run(); err != nil {
+			return errMsg{err: err}
+		}
 		return refreshCompleteMsg{}
 	}
 }
@@ -848,7 +846,9 @@ func (m *AppModel) openPR() tea.Cmd {
 		return nil
 	}
 	return func() tea.Msg {
-		exec.Command("xdg-open", wt.PR.URL).Start()
+		if err := exec.Command("xdg-open", wt.PR.URL).Start(); err != nil {
+			return errMsg{err: err}
+		}
 		return nil
 	}
 }
@@ -936,7 +936,9 @@ func (m *AppModel) loadCache() tea.Cmd {
 		if err != nil {
 			return nil
 		}
-		json.Unmarshal(data, &m.cache)
+		if err := json.Unmarshal(data, &m.cache); err != nil {
+			return errMsg{err: err}
+		}
 		return nil
 	}
 }
@@ -944,13 +946,18 @@ func (m *AppModel) loadCache() tea.Cmd {
 func (m *AppModel) saveCache() {
 	repoKey := m.getRepoKey()
 	cachePath := filepath.Join(m.getWorktreeDir(), repoKey, models.CacheFilename)
-	os.MkdirAll(filepath.Dir(cachePath), 0o755)
+	if err := os.MkdirAll(filepath.Dir(cachePath), 0o755); err != nil {
+		m.statusContent = fmt.Sprintf("Failed to create cache dir: %v", err)
+		return
+	}
 
 	cacheData := map[string]interface{}{
 		"worktrees": m.worktrees,
 	}
 	data, _ := json.Marshal(cacheData)
-	os.WriteFile(cachePath, data, 0o644)
+	if err := os.WriteFile(cachePath, data, 0o644); err != nil {
+		m.statusContent = fmt.Sprintf("Failed to write cache: %v", err)
+	}
 }
 
 func (m *AppModel) getRepoKey() string {

@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
@@ -524,16 +523,16 @@ func (s *CommitScreen) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "q", "esc":
 			return s, tea.Quit
 		case "j", "down":
-			s.viewport.LineDown(1)
+			s.viewport.ScrollDown(1)
 			return s, nil
 		case "k", "up":
-			s.viewport.LineUp(1)
+			s.viewport.ScrollUp(1)
 			return s, nil
 		case "ctrl+d", " ":
-			s.viewport.HalfViewDown()
+			s.viewport.HalfPageDown()
 			return s, nil
 		case "ctrl+u":
-			s.viewport.HalfViewUp()
+			s.viewport.HalfPageUp()
 			return s, nil
 		case "g":
 			s.viewport.GotoTop()
@@ -560,31 +559,4 @@ func (s *CommitScreen) View() string {
 		Height(height)
 
 	return boxStyle.Render(s.viewport.View())
-}
-
-// Key bindings for screens
-type keyMap struct {
-	Confirm key.Binding
-	Cancel  key.Binding
-	Quit    key.Binding
-	Scroll  key.Binding
-}
-
-var defaultKeyMap = keyMap{
-	Confirm: key.NewBinding(
-		key.WithKeys("enter", "y"),
-		key.WithHelp("enter/y", "confirm"),
-	),
-	Cancel: key.NewBinding(
-		key.WithKeys("esc", "q", "n"),
-		key.WithHelp("esc/q/n", "cancel"),
-	),
-	Quit: key.NewBinding(
-		key.WithKeys("q", "esc"),
-		key.WithHelp("q/esc", "quit"),
-	),
-	Scroll: key.NewBinding(
-		key.WithKeys("j", "k", "ctrl+d", "ctrl+u", "g", "G"),
-		key.WithHelp("j/k/ctrl+d/ctrl+u/g/G", "scroll"),
-	),
 }

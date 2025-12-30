@@ -30,7 +30,6 @@ type Service struct {
 	mainBranch  string
 	gitHost     string
 	notifiedSet map[string]bool
-	mu          sync.RWMutex
 	useDelta    bool
 }
 
@@ -572,7 +571,6 @@ func (s *Service) BuildThreePartDiff(ctx context.Context, path string, cfg *conf
 		if untrackedCount > displayCount {
 			notice := fmt.Sprintf("\n[...showing %d of %d untracked files]", displayCount, untrackedCount)
 			parts = append(parts, notice)
-			totalChars += len(notice)
 		}
 	}
 

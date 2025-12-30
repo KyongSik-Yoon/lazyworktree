@@ -81,7 +81,9 @@ func (tm *TrustManager) calculateHash(filePath string) string {
 	if err != nil {
 		return ""
 	}
-	defer file.Close()
+	defer func() {
+		_ = file.Close()
+	}()
 
 	hash := sha256.New()
 	buf := make([]byte, 65536)
