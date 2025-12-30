@@ -79,10 +79,11 @@ type CommitScreen struct {
 
 // CommandPaletteScreen represents a simple command palette with filtering
 type CommandPaletteScreen struct {
-	items       []paletteItem
-	filtered    []paletteItem
-	filterInput textinput.Model
-	cursor      int
+	items        []paletteItem
+	filtered     []paletteItem
+	filterInput  textinput.Model
+	cursor       int
+	scrollOffset int
 }
 
 type paletteItem struct {
@@ -359,17 +360,18 @@ Press p to fetch PR information from GitHub.
 // NewCommandPaletteScreen creates a new command palette with items
 func NewCommandPaletteScreen(items []paletteItem) *CommandPaletteScreen {
 	ti := textinput.New()
-	ti.Placeholder = "Filter commands..."
+	ti.Placeholder = "Type a command..."
 	ti.CharLimit = 100
 	ti.Prompt = "> "
 	ti.Focus()
-	ti.Width = 50
+	ti.Width = 58 // fits inside 60 width box with padding
 
 	screen := &CommandPaletteScreen{
-		items:       items,
-		filtered:    items,
-		filterInput: ti,
-		cursor:      0,
+		items:        items,
+		filtered:     items,
+		filterInput:  ti,
+		cursor:       0,
+		scrollOffset: 0,
 	}
 	return screen
 }
@@ -444,6 +446,8 @@ func (s *HelpScreen) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 // Update handles updates for the command palette
 func (s *CommandPaletteScreen) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
+	maxVisible := 8
+
 	switch m := msg.(type) {
 	case tea.KeyMsg:
 		switch m.String() {
@@ -455,11 +459,17 @@ func (s *CommandPaletteScreen) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "up", "k":
 			if s.cursor > 0 {
 				s.cursor--
+				if s.cursor < s.scrollOffset {
+					s.scrollOffset = s.cursor
+				}
 			}
 			return s, nil
 		case "down", "j":
 			if s.cursor < len(s.filtered)-1 {
 				s.cursor++
+				if s.cursor >= s.scrollOffset+maxVisible {
+					s.scrollOffset = s.cursor - maxVisible + 1
+				}
 			}
 			return s, nil
 		}
@@ -474,22 +484,21 @@ func (s *CommandPaletteScreen) applyFilter() {
 	query := strings.ToLower(strings.TrimSpace(s.filterInput.Value()))
 	if query == "" {
 		s.filtered = s.items
-		if s.cursor >= len(s.filtered) {
-			s.cursor = maxInt(0, len(s.filtered)-1)
+	} else {
+		filtered := make([]paletteItem, 0, len(s.items))
+		for _, it := range s.items {
+			if strings.Contains(strings.ToLower(it.label), query) || strings.Contains(strings.ToLower(it.description), query) {
+				filtered = append(filtered, it)
+			}
 		}
-		return
+		s.filtered = filtered
 	}
 
-	filtered := make([]paletteItem, 0, len(s.items))
-	for _, it := range s.items {
-		if strings.Contains(strings.ToLower(it.label), query) || strings.Contains(strings.ToLower(it.description), query) {
-			filtered = append(filtered, it)
-		}
-	}
-	s.filtered = filtered
+	// Reset cursor and scroll offset if list changes
 	if s.cursor >= len(s.filtered) {
 		s.cursor = maxInt(0, len(s.filtered)-1)
 	}
+	s.scrollOffset = 0
 }
 
 // Selected returns the currently selected item id
@@ -601,28 +610,110 @@ func (s *HelpScreen) View() string {
 
 // View renders the command palette
 func (s *CommandPaletteScreen) View() string {
-	titleStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("12"))
-	descStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("245"))
-	selectedStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("0")).Background(lipgloss.Color("12"))
+	width := 60
+	maxVisible := 8
 
-	lines := []string{titleStyle.Render("Command Palette"), "", s.filterInput.View(), ""}
-	for i, it := range s.filtered {
-		line := fmt.Sprintf("%s — %s", it.label, descStyle.Render(it.description))
-		if i == s.cursor {
-			line = selectedStyle.Render(line)
-		}
-		lines = append(lines, line)
-	}
-	if len(s.filtered) == 0 {
-		lines = append(lines, descStyle.Render("No commands match your filter."))
-	}
-
-	return lipgloss.NewStyle().
+	// Styles
+	boxStyle := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
-		BorderForeground(lipgloss.Color("12")).
-		Padding(1, 2).
-		Width(80).
-		Render(strings.Join(lines, "\n"))
+		BorderForeground(lipgloss.Color("62")). // Purple-ish
+		Width(width).
+		Padding(0)
+
+	inputStyle := lipgloss.NewStyle().
+		Padding(0, 1).
+		Width(width - 2).
+		Foreground(lipgloss.Color("255"))
+
+	itemStyle := lipgloss.NewStyle().
+		Padding(0, 1).
+		Width(width - 2)
+
+	selectedStyle := lipgloss.NewStyle().
+		Padding(0, 1).
+		Width(width - 2).
+		Background(lipgloss.Color("62")).
+		Foreground(lipgloss.Color("255")).
+		Bold(true)
+
+	descStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("240"))
+
+	selectedDescStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("252"))
+
+	noResultsStyle := lipgloss.NewStyle().
+		Padding(0, 1).
+		Width(width - 2).
+		Foreground(lipgloss.Color("240")).
+		Italic(true)
+
+	// Render Input
+	inputView := inputStyle.Render(s.filterInput.View())
+
+	// Render Items
+	var itemViews []string
+
+	end := s.scrollOffset + maxVisible
+	if end > len(s.filtered) {
+		end = len(s.filtered)
+	}
+	start := s.scrollOffset
+	if start > end {
+		start = end // Should not happen if logic is correct
+	}
+
+	for i := start; i < end; i++ {
+		it := s.filtered[i]
+
+		// Truncate label if too long
+		label := it.label
+		desc := it.description
+
+		// Pad label to align descriptions somewhat
+		labelPad := 25
+		if len(label) > labelPad {
+			label = label[:labelPad-1] + "…"
+		}
+		paddedLabel := fmt.Sprintf("%-25s", label)
+
+		var line string
+		if i == s.cursor {
+			line = fmt.Sprintf("%s %s", paddedLabel, selectedDescStyle.Render(desc))
+			itemViews = append(itemViews, selectedStyle.Render(line))
+		} else {
+			line = fmt.Sprintf("%s %s", paddedLabel, descStyle.Render(desc))
+			itemViews = append(itemViews, itemStyle.Render(line))
+		}
+	}
+
+	if len(s.filtered) == 0 {
+		itemViews = append(itemViews, noResultsStyle.Render("No commands match your filter."))
+	}
+
+	// Separator
+	separator := lipgloss.NewStyle().
+		Border(lipgloss.NormalBorder(), false, false, true, false).
+		BorderForeground(lipgloss.Color("238")).
+		Width(width - 2).
+		Render("")
+
+	// Footer
+	footerStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("240")).
+		Align(lipgloss.Right).
+		Width(width - 2).
+		PaddingTop(1)
+	footer := footerStyle.Render("esc to close")
+
+	content := lipgloss.JoinVertical(lipgloss.Left,
+		inputView,
+		separator,
+		strings.Join(itemViews, "\n"),
+		footer,
+	)
+
+	return boxStyle.Render(content)
 }
 
 // View renders the diff screen

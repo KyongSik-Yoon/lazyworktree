@@ -611,10 +611,7 @@ func (m *AppModel) View() string {
 		return "Loading..."
 	}
 
-	if m.currentScreen != screenNone {
-		return m.renderScreen()
-	}
-
+	// Always render base layout first to allow overlays
 	layout := m.computeLayout()
 	m.applyLayout(layout)
 
@@ -634,7 +631,71 @@ func (m *AppModel) View() string {
 		sections = append(sections, m.renderFilter(layout))
 	}
 	sections = append(sections, body, footer)
-	return lipgloss.JoinVertical(lipgloss.Left, sections...)
+
+	baseView := lipgloss.JoinVertical(lipgloss.Left, sections...)
+
+	// Handle Modal Overlays
+	if m.currentScreen == screenPalette {
+		if m.paletteScreen != nil {
+			return m.overlayPopup(baseView, m.paletteScreen.View(), 3)
+		}
+	}
+
+	// Handle Full Screen Views (fallback)
+	if m.currentScreen != screenNone {
+		return m.renderScreen()
+	}
+
+	return baseView
+}
+
+func (m *AppModel) overlayPopup(base string, popup string, marginTop int) string {
+	if base == "" || popup == "" {
+		return base
+	}
+
+	baseLines := strings.Split(base, "\n")
+	popupLines := strings.Split(popup, "\n")
+
+	// Assume fixed width for now or calculate from lines
+	if len(baseLines) == 0 {
+		return popup
+	}
+
+	baseWidth := lipgloss.Width(baseLines[0])
+	popupWidth := lipgloss.Width(popupLines[0]) // Assume box is rectangular
+
+	// Calculate left padding to center
+	leftPad := (baseWidth - popupWidth) / 2
+	if leftPad < 0 {
+		leftPad = 0
+	}
+
+	// Prepare left/right masking spaces
+	// In a perfect world we'd preserve the background, but without advanced ANSI handling
+	// we will "clear" the band where the popup is to ensure readability and avoid artifacts.
+	// This creates a "modal band" effect which is clean and acceptable.
+	leftSpace := strings.Repeat(" ", leftPad)
+	rightPad := baseWidth - popupWidth - leftPad
+	if rightPad < 0 {
+		rightPad = 0
+	}
+	rightSpace := strings.Repeat(" ", rightPad)
+
+	for i, line := range popupLines {
+		row := marginTop + i
+		if row >= len(baseLines) {
+			break
+		}
+
+		// Replace the line with centered popup + cleared sides
+		// This "clears" the background on this row, effectively showing the popup
+		// on a black/default band. This is safer than trying to slice ANSI strings
+		// without a library.
+		baseLines[row] = leftSpace + line + rightSpace
+	}
+
+	return strings.Join(baseLines, "\n")
 }
 
 // Helper methods
@@ -1463,7 +1524,18 @@ func (m *AppModel) renderScreen() string {
 		return m.welcomeScreen.View()
 	case screenPalette:
 		if m.paletteScreen != nil {
-			return m.paletteScreen.View()
+			content := m.paletteScreen.View()
+			if m.windowWidth > 0 && m.windowHeight > 0 {
+				content = lipgloss.NewStyle().MarginTop(3).Render(content)
+				return lipgloss.Place(
+					m.windowWidth,
+					m.windowHeight,
+					lipgloss.Center,
+					lipgloss.Top,
+					content,
+				)
+			}
+			return content
 		}
 	case screenDiff:
 		if m.diffScreen != nil {
