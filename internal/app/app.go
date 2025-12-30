@@ -307,8 +307,18 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.logTable.Focus()
 			return m, nil
 
-		case "tab":
+		case "tab", "]":
 			m.focusedPane = (m.focusedPane + 1) % 3
+			switch m.focusedPane {
+			case 0:
+				m.worktreeTable.Focus()
+			case 2:
+				m.logTable.Focus()
+			}
+			return m, nil
+
+		case "[":
+			m.focusedPane = (m.focusedPane - 1 + 3) % 3
 			switch m.focusedPane {
 			case 0:
 				m.worktreeTable.Focus()
@@ -550,13 +560,15 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.infoContent = msg.info
 		}
 		m.statusContent = msg.status
-		// Update log table
-		rows := make([]table.Row, 0, len(msg.log))
-		for _, entry := range msg.log {
-			rows = append(rows, table.Row{entry.sha, entry.message})
+		// Update log table only if new log data is provided
+		if msg.log != nil {
+			rows := make([]table.Row, 0, len(msg.log))
+			for _, entry := range msg.log {
+				rows = append(rows, table.Row{entry.sha, entry.message})
+			}
+			m.logTable.SetRows(rows)
+			m.logEntries = msg.log
 		}
-		m.logTable.SetRows(rows)
-		m.logEntries = msg.log
 		return m, nil
 
 	case debouncedDetailsMsg:
@@ -991,7 +1003,7 @@ func (m *AppModel) showDiff() tea.Cmd {
 		return statusUpdatedMsg{
 			info:   m.buildInfoContent(wt),
 			status: fmt.Sprintf("Diff for %s:\n\n%s", wt.Branch, diff),
-			log:    []commitLogEntry{},
+			log:    nil,
 		}
 	}
 }
@@ -1167,7 +1179,6 @@ func (m *AppModel) showCommandPalette() tea.Cmd {
 		{id: "rename", label: "Rename worktree (m)", description: "Rename worktree and branch"},
 		{id: "absorb", label: "Absorb worktree (A)", description: "Merge branch into main and remove worktree"},
 		{id: "prune", label: "Prune merged (X)", description: "Remove merged PR worktrees"},
-		{id: "diff", label: "Show diff (d)", description: "Inline diff of selected worktree"},
 		{id: "refresh", label: "Refresh (r)", description: "Reload worktrees"},
 		{id: "fetch", label: "Fetch remotes (f)", description: "git fetch --all"},
 		{id: "pr", label: "Open PR (o)", description: "Open PR in browser"},
@@ -1950,15 +1961,15 @@ func (m *AppModel) renderFooter(layout layoutDims) string {
 		Foreground(colorMutedFg).
 		Padding(0, 1)
 	hints := []string{
-		m.renderKeyHint("q", "Quit"),
+		m.renderKeyHint("1-3", "Pane Focus"),
 		m.renderKeyHint("g", "LazyGit"),
 		m.renderKeyHint("r", "Refresh"),
 		m.renderKeyHint("p", "PR Info"),
-		m.renderKeyHint("d", "Diff"),
 		m.renderKeyHint("D", "Delete"),
 		m.renderKeyHint("/", "Filter"),
+		m.renderKeyHint("q", "Quit"),
 		m.renderKeyHint("?", "Help"),
-		m.renderKeyHint("tab", "Next Pane"),
+		m.renderKeyHint("ctrl+p", "Palette"),
 	}
 	return footerStyle.Width(layout.width).Render(strings.Join(hints, "  "))
 }

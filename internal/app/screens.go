@@ -297,7 +297,6 @@ func NewHelpScreen(maxWidth, maxHeight int) *HelpScreen {
 
 **Actions**
 - c: Create new worktree
-- d: Manually refresh diff (diffs auto-show when worktree is dirty)
 - F: Full-screen diff viewer
 - D: Delete selected worktree
 - A: Absorb worktree into main (merge + delete)
