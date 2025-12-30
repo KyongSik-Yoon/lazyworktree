@@ -38,9 +38,9 @@ type (
 		status string
 		log    []commitLogEntry
 	}
-	refreshCompleteMsg       struct{}
+	refreshCompleteMsg      struct{}
 	fetchRemotesCompleteMsg struct{}
-	debouncedDetailsMsg struct {
+	debouncedDetailsMsg     struct {
 		selectedIndex int
 	}
 	pruneResultMsg struct {
