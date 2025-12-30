@@ -86,15 +86,16 @@ const (
 )
 
 var (
-	colorAccent    = lipgloss.Color("141") // soft magenta/purple
-	colorAccentDim = lipgloss.Color("255") // vibrant cyan
-	colorBorder    = lipgloss.Color("241")
-	colorBorderDim = lipgloss.Color("238")
-	colorMutedFg   = lipgloss.Color("250")
-	colorTextFg    = lipgloss.Color("255")
-	colorSuccessFg = lipgloss.Color("48")  // vibrant green
-	colorWarnFg    = lipgloss.Color("214") // vibrant orange
-	colorErrorFg   = lipgloss.Color("196") // vibrant red
+	// Dracula Theme Palette
+	colorAccent    = lipgloss.Color("#BD93F9") // Purple
+	colorAccentDim = lipgloss.Color("#44475A") // Current Line / Selection
+	colorBorder    = lipgloss.Color("#BD93F9") // Purple
+	colorBorderDim = lipgloss.Color("#6272A4") // Comment
+	colorMutedFg   = lipgloss.Color("#6272A4") // Comment
+	colorTextFg    = lipgloss.Color("#F8F8F2") // Foreground
+	colorSuccessFg = lipgloss.Color("#50FA7B") // Green
+	colorWarnFg    = lipgloss.Color("#FFB86C") // Orange
+	colorErrorFg   = lipgloss.Color("#FF5555") // Red
 )
 
 // Model represents the main application model
@@ -197,12 +198,14 @@ func NewModel(cfg *config.AppConfig, initialFilter string) *Model {
 
 	s := table.DefaultStyles()
 	s.Header = s.Header.
-		Foreground(colorMutedFg).
-		Bold(true)
-	s.Cell = s.Cell.Foreground(colorTextFg)
+		BorderStyle(lipgloss.NormalBorder()).
+		BorderForeground(colorBorderDim).
+		BorderBottom(true).
+		Bold(true).
+		Foreground(colorAccent)
 	s.Selected = s.Selected.
-		Foreground(lipgloss.Color("232")).
-		Background(colorAccent).
+		Foreground(colorTextFg).
+		Background(colorAccentDim). // Use darker selection color for better contrast
 		Bold(true)
 	t.SetStyles(s)
 
@@ -218,18 +221,13 @@ func NewModel(cfg *config.AppConfig, initialFilter string) *Model {
 		table.WithHeight(5),
 	)
 	logStyles := s
-	logStyles.Header = logStyles.Header.
-		Foreground(colorMutedFg).
-		Bold(true)
-	logStyles.Selected = logStyles.Selected.
-		Foreground(colorAccent).
-		Background(lipgloss.Color("238")).
-		Bold(true)
 	logT.SetStyles(logStyles)
 
 	filterInput := textinput.New()
 	filterInput.Placeholder = "Filter worktrees..."
 	filterInput.Width = 50
+	filterInput.PromptStyle = lipgloss.NewStyle().Foreground(colorAccent)
+	filterInput.TextStyle = lipgloss.NewStyle().Foreground(colorTextFg)
 
 	m := &Model{
 		config:          cfg,
@@ -703,10 +701,8 @@ func (m *Model) overlayPopup(base string, popup string, marginTop int) string {
 		leftPad = 0
 	}
 
-	// Prepare left/right masking spaces
-	// In a perfect world we'd preserve the background, but without advanced ANSI handling
-	// we will "clear" the band where the popup is to ensure readability and avoid artifacts.
-	// This creates a "modal band" effect which is clean and acceptable.
+	// "Clear" styling for the background band
+	// We use the default terminal background color (reset)
 	leftSpace := strings.Repeat(" ", leftPad)
 	rightPad := baseWidth - popupWidth - leftPad
 	if rightPad < 0 {
@@ -720,10 +716,8 @@ func (m *Model) overlayPopup(base string, popup string, marginTop int) string {
 			break
 		}
 
-		// Replace the line with centered popup + cleared sides
-		// This "clears" the background on this row, effectively showing the popup
-		// on a black/default band. This is safer than trying to slice ANSI strings
-		// without a library.
+		// Simply replacing the content in the middle with the popup line
+		// The spaces ensure we overwrite underlying text
 		baseLines[row] = leftSpace + line + rightSpace
 	}
 
@@ -1953,12 +1947,15 @@ func (m *Model) applyLayout(layout layoutDims) {
 }
 
 func (m *Model) renderHeader(layout layoutDims) string {
+	// Create a "toolbar" style header
 	headerStyle := lipgloss.NewStyle().
-		Foreground(colorAccent).
+		Foreground(colorTextFg).
+		Background(colorAccent).
 		Bold(true).
 		Width(layout.width).
-		Align(lipgloss.Center)
-	return headerStyle.Render("─── Git Worktree Status ───")
+		Padding(0, 1)
+
+	return headerStyle.Render("Git Worktree Status")
 }
 
 func (m *Model) renderFilter(layout layoutDims) string {
@@ -2279,8 +2276,8 @@ func (m *Model) updateLogColumns(totalWidth int) {
 
 func basePaneStyle() lipgloss.Style {
 	return lipgloss.NewStyle().
-		Border(lipgloss.NormalBorder()).
-		BorderForeground(colorBorder).
+		Border(lipgloss.ThickBorder()).
+		BorderForeground(colorBorderDim).
 		Padding(0, 1)
 }
 
@@ -2297,7 +2294,7 @@ func paneStyle(focused bool) lipgloss.Style {
 
 func baseInnerBoxStyle() lipgloss.Style {
 	return lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
+		Border(lipgloss.ThickBorder()).
 		BorderForeground(colorBorderDim).
 		Padding(0, 1)
 }

@@ -158,8 +158,8 @@ func (s *ConfirmScreen) View() string {
 	height := 11
 
 	boxStyle := lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(lipgloss.Color("240")).
+		Border(lipgloss.ThickBorder()).
+		BorderForeground(colorBorder).
 		Padding(1, 2).
 		Width(width).
 		Height(height)
@@ -167,30 +167,32 @@ func (s *ConfirmScreen) View() string {
 	messageStyle := lipgloss.NewStyle().
 		Width(width-4).
 		Height(height-6).
-		Align(lipgloss.Center, lipgloss.Center)
+		Align(lipgloss.Center, lipgloss.Center).
+		Foreground(colorTextFg)
 
-	// Focused confirm button: white text on red background
+	// Focused confirm button
 	focusedConfirmStyle := lipgloss.NewStyle().
 		Width((width-6)/2).
 		Align(lipgloss.Center).
 		Padding(0, 1).
-		Foreground(lipgloss.Color("0")). // Black
-		Background(lipgloss.Color("1")). // Red
+		Foreground(colorTextFg).
+		Background(colorErrorFg).
 		Bold(true)
 
-	// Focused cancel button: black text on gray background
+	// Focused cancel button
 	focusedCancelStyle := lipgloss.NewStyle().
 		Width((width-6)/2).
 		Align(lipgloss.Center).
 		Padding(0, 1).
-		Foreground(lipgloss.Color("0")).
-		Background(lipgloss.Color("7"))
+		Foreground(colorTextFg).
+		Background(colorAccent)
 
 	unfocusedButtonStyle := lipgloss.NewStyle().
 		Width((width-6)/2).
 		Align(lipgloss.Center).
 		Padding(0, 1).
-		Foreground(lipgloss.Color("240"))
+		Foreground(colorMutedFg).
+		Background(colorBorderDim)
 
 	var confirmButton, cancelButton string
 	if s.selectedButton == 0 {
@@ -209,10 +211,7 @@ func (s *ConfirmScreen) View() string {
 		cancelButton,
 	)
 
-	box := boxStyle.Render(content)
-
-	// Center the modal on screen (this will be handled by the main app layout)
-	return box
+	return boxStyle.Render(content)
 }
 
 // NewInputScreen builds an input modal with prompt, placeholder, and initial value.
@@ -270,24 +269,25 @@ func (s *InputScreen) View() string {
 	width := 60
 
 	boxStyle := lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(lipgloss.Color("240")).
+		Border(lipgloss.ThickBorder()).
+		BorderForeground(colorBorder).
 		Padding(1, 2).
 		Width(width)
 
 	promptStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("252")).
+		Foreground(colorAccent).
+		Bold(true).
 		Width(width - 6).
 		Align(lipgloss.Center)
 
 	inputWrapperStyle := lipgloss.NewStyle().
 		Border(lipgloss.NormalBorder()).
-		BorderForeground(lipgloss.Color("240")).
+		BorderForeground(colorBorderDim).
 		Padding(0, 1).
 		Width(width - 6)
 
 	footerStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("240")).
+		Foreground(colorMutedFg).
 		Width(width - 6).
 		Align(lipgloss.Center).
 		MarginTop(1)
@@ -299,7 +299,7 @@ func (s *InputScreen) View() string {
 
 	if s.errorMsg != "" {
 		errorStyle := lipgloss.NewStyle().
-			Foreground(lipgloss.Color("196")).
+			Foreground(colorErrorFg).
 			Width(width - 6).
 			Align(lipgloss.Center)
 		contentLines = append(contentLines, errorStyle.Render(s.errorMsg))
@@ -643,7 +643,7 @@ func (s *HelpScreen) renderContent() string {
 	}
 
 	query := strings.ToLower(strings.TrimSpace(s.searchQuery))
-	highlightStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("229")).Background(lipgloss.Color("60")).Bold(true)
+	highlightStyle := lipgloss.NewStyle().Foreground(colorTextFg).Background(colorAccent).Bold(true)
 	lines := []string{}
 	for _, line := range s.fullText {
 		lower := strings.ToLower(line)
@@ -695,16 +695,16 @@ func (s *HelpScreen) View() string {
 
 	// Styles
 	boxStyle := lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(lipgloss.Color("62")). // Purple-ish
+		Border(lipgloss.ThickBorder()).
+		BorderForeground(colorBorder).
 		Width(s.width).
 		Padding(0)
 
 	titleStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("12")).
+		Foreground(colorAccent).
 		Bold(true).
 		Border(lipgloss.NormalBorder(), false, false, true, false).
-		BorderForeground(lipgloss.Color("62")).
+		BorderForeground(colorBorderDim).
 		Width(s.width-2).
 		Padding(0, 1).
 		Render("Help")
@@ -720,14 +720,14 @@ func (s *HelpScreen) View() string {
 		// Add separator after search
 		searchView += "\n" + lipgloss.NewStyle().
 			Border(lipgloss.NormalBorder(), false, false, true, false).
-			BorderForeground(lipgloss.Color("238")).
+			BorderForeground(colorBorderDim).
 			Width(s.width-2).
 			Render("")
 	}
 
 	// Footer
 	footerStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("240")).
+		Foreground(colorMutedFg).
 		Align(lipgloss.Right).
 		Width(s.width - 2).
 		PaddingTop(1)
@@ -757,15 +757,15 @@ func (s *CommandPaletteScreen) View() string {
 
 	// Styles
 	boxStyle := lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(lipgloss.Color("62")). // Purple-ish
+		Border(lipgloss.ThickBorder()).
+		BorderForeground(colorBorder).
 		Width(width).
 		Padding(0)
 
 	inputStyle := lipgloss.NewStyle().
 		Padding(0, 1).
 		Width(width - 2).
-		Foreground(lipgloss.Color("255"))
+		Foreground(colorTextFg)
 
 	itemStyle := lipgloss.NewStyle().
 		Padding(0, 1).
@@ -774,20 +774,20 @@ func (s *CommandPaletteScreen) View() string {
 	selectedStyle := lipgloss.NewStyle().
 		Padding(0, 1).
 		Width(width - 2).
-		Background(lipgloss.Color("62")).
-		Foreground(lipgloss.Color("255")).
+		Background(colorAccent).
+		Foreground(colorTextFg).
 		Bold(true)
 
 	descStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("240"))
+		Foreground(colorMutedFg)
 
 	selectedDescStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("252"))
+		Foreground(colorTextFg)
 
 	noResultsStyle := lipgloss.NewStyle().
 		Padding(0, 1).
 		Width(width - 2).
-		Foreground(lipgloss.Color("240")).
+		Foreground(colorMutedFg).
 		Italic(true)
 
 	// Render Input
@@ -836,13 +836,13 @@ func (s *CommandPaletteScreen) View() string {
 	// Separator
 	separator := lipgloss.NewStyle().
 		Border(lipgloss.NormalBorder(), false, false, true, false).
-		BorderForeground(lipgloss.Color("238")).
+		BorderForeground(colorBorderDim).
 		Width(width - 2).
 		Render("")
 
 	// Footer
 	footerStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("240")).
+		Foreground(colorMutedFg).
 		Align(lipgloss.Right).
 		Width(width - 2).
 		PaddingTop(1)
@@ -860,13 +860,13 @@ func (s *CommandPaletteScreen) View() string {
 
 // View renders the diff text inside a scrollable viewport.
 func (s *DiffScreen) View() string {
-	titleStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("12"))
+	titleStyle := lipgloss.NewStyle().Bold(true).Foreground(colorAccent)
 	title := titleStyle.Render(s.title)
 
 	content := lipgloss.JoinVertical(lipgloss.Left, title, "", s.viewport.View())
 	return lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(lipgloss.Color("12")).
+		Border(lipgloss.ThickBorder()).
+		BorderForeground(colorBorder).
 		Padding(1, 2).
 		Width(maxInt(80, s.viewport.Width)).
 		Render(content)
@@ -922,8 +922,8 @@ func (s *TrustScreen) View() string {
 	height := 25
 
 	boxStyle := lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(lipgloss.Color("240")).
+		Border(lipgloss.ThickBorder()).
+		BorderForeground(colorBorder).
 		Padding(1, 2).
 		Width(width).
 		Height(height)
@@ -935,15 +935,15 @@ func (s *TrustScreen) View() string {
 		Margin(0, 1)
 
 	trustButton := buttonStyle.
-		Foreground(lipgloss.Color("2")).
+		Foreground(colorSuccessFg).
 		Render("[Trust & Run]")
 
 	blockButton := buttonStyle.
-		Foreground(lipgloss.Color("3")).
+		Foreground(colorWarnFg).
 		Render("[Block (Skip)]")
 
 	cancelButton := buttonStyle.
-		Foreground(lipgloss.Color("1")).
+		Foreground(colorErrorFg).
 		Render("[Cancel Operation]")
 
 	content := fmt.Sprintf("%s\n\n%s  %s  %s",
@@ -992,15 +992,15 @@ func (s *WelcomeScreen) View() string {
 	height := 20
 
 	boxStyle := lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(lipgloss.Color("6")).
+		Border(lipgloss.ThickBorder()).
+		BorderForeground(colorBorder).
 		Padding(1, 2).
 		Width(width).
 		Height(height)
 
 	titleStyle := lipgloss.NewStyle().
 		Bold(true).
-		Foreground(lipgloss.Color("6")).
+		Foreground(colorAccent).
 		Align(lipgloss.Center).
 		MarginBottom(1)
 
@@ -1015,11 +1015,11 @@ func (s *WelcomeScreen) View() string {
 		Margin(0, 1)
 
 	quitButton := buttonStyle.
-		Foreground(lipgloss.Color("1")).
+		Foreground(colorErrorFg).
 		Render("[Quit]")
 
 	retryButton := buttonStyle.
-		Foreground(lipgloss.Color("4")).
+		Foreground(colorAccent).
 		Render("[Retry]")
 
 	message := fmt.Sprintf("No worktrees found.\n\nCurrent Directory: %s\nWorktree Root: %s\n\nPlease ensure you are in a git repository or the configured worktree root.\nYou may need to initialize a repository or configure 'worktree_dir' in config.",
@@ -1106,10 +1106,10 @@ func (s *CommitScreen) buildBody() string {
 }
 
 func (s *CommitScreen) renderHeader() string {
-	label := lipgloss.NewStyle().Foreground(lipgloss.Color("245")).Bold(true)
-	value := lipgloss.NewStyle().Foreground(lipgloss.Color("15"))
-	subjectStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("12"))
-	bodyStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("250"))
+	label := lipgloss.NewStyle().Foreground(colorMutedFg).Bold(true)
+	value := lipgloss.NewStyle().Foreground(colorTextFg)
+	subjectStyle := lipgloss.NewStyle().Bold(true).Foreground(colorAccent)
+	bodyStyle := lipgloss.NewStyle().Foreground(colorMutedFg)
 
 	lines := []string{
 		fmt.Sprintf("%s %s", label.Render("Commit:"), value.Render(s.meta.sha)),
@@ -1133,7 +1133,7 @@ func (s *CommitScreen) renderHeader() string {
 	header := strings.Join(lines, "\n")
 	return lipgloss.NewStyle().
 		Border(lipgloss.NormalBorder()).
-		BorderForeground(lipgloss.Color("60")).
+		BorderForeground(colorBorderDim).
 		Padding(0, 1).
 		Render(header)
 }
@@ -1147,8 +1147,8 @@ func (s *CommitScreen) View() string {
 	content := lipgloss.JoinVertical(lipgloss.Left, header, s.viewport.View())
 
 	boxStyle := lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(lipgloss.Color("240")).
+		Border(lipgloss.ThickBorder()).
+		BorderForeground(colorBorder).
 		Padding(0, 1).
 		Width(width).
 		Height(height)
