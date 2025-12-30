@@ -91,6 +91,13 @@ type paletteItem struct {
 	description string
 }
 
+// DiffScreen represents a full-screen diff viewer
+type DiffScreen struct {
+	title    string
+	content  string
+	viewport viewport.Model
+}
+
 func maxInt(a, b int) int {
 	if a > b {
 		return a
@@ -290,6 +297,7 @@ func NewHelpScreen(maxWidth, maxHeight int) *HelpScreen {
 **Actions**
 - c: Create new worktree
 - d: Manually refresh diff (diffs auto-show when worktree is dirty)
+- F: Full-screen diff viewer
 - D: Delete selected worktree
 - A: Absorb worktree into main (merge + delete)
 - X: Prune merged PR worktrees
@@ -364,6 +372,21 @@ func NewCommandPaletteScreen(items []paletteItem) *CommandPaletteScreen {
 		cursor:      0,
 	}
 	return screen
+}
+
+// NewDiffScreen creates a new full-screen diff viewer
+func NewDiffScreen(title, diff string, useDelta bool) *DiffScreen {
+	vp := viewport.New(100, 40)
+	content := title
+	if diff != "" {
+		content += "\n\n" + diff
+	}
+	vp.SetContent(content)
+	return &DiffScreen{
+		title:    title,
+		content:  content,
+		viewport: vp,
+	}
 }
 
 // Init initializes the help screen
@@ -477,6 +500,43 @@ func (s *CommandPaletteScreen) Selected() (string, bool) {
 	return s.filtered[s.cursor].id, true
 }
 
+// Init initializes the diff screen
+func (s *DiffScreen) Init() tea.Cmd {
+	return nil
+}
+
+// Update handles updates for the diff screen
+func (s *DiffScreen) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmd tea.Cmd
+	switch m := msg.(type) {
+	case tea.KeyMsg:
+		switch m.String() {
+		case "q", "esc":
+			return s, tea.Quit
+		case "j", "down":
+			s.viewport.ScrollDown(1)
+			return s, nil
+		case "k", "up":
+			s.viewport.ScrollUp(1)
+			return s, nil
+		case "ctrl+d", " ":
+			s.viewport.HalfPageDown()
+			return s, nil
+		case "ctrl+u":
+			s.viewport.HalfPageUp()
+			return s, nil
+		case "g":
+			s.viewport.GotoTop()
+			return s, nil
+		case "G":
+			s.viewport.GotoBottom()
+			return s, nil
+		}
+	}
+	s.viewport, cmd = s.viewport.Update(msg)
+	return s, cmd
+}
+
 func (s *HelpScreen) refreshContent() {
 	content := s.renderContent()
 	s.viewport.SetContent(content)
@@ -563,6 +623,20 @@ func (s *CommandPaletteScreen) View() string {
 		Padding(1, 2).
 		Width(80).
 		Render(strings.Join(lines, "\n"))
+}
+
+// View renders the diff screen
+func (s *DiffScreen) View() string {
+	titleStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("12"))
+	title := titleStyle.Render(s.title)
+
+	content := lipgloss.JoinVertical(lipgloss.Left, title, "", s.viewport.View())
+	return lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(lipgloss.Color("12")).
+		Padding(1, 2).
+		Width(maxInt(80, s.viewport.Width)).
+		Render(content)
 }
 
 // NewTrustScreen creates a new trust screen

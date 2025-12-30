@@ -12,6 +12,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/chmouel/lazyworktree/internal/commands"
 	"github.com/chmouel/lazyworktree/internal/config"
 	"github.com/chmouel/lazyworktree/internal/models"
 )
@@ -84,9 +85,21 @@ func (s *Service) UseDelta() bool {
 }
 
 // ExecuteCommands runs shell commands with optional environment and cwd
-func (s *Service) ExecuteCommands(ctx context.Context, commands []string, cwd string, env map[string]string) error {
-	for _, cmdStr := range commands {
+func (s *Service) ExecuteCommands(ctx context.Context, cmdList []string, cwd string, env map[string]string) error {
+	for _, cmdStr := range cmdList {
 		if strings.TrimSpace(cmdStr) == "" {
+			continue
+		}
+
+		if cmdStr == "link_topsymlinks" {
+			mainPath := env["MAIN_WORKTREE_PATH"]
+			wtPath := env["WORKTREE_PATH"]
+			statusFunc := func(ctx context.Context, path string) string {
+				return s.RunGit(ctx, []string{"git", "status", "--porcelain", "--ignored"}, path, []int{0}, true, false)
+			}
+			if err := commands.LinkTopSymlinks(ctx, mainPath, wtPath, statusFunc); err != nil {
+				return err
+			}
 			continue
 		}
 		command := exec.CommandContext(ctx, "bash", "-lc", cmdStr)

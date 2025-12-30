@@ -101,6 +101,7 @@ type AppModel struct {
 	welcomeScreen *WelcomeScreen
 	paletteScreen *CommandPaletteScreen
 	paletteSubmit func(string) tea.Cmd
+	diffScreen    *DiffScreen
 	showingFilter bool
 	focusedPane   int // 0=table, 1=status, 2=log
 	windowWidth   int
@@ -405,6 +406,8 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case "d":
 			return m, m.showDiff()
+		case "F":
+			return m, m.showFullDiff()
 
 		case "p":
 			if !m.prDataLoaded {
@@ -896,6 +899,20 @@ func (m *AppModel) showDiff() tea.Cmd {
 	}
 }
 
+func (m *AppModel) showFullDiff() tea.Cmd {
+	if m.selectedIndex < 0 || m.selectedIndex >= len(m.filteredWts) {
+		return nil
+	}
+	wt := m.filteredWts[m.selectedIndex]
+	return func() tea.Msg {
+		diff := m.git.BuildThreePartDiff(m.ctx, wt.Path, m.config)
+		diff = m.git.ApplyDelta(diff)
+		m.diffScreen = NewDiffScreen(fmt.Sprintf("Diff for %s", wt.Branch), diff, m.git.UseDelta())
+		m.currentScreen = screenDiff
+		return nil
+	}
+}
+
 func (m *AppModel) showRenameWorktree() tea.Cmd {
 	if m.selectedIndex < 0 || m.selectedIndex >= len(m.filteredWts) {
 		return nil
@@ -1300,6 +1317,22 @@ func (m *AppModel) handleScreenKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.commitScreen = updated
 		}
 		return m, cmd
+	case screenDiff:
+		if m.diffScreen == nil {
+			m.currentScreen = screenNone
+			return m, nil
+		}
+		switch msg.String() {
+		case "q", "esc":
+			m.diffScreen = nil
+			m.currentScreen = screenNone
+			return m, nil
+		}
+		ds, cmd := m.diffScreen.Update(msg)
+		if updated, ok := ds.(*DiffScreen); ok {
+			m.diffScreen = updated
+		}
+		return m, cmd
 	case screenInput:
 		if m.inputScreen == nil {
 			m.currentScreen = screenNone
@@ -1366,6 +1399,10 @@ func (m *AppModel) renderScreen() string {
 	case screenPalette:
 		if m.paletteScreen != nil {
 			return m.paletteScreen.View()
+		}
+	case screenDiff:
+		if m.diffScreen != nil {
+			return m.diffScreen.View()
 		}
 	case screenInput:
 		if m.inputScreen != nil {

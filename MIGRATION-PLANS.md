@@ -270,21 +270,21 @@ The Go port has a **solid architectural foundation** with proper separation of c
 ## Priority 3: Advanced Features (NICE TO HAVE)
 
 ### 3.1 Special Init Command: `link_topsymlinks`
-**Status:** Not implemented
+**Status:** Implemented (basic)
 **Python Reference:** `lazyworktree/app.py:964-1011`
 **Complexity:** Medium
 
 **Requirements:**
-- Built-in command that runs as part of init_commands
-- Symlinks untracked/ignored files from main to new worktree
-- Symlinks editor configs: `.vscode`, `.idea`, `.cursor`, `.claude`
-- Creates `tmp/` directory
-- Runs `direnv allow` if `.envrc` exists
-- Configurable via `.wt` file
+- Built-in command that runs as part of init_commands ✅
+- Symlinks untracked/ignored files from main to new worktree ✅
+- Symlinks editor configs: `.vscode`, `.idea`, `.cursor`, `.claude` ✅
+- Creates `tmp/` directory ✅
+- Runs `direnv allow` if `.envrc` exists ✅
+- Configurable via `.wt` file ✅
 
-**Files to Create/Modify:**
+**Files Modified:**
 - `internal/commands/symlinks.go`: New package for special commands
-- `internal/app/app.go`: Integrate special command detection
+- `internal/git/service.go`: Detects `link_topsymlinks` in ExecuteCommands
 
 ---
 
@@ -354,22 +354,17 @@ The Go port has a **solid architectural foundation** with proper separation of c
 ---
 
 ### 3.5 Full-Screen Diff Viewer
-**Status:** Not implemented (no DiffScreen yet)
+**Status:** Implemented (`F` key opens modal)
 **Python Reference:** `lazyworktree/screens.py:171-250`
 **Complexity:** Low
 
 **Current Status:**
-- DiffScreen not implemented in Go
-- Diff shown inline in status pane only
+- DiffScreen implemented in Go; triggered by `F`
+- Diff also shown inline in status pane
 
-**Optional Enhancement:**
-- Full-screen diff modal triggered by separate key (e.g., `Shift+D`)
-- Vim-style navigation (j/k, Ctrl+d/u, g/G)
-- Uses same diff building logic as inline view
-
-**Files to Create/Modify:**
-- `internal/app/screens.go`: Add DiffScreen implementation
-- `internal/app/app.go`: Add keybinding and integration
+**Files Modified:**
+- `internal/app/screens.go`: Added DiffScreen implementation
+- `internal/app/app.go`: Added `showFullDiff()` and keybinding
 
 ---
 
@@ -433,8 +428,8 @@ The Go port has a **solid architectural foundation** with proper separation of c
 - [x] Integrate Welcome Screen (3.3)
 
 ### Phase 4: Advanced Features (Week 6)
-- [ ] Implement `link_topsymlinks` (3.1)
-- [ ] Add Full-Screen Diff Viewer (3.5)
+- [x] Implement `link_topsymlinks` (3.1)
+- [x] Add Full-Screen Diff Viewer (3.5)
 
 ### Phase 5: Quality & Hardening (Ongoing)
 - [ ] Add unit tests (4.1)
@@ -485,7 +480,7 @@ The Go port has a **solid architectural foundation** with proper separation of c
 ### `internal/app/screens.go`
 - [ ] Enhance InputScreen with validation callback support (error display exists; multi-step callback still manual)
 - [x] Add CommandPaletteScreen
-- [ ] Add DiffScreen (full-screen viewer)
+- [x] Add DiffScreen (full-screen viewer)
 - [x] Integrate CommitScreen (implemented at lines 498-551 and used)
 
 ### `internal/config/config.go`
@@ -497,14 +492,14 @@ The Go port has a **solid architectural foundation** with proper separation of c
 - [x] Add `BuildThreePartDiff()` method (lines 530-590)
 - [x] Add `ApplyDelta()` method (lines 65-87)
 - [x] Add `ExecuteRepoCommands()` method with environment
+ - [x] Add special command dispatch (`link_topsymlinks`)
 
 ### `internal/security/trust.go`
 - [x] Integrate TOFU workflow into app
 - [x] Add trust screen trigger logic
 
 ### New Files to Create
-- [ ] `internal/commands/symlinks.go` - Special commands
-- [ ] `internal/app/commandpalette.go` - Command palette
+- [x] `internal/commands/symlinks.go` - Special commands
 - [ ] `internal/app/helpers.go` - Shared helper functions
 - [ ] Test files (see section 4)
 
@@ -583,14 +578,14 @@ The Go implementation will achieve feature parity when:
 | Prune Merged | ✅ | ✅ | Complete | P1 |
 | Absorb Worktree | ✅ | ⚠️ | Basic (no `.wt`/TOFU terminate commands for prune) | P2 |
 | Diff View (Basic) | ✅ | ✅ | Complete | - |
-| Diff View (Full) | ✅ | ❌ | Missing | P2 |
+| Diff View (Full) | ✅ | ✅ | Complete | P2 |
 | Delta Integration | ✅ | ✅ | Complete | P2 |
 | Command Palette | ✅ | ✅ | Complete (basic filter) | P2 |
 | Commit Details | ✅ | ✅ | Complete | P3 |
 | Welcome Screen | ✅ | ✅ | Complete | P3 |
 | .wt Execution | ✅ | ⚠️ | Basic (TOFU prompt; prune batch pending) | P1 |
-| TOFU Security | ✅ | ⚠️ | Not integrated | P1 |
-| link_topsymlinks | ✅ | ❌ | Missing | P3 |
+| TOFU Security | ✅ | ✅ | Complete | P1 |
+| link_topsymlinks | ✅ | ✅ | Complete | P3 |
 | Debouncing | ✅ | ✅ | Complete | P2 |
 | Help Screen | ✅ | ✅ | Complete | - |
 | LazyGit Integration | ✅ | ✅ | Complete | - |
