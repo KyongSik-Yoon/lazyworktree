@@ -142,7 +142,8 @@ type AppModel struct {
 	detailUpdateCancel  context.CancelFunc
 	pendingDetailsIndex int
 
-	// Confirm callbacks
+	// Confirm screen
+	confirmScreen  *ConfirmScreen
 	confirmAction  func() tea.Cmd
 	confirmMessage string
 
@@ -152,7 +153,7 @@ type AppModel struct {
 	pendingCommands []string
 	pendingCmdEnv   map[string]string
 	pendingCmdCwd   string
-	pendingAfter    tea.Cmd
+	pendingAfter    func() tea.Msg
 	pendingTrust    string
 
 	// Log cache for commit detail viewer
@@ -660,6 +661,10 @@ func (m *AppModel) View() string {
 			// In SetSize below we'll ensure it has a good "popup" size
 			return m.overlayPopup(baseView, m.helpScreen.View(), 4)
 		}
+	case screenConfirm:
+		if m.confirmScreen != nil {
+			return m.overlayPopup(baseView, m.confirmScreen.View(), 5)
+		}
 	}
 
 	// Handle Full Screen Views (fallback)
@@ -984,9 +989,9 @@ func (m *AppModel) showDeleteWorktree() tea.Cmd {
 	if wt.IsMain {
 		return nil
 	}
-	m.currentScreen = screenConfirm
+	m.confirmScreen = NewConfirmScreen(fmt.Sprintf("Delete worktree?\n\nPath: %s\nBranch: %s", wt.Path, wt.Branch))
 	m.confirmAction = m.deleteWorktreeCmd(wt)
-	m.confirmMessage = fmt.Sprintf("Delete worktree?\n\nPath: %s\nBranch: %s", wt.Path, wt.Branch)
+	m.currentScreen = screenConfirm
 	return nil
 }
 
@@ -1102,7 +1107,7 @@ func (m *AppModel) showPruneMerged() tea.Cmd {
 		lines = append(lines, fmt.Sprintf("...and %d more", len(merged)-limit))
 	}
 
-	m.confirmMessage = "Prune merged PR worktrees?\n\n" + strings.Join(lines, "\n")
+	m.confirmScreen = NewConfirmScreen("Prune merged PR worktrees?\n\n" + strings.Join(lines, "\n"))
 	m.confirmAction = func() tea.Cmd {
 		return func() tea.Msg {
 			pruned := 0
@@ -1141,7 +1146,7 @@ func (m *AppModel) showAbsorbWorktree() tea.Cmd {
 	}
 
 	mainBranch := m.git.GetMainBranch(m.ctx)
-	m.confirmMessage = fmt.Sprintf("Absorb worktree into %s?\n\nPath: %s\nBranch: %s -> %s", mainBranch, wt.Path, wt.Branch, mainBranch)
+	m.confirmScreen = NewConfirmScreen(fmt.Sprintf("Absorb worktree into %s?\n\nPath: %s\nBranch: %s -> %s", mainBranch, wt.Path, wt.Branch, mainBranch))
 	m.confirmAction = func() tea.Cmd {
 		return func() tea.Msg {
 			ok := m.git.RunCommandChecked(m.ctx, []string{"git", "-C", wt.Path, "checkout", mainBranch}, "", fmt.Sprintf("Failed to checkout %s", mainBranch))
@@ -1384,24 +1389,34 @@ func (m *AppModel) handleScreenKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		return m, cmd
 	case screenConfirm:
-		if msg.String() == "y" || msg.String() == "enter" {
-			// Perform confirmed action (delete, prune, etc.)
-			var cmd tea.Cmd
-			if m.confirmAction != nil {
-				cmd = m.confirmAction()
-			}
-			m.currentScreen = screenNone
-			m.confirmAction = nil
-			m.confirmMessage = ""
-			if cmd != nil {
+		if m.confirmScreen != nil {
+			_, cmd := m.confirmScreen.Update(msg)
+			// Check if the confirm screen sent a result
+			select {
+			case confirmed := <-m.confirmScreen.result:
+				if confirmed {
+					// Perform confirmed action (delete, prune, etc.)
+					var actionCmd tea.Cmd
+					if m.confirmAction != nil {
+						actionCmd = m.confirmAction()
+					}
+					m.currentScreen = screenNone
+					m.confirmScreen = nil
+					m.confirmAction = nil
+					if actionCmd != nil {
+						return m, actionCmd
+					}
+					return m, nil
+				} else {
+					// Action cancelled
+					m.currentScreen = screenNone
+					m.confirmScreen = nil
+					m.confirmAction = nil
+					return m, nil
+				}
+			default:
 				return m, cmd
 			}
-			return m, nil
-		} else if msg.String() == "n" || msg.String() == "esc" {
-			m.currentScreen = screenNone
-			m.confirmAction = nil
-			m.confirmMessage = ""
-			return m, nil
 		}
 	case screenWelcome:
 		switch msg.String() {
@@ -1423,11 +1438,7 @@ func (m *AppModel) handleScreenKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			if m.pendingTrust != "" {
 				_ = m.trustManager.TrustFile(m.pendingTrust)
 			}
-			var after tea.Msg
-			if m.pendingAfter != nil {
-				after = m.pendingAfter()
-			}
-			cmd := m.runCommands(m.pendingCommands, m.pendingCmdCwd, m.pendingCmdEnv, after)
+			cmd := m.runCommands(m.pendingCommands, m.pendingCmdCwd, m.pendingCmdEnv, m.pendingAfter)
 			m.clearPendingTrust()
 			m.currentScreen = screenNone
 			return m, cmd
@@ -1520,13 +1531,9 @@ func (m *AppModel) renderScreen() string {
 		}
 		return m.commitScreen.View()
 	case screenConfirm:
-		msg := m.confirmMessage
-		if msg == "" && m.selectedIndex >= 0 && m.selectedIndex < len(m.filteredWts) {
-			wt := m.filteredWts[m.selectedIndex]
-			msg = fmt.Sprintf("Delete worktree?\n\nPath: %s\nBranch: %s", wt.Path, wt.Branch)
+		if m.confirmScreen != nil {
+			return m.confirmScreen.View()
 		}
-		confirmScreen := NewConfirmScreen(msg)
-		return confirmScreen.View()
 	case screenTrust:
 		if m.trustScreen == nil {
 			return ""
@@ -1649,12 +1656,12 @@ func (m *AppModel) collectTerminateCommands() []string {
 	return cmds
 }
 
-func (m *AppModel) runCommandsWithTrust(cmds []string, cwd string, env map[string]string, after tea.Msg) tea.Cmd {
+func (m *AppModel) runCommandsWithTrust(cmds []string, cwd string, env map[string]string, after func() tea.Msg) tea.Cmd {
 	if len(cmds) == 0 {
 		if after == nil {
 			return nil
 		}
-		return func() tea.Msg { return after }
+		return after
 	}
 
 	trustMode := strings.ToLower(strings.TrimSpace(m.config.TrustMode))
@@ -1663,7 +1670,7 @@ func (m *AppModel) runCommandsWithTrust(cmds []string, cwd string, env map[strin
 		if after == nil {
 			return nil
 		}
-		return func() tea.Msg { return after }
+		return after
 	}
 
 	// Determine trust status if repo config exists
@@ -1682,7 +1689,7 @@ func (m *AppModel) runCommandsWithTrust(cmds []string, cwd string, env map[strin
 		m.pendingCommands = cmds
 		m.pendingCmdEnv = env
 		m.pendingCmdCwd = cwd
-		m.pendingAfter = func() tea.Msg { return after }
+		m.pendingAfter = after
 		m.pendingTrust = trustPath
 		m.trustScreen = NewTrustScreen(trustPath, cmds)
 		m.currentScreen = screenTrust
@@ -1690,13 +1697,17 @@ func (m *AppModel) runCommandsWithTrust(cmds []string, cwd string, env map[strin
 	return nil
 }
 
-func (m *AppModel) runCommands(cmds []string, cwd string, env map[string]string, after tea.Msg) tea.Cmd {
+func (m *AppModel) runCommands(cmds []string, cwd string, env map[string]string, after func() tea.Msg) tea.Cmd {
 	return func() tea.Msg {
 		if err := m.git.ExecuteCommands(m.ctx, cmds, cwd, env); err != nil {
+			// Still refresh UI even if commands failed, so user sees current state
+			if after != nil {
+				return after()
+			}
 			return errMsg{err: err}
 		}
 		if after != nil {
-			return after
+			return after()
 		}
 		return nil
 	}

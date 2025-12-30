@@ -27,8 +27,9 @@ const (
 
 // ConfirmScreen represents a confirmation dialog
 type ConfirmScreen struct {
-	message string
-	result  chan bool
+	message        string
+	result         chan bool
+	selectedButton int // 0 = Confirm, 1 = Cancel
 }
 
 // InputScreen represents an input dialog
@@ -116,8 +117,9 @@ func minInt(a, b int) int {
 // NewConfirmScreen creates a new confirmation screen
 func NewConfirmScreen(message string) *ConfirmScreen {
 	return &ConfirmScreen{
-		message: message,
-		result:  make(chan bool, 1),
+		message:        message,
+		result:         make(chan bool, 1),
+		selectedButton: 0, // Start with Confirm button focused
 	}
 }
 
@@ -131,10 +133,24 @@ func (s *ConfirmScreen) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
-		case "y", "Y", "enter":
+		case "tab", "right", "l":
+			s.selectedButton = (s.selectedButton + 1) % 2
+		case "shift+tab", "left", "h":
+			s.selectedButton = (s.selectedButton - 1 + 2) % 2
+		case "y", "Y":
 			s.result <- true
 			return s, tea.Quit
-		case "n", "N", "esc", "q":
+		case "n", "N":
+			s.result <- false
+			return s, tea.Quit
+		case "enter":
+			if s.selectedButton == 0 {
+				s.result <- true
+			} else {
+				s.result <- false
+			}
+			return s, tea.Quit
+		case "esc", "q":
 			s.result <- false
 			return s, tea.Quit
 		}
@@ -142,7 +158,7 @@ func (s *ConfirmScreen) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return s, nil
 }
 
-// View renders the confirm screen
+// View renders the confirm screen as a centered modal popup
 func (s *ConfirmScreen) View() string {
 	width := 60
 	height := 11
@@ -159,18 +175,30 @@ func (s *ConfirmScreen) View() string {
 		Height(height-6).
 		Align(lipgloss.Center, lipgloss.Center)
 
-	buttonStyle := lipgloss.NewStyle().
+	// Focused button gets highlighted background and reversed colors
+	focusedButtonStyle := lipgloss.NewStyle().
 		Width((width-6)/2).
 		Align(lipgloss.Center).
-		Padding(0, 1)
+		Padding(0, 1).
+		Foreground(lipgloss.Color("0")).
+		Background(lipgloss.Color("7"))
 
-	confirmButton := buttonStyle.
-		Foreground(lipgloss.Color("9")).
-		Render("[Confirm]")
+	unfocusedButtonStyle := lipgloss.NewStyle().
+		Width((width-6)/2).
+		Align(lipgloss.Center).
+		Padding(0, 1).
+		Foreground(lipgloss.Color("240"))
 
-	cancelButton := buttonStyle.
-		Foreground(lipgloss.Color("4")).
-		Render("[Cancel]")
+	var confirmButton, cancelButton string
+	if s.selectedButton == 0 {
+		// Confirm is focused
+		confirmButton = focusedButtonStyle.Render("[Confirm]")
+		cancelButton = unfocusedButtonStyle.Render("[Cancel]")
+	} else {
+		// Cancel is focused
+		confirmButton = unfocusedButtonStyle.Render("[Confirm]")
+		cancelButton = focusedButtonStyle.Render("[Cancel]")
+	}
 
 	content := fmt.Sprintf("%s\n\n%s  %s",
 		messageStyle.Render(s.message),
@@ -178,7 +206,10 @@ func (s *ConfirmScreen) View() string {
 		cancelButton,
 	)
 
-	return boxStyle.Render(content)
+	box := boxStyle.Render(content)
+
+	// Center the modal on screen (this will be handled by the main app layout)
+	return box
 }
 
 // NewInputScreen creates a new input screen
