@@ -22,7 +22,6 @@ import (
 	"github.com/chmouel/lazyworktree/internal/security"
 )
 
-// Message types for the Bubble Tea app
 type (
 	errMsg             struct{ err error }
 	worktreesLoadedMsg struct {
@@ -168,17 +167,12 @@ type AppModel struct {
 func NewAppModel(cfg *config.AppConfig, initialFilter string) *AppModel {
 	ctx, cancel := context.WithCancel(context.Background())
 
-	notify := func(msg string, severity string) {
-		// Notification handling - can be enhanced later
-	}
-	notifyOnce := func(key string, msg string, severity string) {
-		// One-time notification handling
-	}
+	notify := func(msg string, severity string) {}
+	notifyOnce := func(key string, msg string, severity string) {}
 
 	gitService := git.NewService(notify, notifyOnce)
 	trustManager := security.NewTrustManager()
 
-	// Initialize table
 	columns := []table.Column{
 		{Title: "Worktree", Width: 20},
 		{Title: "Status", Width: 8},
@@ -204,11 +198,9 @@ func NewAppModel(cfg *config.AppConfig, initialFilter string) *AppModel {
 		Bold(true)
 	t.SetStyles(s)
 
-	// Initialize status viewport
 	statusVp := viewport.New(40, 5)
 	statusVp.SetContent("Loading...")
 
-	// Initialize log table
 	logColumns := []table.Column{
 		{Title: "SHA", Width: 10},
 		{Title: "Message", Width: 50},
@@ -227,7 +219,6 @@ func NewAppModel(cfg *config.AppConfig, initialFilter string) *AppModel {
 		Bold(true)
 	logT.SetStyles(logStyles)
 
-	// Initialize filter input
 	filterInput := textinput.New()
 	filterInput.Placeholder = "Filter worktrees..."
 	filterInput.Width = 50
@@ -262,7 +253,6 @@ func NewAppModel(cfg *config.AppConfig, initialFilter string) *AppModel {
 	return m
 }
 
-// Init initializes the app
 func (m *AppModel) Init() tea.Cmd {
 	return tea.Batch(
 		m.loadCache(),
@@ -270,7 +260,6 @@ func (m *AppModel) Init() tea.Cmd {
 	)
 }
 
-// Update handles messages
 func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	var cmds []tea.Cmd
@@ -282,7 +271,6 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.KeyMsg:
 		if m.currentScreen != screenNone {
-			// Handle screen-specific keys
 			return m.handleScreenKey(msg)
 		}
 
@@ -523,7 +511,6 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case worktreesLoadedMsg:
 		if msg.err != nil {
-			// Handle error
 			return m, nil
 		}
 		m.ensureRepoConfig()
@@ -554,7 +541,6 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			m.prDataLoaded = true
 			m.updateTable()
-			// Refresh info panel to show PR data (matches Python behavior)
 			return m, m.updateDetailsView()
 		}
 		return m, nil
@@ -564,7 +550,6 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.infoContent = msg.info
 		}
 		m.statusContent = msg.status
-		// Update log table only if new log data is provided
 		if msg.log != nil {
 			rows := make([]table.Row, 0, len(msg.log))
 			for _, entry := range msg.log {
@@ -620,7 +605,6 @@ func (m *AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
-// View renders the UI
 func (m *AppModel) View() string {
 	if m.quitting {
 		return ""

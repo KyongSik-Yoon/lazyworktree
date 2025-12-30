@@ -15,7 +15,6 @@ func LinkTopSymlinks(ctx context.Context, mainPath, worktreePath string, statusF
 		return fmt.Errorf("missing paths for link_topsymlinks")
 	}
 
-	// Symlink untracked/ignored files
 	status := statusFunc(ctx, mainPath)
 	for _, line := range strings.Split(status, "\n") {
 		if len(line) < 4 {
@@ -33,19 +32,16 @@ func LinkTopSymlinks(ctx context.Context, mainPath, worktreePath string, statusF
 		}
 	}
 
-	// Symlink editor config dirs
 	for _, name := range []string{".vscode", ".idea", ".cursor", ".claude"} {
 		if err := symlinkPath(mainPath, worktreePath, name); err != nil {
 			return err
 		}
 	}
 
-	// Create tmp/
 	if err := os.MkdirAll(filepath.Join(worktreePath, "tmp"), 0o755); err != nil {
 		return err
 	}
 
-	// direnv allow if .envrc exists
 	envrcPath := filepath.Join(worktreePath, ".envrc")
 	if _, err := os.Stat(envrcPath); err == nil {
 		cmd := exec.CommandContext(ctx, "direnv", "allow")

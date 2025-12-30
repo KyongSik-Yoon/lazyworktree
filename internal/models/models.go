@@ -1,6 +1,5 @@
 package models
 
-// PRInfo represents information about a Pull Request or Merge Request
 type PRInfo struct {
 	Number int
 	State  string
@@ -8,7 +7,6 @@ type PRInfo struct {
 	URL    string
 }
 
-// WorktreeInfo represents information about a Git worktree
 type WorktreeInfo struct {
 	Path         string
 	Branch       string
@@ -25,7 +23,6 @@ type WorktreeInfo struct {
 	Divergence   string
 }
 
-// Constants for cache and state files
 const (
 	LastSelectedFilename = ".last-selected"
 	CacheFilename        = ".worktree-cache.json"

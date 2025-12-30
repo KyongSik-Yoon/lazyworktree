@@ -9,7 +9,6 @@ import (
 	"path/filepath"
 )
 
-// TrustStatus represents the trust status of a file
 type TrustStatus int
 
 const (
@@ -18,7 +17,6 @@ const (
 	TrustStatusNotFound
 )
 
-// getTrustDBPath returns the path to the trust database
 func getTrustDBPath() string {
 	if xdgDataHome := os.Getenv("XDG_DATA_HOME"); xdgDataHome != "" {
 		return filepath.Join(xdgDataHome, "lazyworktree", "trusted.json")
@@ -27,13 +25,12 @@ func getTrustDBPath() string {
 	return filepath.Join(home, ".local", "share", "lazyworktree", "trusted.json")
 }
 
-// TrustManager manages the trust database for TOFU (Trust On First Use)
+// TOFU (Trust On First Use)
 type TrustManager struct {
 	dbPath        string
 	trustedHashes map[string]string // Map absolute path -> sha256 hash
 }
 
-// NewTrustManager creates a new TrustManager instance
 func NewTrustManager() *TrustManager {
 	tm := &TrustManager{
 		dbPath:        getTrustDBPath(),
@@ -43,7 +40,6 @@ func NewTrustManager() *TrustManager {
 	return tm
 }
 
-// load loads the trust database from disk
 func (tm *TrustManager) load() {
 	if _, err := os.Stat(tm.dbPath); os.IsNotExist(err) {
 		return
@@ -60,7 +56,6 @@ func (tm *TrustManager) load() {
 	}
 }
 
-// save saves the trust database to disk
 func (tm *TrustManager) save() error {
 	dir := filepath.Dir(tm.dbPath)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
@@ -103,7 +98,6 @@ func (tm *TrustManager) calculateHash(filePath string) string {
 	return fmt.Sprintf("%x", hash.Sum(nil))
 }
 
-// CheckTrust checks if the file at filePath is trusted
 func (tm *TrustManager) CheckTrust(filePath string) TrustStatus {
 	resolvedPath, err := filepath.Abs(filePath)
 	if err != nil {
@@ -131,7 +125,6 @@ func (tm *TrustManager) CheckTrust(filePath string) TrustStatus {
 	return TrustStatusUntrusted
 }
 
-// TrustFile marks the current content of filePath as trusted
 func (tm *TrustManager) TrustFile(filePath string) error {
 	resolvedPath, err := filepath.Abs(filePath)
 	if err != nil {

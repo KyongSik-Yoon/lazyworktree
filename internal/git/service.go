@@ -17,13 +17,10 @@ import (
 	"github.com/chmouel/lazyworktree/internal/models"
 )
 
-// NotifyFn is a function type for notifications
 type NotifyFn func(message string, severity string)
 
-// NotifyOnceFn is a function type for one-time notifications
 type NotifyOnceFn func(key string, message string, severity string)
 
-// Service handles Git operations
 type Service struct {
 	notify      NotifyFn
 	notifyOnce  NotifyOnceFn
@@ -34,7 +31,6 @@ type Service struct {
 	useDelta    bool
 }
 
-// NewService creates a new GitService instance
 func NewService(notify NotifyFn, notifyOnce NotifyOnceFn) *Service {
 	semaphore := make(chan struct{}, 24) // Limit to 24 concurrent operations
 	for i := 0; i < 24; i++ {
@@ -54,7 +50,6 @@ func NewService(notify NotifyFn, notifyOnce NotifyOnceFn) *Service {
 	return s
 }
 
-// detectDelta checks if delta is available
 func (s *Service) detectDelta() {
 	cmd := exec.Command("delta", "--version")
 	if err := cmd.Run(); err == nil {
@@ -72,19 +67,16 @@ func (s *Service) ApplyDelta(diff string) string {
 	cmd.Stdin = strings.NewReader(diff)
 	output, err := cmd.Output()
 	if err != nil {
-		// Silently fall back to plain diff
 		return diff
 	}
 
 	return string(output)
 }
 
-// UseDelta returns whether delta is available
 func (s *Service) UseDelta() bool {
 	return s.useDelta
 }
 
-// ExecuteCommands runs shell commands with optional environment and cwd
 func (s *Service) ExecuteCommands(ctx context.Context, cmdList []string, cwd string, env map[string]string) error {
 	for _, cmdStr := range cmdList {
 		if strings.TrimSpace(cmdStr) == "" {
@@ -130,17 +122,14 @@ func formatEnv(env map[string]string) []string {
 	return formatted
 }
 
-// acquireSemaphore acquires a semaphore token
 func (s *Service) acquireSemaphore() {
 	<-s.semaphore
 }
 
-// releaseSemaphore releases a semaphore token
 func (s *Service) releaseSemaphore() {
 	s.semaphore <- struct{}{}
 }
 
-// RunGit executes a git command and returns the output
 func (s *Service) RunGit(ctx context.Context, args []string, cwd string, okReturncodes []int, strip bool, silent bool) string {
 	cmd := exec.CommandContext(ctx, args[0], args[1:]...)
 	if cwd != "" {
@@ -194,7 +183,6 @@ func (s *Service) RunGit(ctx context.Context, args []string, cwd string, okRetur
 	return out
 }
 
-// RunCommandChecked executes a command and returns true if successful
 func (s *Service) RunCommandChecked(ctx context.Context, args []string, cwd string, errorPrefix string) bool {
 	cmd := exec.CommandContext(ctx, args[0], args[1:]...)
 	if cwd != "" {
@@ -215,7 +203,6 @@ func (s *Service) RunCommandChecked(ctx context.Context, args []string, cwd stri
 	return true
 }
 
-// GetMainBranch returns the main branch name
 func (s *Service) GetMainBranch(ctx context.Context) string {
 	if s.mainBranch != "" {
 		return s.mainBranch
@@ -234,7 +221,6 @@ func (s *Service) GetMainBranch(ctx context.Context) string {
 	return s.mainBranch
 }
 
-// GetWorktrees returns a list of all worktrees
 func (s *Service) GetWorktrees(ctx context.Context) ([]*models.WorktreeInfo, error) {
 	rawWts := s.RunGit(ctx, []string{"git", "worktree", "list", "--porcelain"}, "", []int{0}, true, false)
 	if rawWts == "" {
@@ -275,7 +261,6 @@ func (s *Service) GetWorktrees(ctx context.Context) ([]*models.WorktreeInfo, err
 		wts[i].isMain = (i == 0)
 	}
 
-	// Get branch info
 	branchRaw := s.RunGit(ctx, []string{
 		"git", "for-each-ref",
 		"--format=%(refname:short)|%(committerdate:relative)|%(committerdate:unix)",
@@ -425,7 +410,6 @@ func (s *Service) detectHost(ctx context.Context) string {
 	return "unknown"
 }
 
-// fetchGitLabPRs fetches PR information from GitLab
 func (s *Service) fetchGitLabPRs(ctx context.Context) (map[string]*models.PRInfo, error) {
 	prRaw := s.RunGit(ctx, []string{"glab", "api", "merge_requests?state=all&per_page=100"}, "", []int{0}, false, false)
 	if prRaw == "" {
@@ -512,7 +496,6 @@ func (s *Service) FetchPRMap(ctx context.Context) (map[string]*models.PRInfo, er
 	return prMap, nil
 }
 
-// GetMainWorktreePath returns the path to the main worktree
 func (s *Service) GetMainWorktreePath(ctx context.Context) string {
 	rawWts := s.RunGit(ctx, []string{"git", "worktree", "list", "--porcelain"}, "", []int{0}, true, false)
 	for _, line := range strings.Split(rawWts, "\n") {
@@ -524,7 +507,6 @@ func (s *Service) GetMainWorktreePath(ctx context.Context) string {
 	return cwd
 }
 
-// RenameWorktree renames a worktree and its branch
 func (s *Service) RenameWorktree(ctx context.Context, oldPath, newPath, oldBranch, newBranch string) bool {
 	// 1. Move the worktree directory
 	if !s.RunCommandChecked(ctx, []string{"git", "worktree", "move", oldPath, newPath}, "", fmt.Sprintf("Failed to move worktree from %s to %s", oldPath, newPath)) {
@@ -619,7 +601,6 @@ func (s *Service) BuildThreePartDiff(ctx context.Context, path string, cfg *conf
 			}
 		}
 
-		// Add truncation notice if we limited untracked files
 		if untrackedCount > displayCount {
 			notice := fmt.Sprintf("\n[...showing %d of %d untracked files]", displayCount, untrackedCount)
 			parts = append(parts, notice)
@@ -628,7 +609,6 @@ func (s *Service) BuildThreePartDiff(ctx context.Context, path string, cfg *conf
 
 	result := strings.Join(parts, "\n\n")
 
-	// Truncate if exceeds max chars
 	if len(result) > cfg.MaxDiffChars {
 		result = result[:cfg.MaxDiffChars]
 		result += fmt.Sprintf("\n\n[...truncated at %d chars]", cfg.MaxDiffChars)
@@ -637,7 +617,6 @@ func (s *Service) BuildThreePartDiff(ctx context.Context, path string, cfg *conf
 	return result
 }
 
-// getUntrackedFiles returns a list of untracked files in the worktree
 func (s *Service) getUntrackedFiles(ctx context.Context, path string) []string {
 	statusRaw := s.RunGit(ctx, []string{"git", "status", "--porcelain"}, path, []int{0}, false, false)
 	var untracked []string

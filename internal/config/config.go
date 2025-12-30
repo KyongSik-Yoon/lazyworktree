@@ -10,7 +10,6 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// AppConfig represents the application configuration
 type AppConfig struct {
 	WorktreeDir       string
 	InitCommands      []string
@@ -30,7 +29,6 @@ type RepoConfig struct {
 	Path              string
 }
 
-// DefaultConfig returns a new AppConfig with default values
 func DefaultConfig() *AppConfig {
 	return &AppConfig{
 		SortByActive:      true,
@@ -70,7 +68,6 @@ func normalizeCommandList(value interface{}) []string {
 	return []string{}
 }
 
-// coerceBool converts various types to bool
 func coerceBool(value interface{}, defaultVal bool) bool {
 	if value == nil {
 		return defaultVal
@@ -93,7 +90,6 @@ func coerceBool(value interface{}, defaultVal bool) bool {
 	return defaultVal
 }
 
-// coerceInt converts various types to int
 func coerceInt(value interface{}, defaultVal int) int {
 	if value == nil {
 		return defaultVal
@@ -116,7 +112,6 @@ func coerceInt(value interface{}, defaultVal int) int {
 	return defaultVal
 }
 
-// parseConfig parses YAML data into AppConfig
 func parseConfig(data map[string]interface{}) *AppConfig {
 	cfg := DefaultConfig()
 
@@ -186,7 +181,6 @@ func LoadRepoConfig(repoPath string) (*RepoConfig, string, error) {
 	return cfg, wtPath, nil
 }
 
-// getConfigDir returns the XDG config directory
 func getConfigDir() string {
 	if xdgConfigHome := os.Getenv("XDG_CONFIG_HOME"); xdgConfigHome != "" {
 		return xdgConfigHome
@@ -195,7 +189,6 @@ func getConfigDir() string {
 	return filepath.Join(home, ".config")
 }
 
-// LoadConfig loads configuration from file
 func LoadConfig(configPath string) (*AppConfig, error) {
 	var paths []string
 
@@ -234,7 +227,6 @@ func LoadConfig(configPath string) (*AppConfig, error) {
 	return DefaultConfig(), nil
 }
 
-// expandPath expands ~ and environment variables in a path
 func expandPath(path string) (string, error) {
 	if strings.HasPrefix(path, "~") {
 		home, err := os.UserHomeDir()

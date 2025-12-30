@@ -10,7 +10,6 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-// Screen types for modal dialogs
 type screenType int
 
 const (
@@ -25,14 +24,12 @@ const (
 	screenDiff
 )
 
-// ConfirmScreen represents a confirmation dialog
 type ConfirmScreen struct {
 	message        string
 	result         chan bool
 	selectedButton int // 0 = Confirm, 1 = Cancel
 }
 
-// InputScreen represents an input dialog
 type InputScreen struct {
 	prompt      string
 	placeholder string
@@ -43,7 +40,6 @@ type InputScreen struct {
 	result      chan string
 }
 
-// HelpScreen represents a help screen
 type HelpScreen struct {
 	viewport    viewport.Model
 	width       int
@@ -54,7 +50,6 @@ type HelpScreen struct {
 	searchQuery string
 }
 
-// TrustScreen represents a trust confirmation screen
 type TrustScreen struct {
 	filePath string
 	commands []string
@@ -62,14 +57,12 @@ type TrustScreen struct {
 	result   chan string
 }
 
-// WelcomeScreen represents a welcome screen
 type WelcomeScreen struct {
 	currentDir  string
 	worktreeDir string
 	result      chan bool
 }
 
-// CommitScreen represents a commit detail screen
 type CommitScreen struct {
 	meta     commitMeta
 	stat     string
@@ -78,7 +71,6 @@ type CommitScreen struct {
 	viewport viewport.Model
 }
 
-// CommandPaletteScreen represents a simple command palette with filtering
 type CommandPaletteScreen struct {
 	items        []paletteItem
 	filtered     []paletteItem
@@ -93,7 +85,6 @@ type paletteItem struct {
 	description string
 }
 
-// DiffScreen represents a full-screen diff viewer
 type DiffScreen struct {
 	title    string
 	content  string
@@ -114,7 +105,6 @@ func minInt(a, b int) int {
 	return b
 }
 
-// NewConfirmScreen creates a new confirmation screen
 func NewConfirmScreen(message string) *ConfirmScreen {
 	return &ConfirmScreen{
 		message:        message,
@@ -123,12 +113,10 @@ func NewConfirmScreen(message string) *ConfirmScreen {
 	}
 }
 
-// Init initializes the confirm screen
 func (s *ConfirmScreen) Init() tea.Cmd {
 	return nil
 }
 
-// Update handles updates for the confirm screen
 func (s *ConfirmScreen) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
@@ -158,7 +146,6 @@ func (s *ConfirmScreen) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return s, nil
 }
 
-// View renders the confirm screen as a centered modal popup
 func (s *ConfirmScreen) View() string {
 	width := 60
 	height := 11
@@ -221,7 +208,6 @@ func (s *ConfirmScreen) View() string {
 	return box
 }
 
-// NewInputScreen creates a new input screen
 func NewInputScreen(prompt, placeholder, value string) *InputScreen {
 	ti := textinput.New()
 	ti.Placeholder = placeholder
@@ -245,12 +231,10 @@ func NewInputScreen(prompt, placeholder, value string) *InputScreen {
 	}
 }
 
-// Init initializes the input screen
 func (s *InputScreen) Init() tea.Cmd {
 	return textinput.Blink
 }
 
-// Update handles updates for the input screen
 func (s *InputScreen) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 
@@ -271,7 +255,6 @@ func (s *InputScreen) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return s, cmd
 }
 
-// View renders the input screen
 func (s *InputScreen) View() string {
 	width := 60
 
@@ -318,7 +301,6 @@ func (s *InputScreen) View() string {
 	return boxStyle.Render(content)
 }
 
-// NewHelpScreen creates a new help screen sized to the current window
 func NewHelpScreen(maxWidth, maxHeight int) *HelpScreen {
 	helpText := `# Git Worktree Status Help
 
@@ -405,7 +387,6 @@ Press p to fetch PR information from GitHub.
 	return hs
 }
 
-// NewCommandPaletteScreen creates a new command palette with items
 func NewCommandPaletteScreen(items []paletteItem) *CommandPaletteScreen {
 	ti := textinput.New()
 	ti.Placeholder = "Type a command..."
@@ -424,7 +405,6 @@ func NewCommandPaletteScreen(items []paletteItem) *CommandPaletteScreen {
 	return screen
 }
 
-// NewDiffScreen creates a new full-screen diff viewer
 func NewDiffScreen(title, diff string, useDelta bool) *DiffScreen {
 	vp := viewport.New(100, 40)
 	content := title
@@ -439,17 +419,14 @@ func NewDiffScreen(title, diff string, useDelta bool) *DiffScreen {
 	}
 }
 
-// Init initializes the help screen
 func (s *HelpScreen) Init() tea.Cmd {
 	return nil
 }
 
-// Init initializes the command palette
 func (s *CommandPaletteScreen) Init() tea.Cmd {
 	return textinput.Blink
 }
 
-// Update handles updates for the help screen, including search
 func (s *HelpScreen) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 
@@ -567,7 +544,6 @@ func (s *CommandPaletteScreen) applyFilter() {
 	s.scrollOffset = 0
 }
 
-// Selected returns the currently selected item id
 func (s *CommandPaletteScreen) Selected() (string, bool) {
 	if s.cursor < 0 || s.cursor >= len(s.filtered) {
 		return "", false
@@ -575,12 +551,10 @@ func (s *CommandPaletteScreen) Selected() (string, bool) {
 	return s.filtered[s.cursor].id, true
 }
 
-// Init initializes the diff screen
 func (s *DiffScreen) Init() tea.Cmd {
 	return nil
 }
 
-// Update handles updates for the diff screen
 func (s *DiffScreen) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	switch m := msg.(type) {
@@ -657,7 +631,6 @@ func (s *HelpScreen) renderContent() string {
 	return strings.Join(lines, "\n")
 }
 
-// View renders the help screen as a full-screen overlay
 func (s *HelpScreen) View() string {
 	content := s.renderContent()
 
@@ -724,7 +697,6 @@ func (s *HelpScreen) View() string {
 	return boxStyle.Render(contentBlock)
 }
 
-// View renders the command palette
 func (s *CommandPaletteScreen) View() string {
 	width := 80
 	maxVisible := 12
@@ -832,7 +804,6 @@ func (s *CommandPaletteScreen) View() string {
 	return boxStyle.Render(content)
 }
 
-// View renders the diff screen
 func (s *DiffScreen) View() string {
 	titleStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("12"))
 	title := titleStyle.Render(s.title)
@@ -846,7 +817,6 @@ func (s *DiffScreen) View() string {
 		Render(content)
 }
 
-// NewTrustScreen creates a new trust screen
 func NewTrustScreen(filePath string, commands []string) *TrustScreen {
 	commandsText := strings.Join(commands, "\n")
 	question := fmt.Sprintf("The repository config '%s' defines the following commands.\nThis file has changed or hasn't been trusted yet.\nDo you trust these commands to run?", filePath)
@@ -864,12 +834,10 @@ func NewTrustScreen(filePath string, commands []string) *TrustScreen {
 	}
 }
 
-// Init initializes the trust screen
 func (s *TrustScreen) Init() tea.Cmd {
 	return nil
 }
 
-// Update handles updates for the trust screen
 func (s *TrustScreen) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	switch msg := msg.(type) {
@@ -890,7 +858,6 @@ func (s *TrustScreen) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return s, cmd
 }
 
-// View renders the trust screen
 func (s *TrustScreen) View() string {
 	width := 70
 	height := 25
@@ -930,7 +897,6 @@ func (s *TrustScreen) View() string {
 	return boxStyle.Render(content)
 }
 
-// NewWelcomeScreen creates a new welcome screen
 func NewWelcomeScreen(currentDir, worktreeDir string) *WelcomeScreen {
 	return &WelcomeScreen{
 		currentDir:  currentDir,
@@ -939,12 +905,10 @@ func NewWelcomeScreen(currentDir, worktreeDir string) *WelcomeScreen {
 	}
 }
 
-// Init initializes the welcome screen
 func (s *WelcomeScreen) Init() tea.Cmd {
 	return nil
 }
 
-// Update handles updates for the welcome screen
 func (s *WelcomeScreen) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
@@ -960,7 +924,6 @@ func (s *WelcomeScreen) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return s, nil
 }
 
-// View renders the welcome screen
 func (s *WelcomeScreen) View() string {
 	width := 70
 	height := 20
@@ -1011,7 +974,6 @@ func (s *WelcomeScreen) View() string {
 	return boxStyle.Render(content)
 }
 
-// NewCommitScreen creates a new commit detail screen
 func NewCommitScreen(meta commitMeta, stat, diff string, useDelta bool) *CommitScreen {
 	vp := viewport.New(110, 60)
 
@@ -1024,12 +986,10 @@ func NewCommitScreen(meta commitMeta, stat, diff string, useDelta bool) *CommitS
 	}
 }
 
-// Init initializes the commit screen
 func (s *CommitScreen) Init() tea.Cmd {
 	return nil
 }
 
-// Update handles updates for the commit screen
 func (s *CommitScreen) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	switch msg := msg.(type) {

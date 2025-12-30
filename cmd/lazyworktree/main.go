@@ -20,17 +20,14 @@ func main() {
 	flag.StringVar(&debugLog, "debug-log", "", "Path to debug log file")
 	flag.Parse()
 
-	// Get initial filter from remaining args
 	initialFilter := strings.Join(flag.Args(), " ")
 
-	// Load config
 	cfg, err := config.LoadConfig("")
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error loading config: %v\n", err)
 		cfg = config.DefaultConfig()
 	}
 
-	// Override worktree_dir if provided via flag
 	if worktreeDir != "" {
 		expanded, err := expandPath(worktreeDir)
 		if err != nil {
@@ -44,12 +41,10 @@ func main() {
 			cfg.WorktreeDir = expanded
 		}
 	} else {
-		// Default fallback
 		home, _ := os.UserHomeDir()
 		cfg.WorktreeDir = filepath.Join(home, ".local", "share", "worktrees")
 	}
 
-	// Set debug log if provided
 	if debugLog != "" {
 		expanded, err := expandPath(debugLog)
 		if err == nil {
@@ -59,7 +54,6 @@ func main() {
 		}
 	}
 
-	// Create and run the app
 	model := app.NewAppModel(cfg, initialFilter)
 	p := tea.NewProgram(model, tea.WithAltScreen())
 
@@ -68,14 +62,12 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Output selected path for shell integration
 	selectedPath := model.GetSelectedPath()
 	if selectedPath != "" {
 		fmt.Println(selectedPath)
 	}
 }
 
-// expandPath expands ~ and environment variables in a path
 func expandPath(path string) (string, error) {
 	if strings.HasPrefix(path, "~") {
 		home, err := os.UserHomeDir()
