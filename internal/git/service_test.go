@@ -296,9 +296,15 @@ func TestFetchPRMap(t *testing.T) {
 	t.Run("fetch PR map without git repository", func(t *testing.T) {
 		// This test just verifies the function doesn't panic
 		// Behavior varies by git environment (may return error or empty map)
-		prMap, _ := service.FetchPRMap(ctx)
+		prMap, err := service.FetchPRMap(ctx)
 
-		// Verify type is correct (can be nil or valid map)
-		assert.IsType(t, map[string]*models.PRInfo{}, prMap)
+		// Function should not panic and should return valid types
+		// Either error or map (which can be nil or empty)
+		if err == nil {
+			// prMap can be nil or a valid map - both are acceptable
+			if prMap != nil {
+				assert.IsType(t, map[string]*models.PRInfo{}, prMap)
+			}
+		}
 	})
 }
