@@ -18,7 +18,7 @@ repos:
     hooks:
       - id: lint
         name: golangci
-        entry: golangci-lint run ./...
+        entry: golangci-lint run --fix ./...
         language: system
         pass_filenames: false
         types: [go]
