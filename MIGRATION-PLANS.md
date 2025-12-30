@@ -8,21 +8,23 @@ The Go port has a **solid architectural foundation** with proper separation of c
 
 **Architecture Status:** ✅ Complete
 **Core TUI:** ✅ Complete
-**Git Operations:** ⚠️ Partial (rename works; create/delete/prune/absorb still stubbed)
-**Feature Parity:** ✅ ~70-75% complete (P1 mutations shipped; `.wt` commands/TOFU partially integrated; command palette still missing)
+**Git Operations:** ✅ Mutations implemented (create/delete/rename/prune/absorb), prune still skips terminate commands
+**Feature Parity:** ✅ ~85% complete (P1/P2 shipped; `.wt`/TOFU integrated for create/delete/absorb; command palette added)
 
 **Recent Updates:**
 - ✅ Rename worktree implemented with modal validation (non-main guard, conflict checks)
 - ✅ Three-part diff with delta highlighting and auto-diff when dirty
 - ✅ Debounced detail view updates plus vim-style navigation and adaptive layout tuning
-- ✅ Create/Delete/Prune/Absorb implemented with init/terminate command hooks + TOFU prompt for `.wt`
+- ✅ Create/Delete/Prune/Absorb implemented with init/terminate command hooks + TOFU prompt for `.wt` (prune still basic delete)
 - ✅ Welcome screen trigger when empty repo; commit detail viewer integrated; help overlay searchable
+- ✅ Command Palette added (ctrl+/) with filterable actions
+- ✅ Full-screen diff viewer (F) and `link_topsymlinks` built-in command
 
 ---
 
 ## Current Implementation Session (2025-12-30)
 
-**Focus:** Finalize P1/P2 parity (command palette + `.wt`/TOFU) and surface remaining nice-to-haves
+**Focus:** Finalize P1/P2 parity and surface remaining nice-to-haves
 
 **Completed:**
 - [x] 2.5 Debounced Detail View Updates (Low complexity) ✅
@@ -30,7 +32,7 @@ The Go port has a **solid architectural foundation** with proper separation of c
 - [x] 2.3 Enhanced Diff View - Three-part diff (Medium complexity) ✅
 
 **Deferred:**
-- Full-screen diff viewer (optional)
+- None for P1/P2 (remaining: prune terminate commands, tests, minor polish)
 
 **Implementation Summary:**
 1. ✅ Debouncing: 200ms delay prevents excessive git calls during rapid navigation
@@ -178,7 +180,7 @@ The Go port has a **solid architectural foundation** with proper separation of c
 ---
 
 ### 2.2 Absorb Worktree Command
-**Status:** Implemented (basic flow; no `.wt`/TOFU commands yet)
+**Status:** Implemented (terminate commands with TOFU pending)
 **Python Reference:** `lazyworktree/app.py:1455-1534`
 **Complexity:** High
 
@@ -436,6 +438,7 @@ The Go port has a **solid architectural foundation** with proper separation of c
 - [ ] Add integration tests (4.2)
 - [ ] Performance optimization
 - [ ] Documentation updates
+- [ ] Apply terminate commands to prune merged flow
 
 ---
 
@@ -603,5 +606,5 @@ The Go implementation will achieve feature parity when:
 ---
 
 **Last Updated:** 2025-12-30
-**Go Version:** Based on commit `bfe1467`
+**Go Version:** Based on commit `2ced21c`
 **Python Version:** Latest on main branch
