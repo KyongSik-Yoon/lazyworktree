@@ -8,8 +8,7 @@ Textual-based TUI for managing Git worktrees. Python 3.12+.
 
 ## Before Finishing
 
-Always Run:
-
-- `golangci-lint run --fix ./cmd/... ./internal/...`
-- `gofumpt -w ***/*.go`
--`go test ./cmd/... ./internal/... -coverprofile cover.out -covermode=atomic`
+- Always Run `make sanity` which will run golangci-lint, gofumpt, and go test.
+- Consider add tests for any new functionality.
+- Consider add README.md updates for any user-facing changes. Do not sound like
+it is written by a robot.
