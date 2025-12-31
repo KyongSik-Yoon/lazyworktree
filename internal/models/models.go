@@ -9,6 +9,13 @@ type PRInfo struct {
 	URL    string
 }
 
+// CICheck represents a single CI check/job status.
+type CICheck struct {
+	Name       string // Name of the check/job
+	Status     string // Status: "completed", "in_progress", "queued", "pending"
+	Conclusion string // Conclusion: "success", "failure", "skipped", "cancelled", etc.
+}
+
 // WorktreeInfo summarizes the information for a git worktree.
 type WorktreeInfo struct {
 	Path         string

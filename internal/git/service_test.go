@@ -317,3 +317,91 @@ func TestFetchPRMap(t *testing.T) {
 		}
 	})
 }
+
+func TestGithubBucketToConclusion(t *testing.T) {
+	notify := func(_ string, _ string) {}
+	notifyOnce := func(_ string, _ string, _ string) {}
+	service := NewService(notify, notifyOnce)
+
+	tests := []struct {
+		bucket   string
+		expected string
+	}{
+		{"pass", ciSuccess},
+		{"PASS", ciSuccess},
+		{"fail", ciFailure},
+		{"FAIL", ciFailure},
+		{"skipping", ciSkipped},
+		{"SKIPPING", ciSkipped},
+		{"cancel", ciCancelled},
+		{"CANCEL", ciCancelled},
+		{"pending", ciPending},
+		{"PENDING", ciPending},
+		{"unknown", "unknown"},
+		{"", ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.bucket, func(t *testing.T) {
+			result := service.githubBucketToConclusion(tt.bucket)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestGitlabStatusToConclusion(t *testing.T) {
+	notify := func(_ string, _ string) {}
+	notifyOnce := func(_ string, _ string, _ string) {}
+	service := NewService(notify, notifyOnce)
+
+	tests := []struct {
+		status   string
+		expected string
+	}{
+		{"success", ciSuccess},
+		{"SUCCESS", ciSuccess},
+		{"passed", ciSuccess},
+		{"PASSED", ciSuccess},
+		{"failed", ciFailure},
+		{"FAILED", ciFailure},
+		{"canceled", ciCancelled},
+		{"cancelled", ciCancelled},
+		{"skipped", ciSkipped},
+		{"SKIPPED", ciSkipped},
+		{"running", ciPending},
+		{"pending", ciPending},
+		{"created", ciPending},
+		{"waiting_for_resource", ciPending},
+		{"preparing", ciPending},
+		{"unknown", "unknown"},
+		{"", ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.status, func(t *testing.T) {
+			result := service.gitlabStatusToConclusion(tt.status)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestFetchCIStatus(t *testing.T) {
+	notify := func(_ string, _ string) {}
+	notifyOnce := func(_ string, _ string, _ string) {}
+	service := NewService(notify, notifyOnce)
+	ctx := context.Background()
+
+	t.Run("fetch CI status without git repository", func(t *testing.T) {
+		// This test just verifies the function doesn't panic
+		checks, err := service.FetchCIStatus(ctx, 1, "main")
+
+		// Function should not panic
+		// Either returns nil checks (unknown host) or error
+		if err == nil {
+			// checks can be nil - acceptable for unknown host
+			if checks != nil {
+				assert.IsType(t, []*models.CICheck{}, checks)
+			}
+		}
+	})
+}

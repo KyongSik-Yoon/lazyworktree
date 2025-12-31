@@ -9,7 +9,7 @@ A Bubble Tea-based TUI for managing Git worktrees efficiently. Visualize status,
 - **Worktree Management**: Create, rename, delete, absorb, and prune merged worktrees.
 - **Command Palette**: Fuzzy search and run actions quickly.
 - **Status at a Glance**: View dirty state, ahead/behind counts, and divergence from main.
-- **Forge Integration**: Fetch and display associated Pull Request (GitHub) or Merge Request (GitLab) status (via `gh` or `glab` CLI).
+- **Forge Integration**: Fetch and display associated Pull Request (GitHub) or Merge Request (GitLab) status, including CI check results (via `gh` or `glab` CLI).
 - **Diff Viewer**: Three-part diff with optional `delta` support and a full-screen viewer.
 - **Commit Details**: Open commit metadata and diffs directly from the log pane.
 - **Repo Automation**: `.wt` init/terminate commands with TOFU security.
@@ -157,7 +157,7 @@ You can configure this behavior in `config.yaml` via the `trust_mode` setting:
 | `F` | Full-screen diff viewer |
 | `A` | Absorb worktree into main |
 | `X` | Prune merged worktrees |
-| `p` | Fetch PR/MR status |
+| `p` | Fetch PR/MR status (also refreshes CI checks) |
 | `o` | Open PR/MR in browser |
 | `ctrl+p` | Command palette |
 | `g` | Open LazyGit |
@@ -207,6 +207,18 @@ Notes:
 - Set `sort_by_active` to `false` to sort by path.
 - Set `auto_fetch_prs` to `true` to fetch PR data on startup.
 - Use `max_untracked_diffs: 0` to hide untracked diffs; `max_diff_chars: 0` disables truncation.
+
+## CI Status Display
+
+When viewing a worktree with an associated PR/MR, lazyworktree automatically fetches and displays CI check statuses in the info pane:
+
+- `✓` **Green** - Passed
+- `✗` **Red** - Failed
+- `●` **Yellow** - Pending/Running
+- `○` **Gray** - Skipped
+- `⊘` **Gray** - Cancelled
+
+CI status is fetched lazily (only for the selected worktree) and cached for 30 seconds to keep the UI snappy. Press `p` to force a refresh of CI status.
 
 ## Speed performance
 

@@ -23,6 +23,13 @@ const (
 	gitHostGitLab  = "gitlab"
 	gitHostGithub  = "github"
 	gitHostUnknown = "unknown"
+
+	// CI conclusion constants
+	ciSuccess   = "success"
+	ciFailure   = "failure"
+	ciPending   = "pending"
+	ciSkipped   = "skipped"
+	ciCancelled = "cancelled"
 )
 
 // NotifyFn receives ongoing notifications.
@@ -567,6 +574,135 @@ func (s *Service) FetchPRMap(ctx context.Context) (map[string]*models.PRInfo, er
 	}
 
 	return prMap, nil
+}
+
+// FetchCIStatus fetches CI check statuses for a PR from GitHub or GitLab.
+func (s *Service) FetchCIStatus(ctx context.Context, prNumber int, branch string) ([]*models.CICheck, error) {
+	host := s.detectHost(ctx)
+	switch host {
+	case gitHostGithub:
+		return s.fetchGitHubCI(ctx, prNumber)
+	case gitHostGitLab:
+		return s.fetchGitLabCI(ctx, branch)
+	default:
+		return nil, nil
+	}
+}
+
+func (s *Service) fetchGitHubCI(ctx context.Context, prNumber int) ([]*models.CICheck, error) {
+	// Use gh pr checks to get CI status
+	out := s.RunGit(ctx, []string{
+		"gh", "pr", "checks", fmt.Sprintf("%d", prNumber),
+		"--json", "name,state,bucket",
+	}, "", []int{0, 1, 8}, true, true) // exit code 8 = checks pending
+
+	if out == "" {
+		return nil, nil
+	}
+
+	var checks []struct {
+		Name   string `json:"name"`
+		State  string `json:"state"`
+		Bucket string `json:"bucket"` // pass, fail, pending, skipping, cancel
+	}
+
+	if err := json.Unmarshal([]byte(out), &checks); err != nil {
+		return nil, err
+	}
+
+	result := make([]*models.CICheck, 0, len(checks))
+	for _, c := range checks {
+		// Map bucket to our conclusion format
+		conclusion := s.githubBucketToConclusion(c.Bucket)
+		result = append(result, &models.CICheck{
+			Name:       c.Name,
+			Status:     strings.ToLower(c.State),
+			Conclusion: conclusion,
+		})
+	}
+	return result, nil
+}
+
+func (s *Service) githubBucketToConclusion(bucket string) string {
+	switch strings.ToLower(bucket) {
+	case "pass":
+		return ciSuccess
+	case "fail":
+		return ciFailure
+	case "skipping":
+		return ciSkipped
+	case "cancel":
+		return ciCancelled
+	case "pending":
+		return ciPending
+	default:
+		return bucket
+	}
+}
+
+func (s *Service) fetchGitLabCI(ctx context.Context, branch string) ([]*models.CICheck, error) {
+	// Use glab ci status to get pipeline jobs
+	out := s.RunGit(ctx, []string{
+		"glab", "ci", "status", "--branch", branch, "--output", "json",
+	}, "", []int{0, 1}, true, true)
+
+	if out == "" {
+		return nil, nil
+	}
+
+	var pipeline struct {
+		Jobs []struct {
+			Name   string `json:"name"`
+			Status string `json:"status"`
+		} `json:"jobs"`
+	}
+
+	if err := json.Unmarshal([]byte(out), &pipeline); err != nil {
+		// Try parsing as array of jobs directly
+		var jobs []struct {
+			Name   string `json:"name"`
+			Status string `json:"status"`
+		}
+		if err2 := json.Unmarshal([]byte(out), &jobs); err2 != nil {
+			return nil, err
+		}
+		result := make([]*models.CICheck, 0, len(jobs))
+		for _, j := range jobs {
+			result = append(result, &models.CICheck{
+				Name:       j.Name,
+				Status:     strings.ToLower(j.Status),
+				Conclusion: s.gitlabStatusToConclusion(j.Status),
+			})
+		}
+		return result, nil
+	}
+
+	result := make([]*models.CICheck, 0, len(pipeline.Jobs))
+	for _, j := range pipeline.Jobs {
+		result = append(result, &models.CICheck{
+			Name:       j.Name,
+			Status:     strings.ToLower(j.Status),
+			Conclusion: s.gitlabStatusToConclusion(j.Status),
+		})
+	}
+	return result, nil
+}
+
+func (s *Service) gitlabStatusToConclusion(status string) string {
+	switch strings.ToLower(status) {
+	case "success", "passed":
+		return ciSuccess
+	case "failed":
+		return ciFailure
+	case "canceled", "cancelled":
+		return ciCancelled
+	case "skipped":
+		return ciSkipped
+	case "running", "pending", "created", "waiting_for_resource", "preparing":
+		return ciPending
+	default:
+		return status
+	}
 }
 
 // GetMainWorktreePath returns the path of the main worktree.

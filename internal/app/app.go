@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strings"
 	"time"
@@ -69,6 +70,11 @@ type (
 		branch string
 		err    error
 	}
+	ciStatusLoadedMsg struct {
+		branch string
+		checks []*models.CICheck
+		err    error
+	}
 )
 
 type commitLogEntry struct {
@@ -83,6 +89,11 @@ type commitMeta struct {
 	date    string
 	subject string
 	body    []string
+}
+
+type ciCacheEntry struct {
+	checks    []*models.CICheck
+	fetchedAt time.Time
 }
 
 const (
@@ -144,6 +155,7 @@ type Model struct {
 	cache           map[string]interface{}
 	divergenceCache map[string]string
 	notifiedErrors  map[string]bool
+	ciCache         map[string]*ciCacheEntry // branch -> CI checks cache
 
 	// Services
 	trustManager *security.TrustManager
@@ -247,6 +259,7 @@ func NewModel(cfg *config.AppConfig, initialFilter string) *Model {
 		cache:           make(map[string]interface{}),
 		divergenceCache: make(map[string]string),
 		notifiedErrors:  make(map[string]bool),
+		ciCache:         make(map[string]*ciCacheEntry),
 		trustManager:    trustManager,
 		ctx:             ctx,
 		cancel:          cancel,
@@ -457,10 +470,13 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, m.showFullDiff()
 
 		case "p":
+			// Clear CI cache when pressing 'p' to force refresh
+			m.ciCache = make(map[string]*ciCacheEntry)
 			if !m.prDataLoaded {
 				return m, m.fetchPRData()
 			}
-			return m, nil
+			// If PR data already loaded, just refresh current view to re-fetch CI
+			return m, m.maybeFetchCIStatus()
 
 		case "R":
 			m.statusContent = "Fetching remotes..."
@@ -574,6 +590,23 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			m.logTable.SetRows(rows)
 			m.logEntries = msg.log
+		}
+		// Trigger CI fetch if worktree has a PR and cache is stale
+		return m, m.maybeFetchCIStatus()
+
+	case ciStatusLoadedMsg:
+		if msg.err == nil && msg.checks != nil {
+			m.ciCache[msg.branch] = &ciCacheEntry{
+				checks:    msg.checks,
+				fetchedAt: time.Now(),
+			}
+			// Refresh info content to show CI status
+			if m.selectedIndex >= 0 && m.selectedIndex < len(m.filteredWts) {
+				wt := m.filteredWts[m.selectedIndex]
+				if wt.Branch == msg.branch {
+					m.infoContent = m.buildInfoContent(wt)
+				}
+			}
 		}
 		return m, nil
 
@@ -1066,6 +1099,37 @@ func (m *Model) fetchPRData() tea.Cmd {
 			err:   err,
 		}
 	}
+}
+
+func (m *Model) fetchCIStatus(prNumber int, branch string) tea.Cmd {
+	return func() tea.Msg {
+		checks, err := m.git.FetchCIStatus(m.ctx, prNumber, branch)
+		return ciStatusLoadedMsg{
+			branch: branch,
+			checks: checks,
+			err:    err,
+		}
+	}
+}
+
+// maybeFetchCIStatus triggers CI fetch for current worktree if it has a PR and cache is stale.
+func (m *Model) maybeFetchCIStatus() tea.Cmd {
+	if m.selectedIndex < 0 || m.selectedIndex >= len(m.filteredWts) {
+		return nil
+	}
+	wt := m.filteredWts[m.selectedIndex]
+	if wt.PR == nil {
+		return nil
+	}
+
+	// Check cache - skip if fresh (within 30 seconds)
+	if cached, ok := m.ciCache[wt.Branch]; ok {
+		if time.Since(cached.fetchedAt) < 30*time.Second {
+			return nil
+		}
+	}
+
+	return m.fetchCIStatus(wt.PR.Number, wt.Branch)
 }
 
 func (m *Model) fetchRemotes() tea.Cmd {
@@ -2304,6 +2368,42 @@ func (m *Model) buildInfoContent(wt *models.WorktreeInfo) string {
 		// URL styled with blue underline to match Python version
 		urlStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("12")).Underline(true)
 		infoLines = append(infoLines, fmt.Sprintf("     %s", urlStyle.Render(wt.PR.URL)))
+
+		// CI status from cache
+		if cached, ok := m.ciCache[wt.Branch]; ok && len(cached.checks) > 0 {
+			infoLines = append(infoLines, "") // blank line before CI
+			infoLines = append(infoLines, labelStyle.Render("CI Checks:"))
+
+			greenStyle := lipgloss.NewStyle().Foreground(colorSuccessFg)
+			redStyle := lipgloss.NewStyle().Foreground(colorErrorFg)
+			yellowStyle := lipgloss.NewStyle().Foreground(colorWarnFg)
+			grayStyle := lipgloss.NewStyle().Foreground(colorMutedFg)
+
+			for _, check := range cached.checks {
+				var symbol, styledSymbol string
+				switch check.Conclusion {
+				case "success":
+					symbol = "✓"
+					styledSymbol = greenStyle.Render(symbol)
+				case "failure":
+					symbol = "✗"
+					styledSymbol = redStyle.Render(symbol)
+				case "skipped":
+					symbol = "○"
+					styledSymbol = grayStyle.Render(symbol)
+				case "cancelled":
+					symbol = "⊘"
+					styledSymbol = grayStyle.Render(symbol)
+				case "pending", "":
+					symbol = "●"
+					styledSymbol = yellowStyle.Render(symbol)
+				default:
+					symbol = "?"
+					styledSymbol = grayStyle.Render(symbol)
+				}
+				infoLines = append(infoLines, fmt.Sprintf("  %s %s", styledSymbol, check.Name))
+			}
+		}
 	}
 	return strings.Join(infoLines, "\n")
 }
