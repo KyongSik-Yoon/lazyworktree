@@ -548,8 +548,6 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case "d":
 			return m, m.showDiff()
-		case "F":
-			return m, m.showFullDiff()
 
 		case "p":
 			// Clear CI cache when pressing 'p' to force refresh
@@ -1580,25 +1578,14 @@ func (m *Model) showDiff() tea.Cmd {
 	}
 	wt := m.filteredWts[m.selectedIndex]
 	return func() tea.Msg {
-		// Build three-part diff (staged + unstaged + untracked)
 		diff := m.git.BuildThreePartDiff(m.ctx, wt.Path, m.config)
-		// Apply delta if available
-		diff = m.git.ApplyDelta(m.ctx, diff)
-		return statusUpdatedMsg{
-			info:   m.buildInfoContent(wt),
-			status: fmt.Sprintf("Diff for %s:\n\n%s", wt.Branch, diff),
-			log:    nil,
+		if strings.TrimSpace(diff) == "" {
+			return statusUpdatedMsg{
+				info:   m.buildInfoContent(wt),
+				status: fmt.Sprintf("No diff for %s.", wt.Branch),
+				log:    nil,
+			}
 		}
-	}
-}
-
-func (m *Model) showFullDiff() tea.Cmd {
-	if m.selectedIndex < 0 || m.selectedIndex >= len(m.filteredWts) {
-		return nil
-	}
-	wt := m.filteredWts[m.selectedIndex]
-	return func() tea.Msg {
-		diff := m.git.BuildThreePartDiff(m.ctx, wt.Path, m.config)
 		diff = m.git.ApplyDelta(m.ctx, diff)
 		m.diffScreen = NewDiffScreen(fmt.Sprintf("Diff for %s", wt.Branch), diff)
 		m.currentScreen = screenDiff
@@ -2762,13 +2749,21 @@ func (m *Model) applyLayout(layout layoutDims) {
 func (m *Model) renderHeader(layout layoutDims) string {
 	// Create a "toolbar" style header
 	headerStyle := lipgloss.NewStyle().
-		Foreground(colorTextFg).
 		Background(colorAccent).
+		Foreground(colorAccentDim).
 		Bold(true).
 		Width(layout.width).
 		Padding(0, 1)
 
-	return headerStyle.Render("Git Worktree Status")
+	title := "Git Worktree Status"
+	repoStyle := lipgloss.NewStyle().Italic(true).Foreground(colorAccentDim)
+	repoKey := strings.TrimSpace(m.repoKey)
+	content := title
+	if repoKey != "" && repoKey != "unknown" {
+		content = fmt.Sprintf("%s - %s", content, repoStyle.Render(repoKey))
+	}
+
+	return headerStyle.Render(content)
 }
 
 func (m *Model) renderFilter(layout layoutDims) string {
@@ -2854,6 +2849,7 @@ func (m *Model) renderFooter(layout layoutDims) string {
 		m.renderKeyHint("1-3", "Pane Focus"),
 		m.renderKeyHint("g", "LazyGit"),
 		m.renderKeyHint("r", "Refresh"),
+		m.renderKeyHint("d", "Diff"),
 		m.renderKeyHint("p", "PR Info"),
 	}
 	// Show "o" key hint only when current worktree has PR info
@@ -2869,7 +2865,7 @@ func (m *Model) renderFooter(layout layoutDims) string {
 		m.renderKeyHint("/", "Filter"),
 		m.renderKeyHint("q", "Quit"),
 		m.renderKeyHint("?", "Help"),
-		m.renderKeyHint("P", "Palette"),
+		m.renderKeyHint("ctrl+p", "Palette"),
 	)
 	return footerStyle.Width(layout.width).Render(strings.Join(hints, "  "))
 }

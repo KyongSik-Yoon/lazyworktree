@@ -360,7 +360,7 @@ func NewHelpScreen(maxWidth, maxHeight int, customCommands map[string]*config.Cu
 
 **Actions**
 - c: Create new worktree
-- F: Full-screen diff viewer
+- d: Full-screen diff viewer
 - D: Delete selected worktree
 - A: Absorb worktree into main (merge + delete)
 - X: Prune merged PR worktrees
