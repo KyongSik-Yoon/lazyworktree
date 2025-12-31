@@ -13,17 +13,17 @@ cask "lazyworktree" do
 
   on_macos do
     url "https://github.com/chmouel/lazyworktree/releases/download/v#{version}/lazyworktree_Darwin_all.tar.gz"
-    sha256 "638472daf96660a5c120888989aaacab946e47fabb1b063a2a6d91e6bd12f1ea"
+    sha256 "d22a2d6654a9fc01227c22946581bcdcad5c4a5ca0b20235495d3c776accc9da"
   end
 
   on_linux do
     on_intel do
       url "https://github.com/chmouel/lazyworktree/releases/download/v#{version}/lazyworktree_Linux_x86_64.tar.gz"
-      sha256 "d2520815d701bcf7936d7166e20d4bf9bced03e947941931236ea39844cf9fe2"
+      sha256 "ae83a2077f8052770c28100c7af8caf008c34fe33aaab898be1b4e9a3100982a"
     end
     on_arm do
       url "https://github.com/chmouel/lazyworktree/releases/download/v#{version}/lazyworktree_Linux_arm64.tar.gz"
-      sha256 "f4c20e030bed2e65671ec34159c6b0b06ac551c8a52030ae8b0e4ad59e54c1b7"
+      sha256 "f813e36a89f040bcf717a368b9afa0c35f5c5008573aa5507c19d9b6e0998c07"
     end
   end
 
