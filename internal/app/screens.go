@@ -192,7 +192,7 @@ func (s *ConfirmScreen) View() string {
 		Width((width-6)/2).
 		Align(lipgloss.Center).
 		Padding(0, 1).
-		Foreground(colorTextFg).
+		Foreground(lipgloss.Color("#FFFFFF")).
 		Background(colorErrorFg).
 		Bold(true)
 
@@ -201,14 +201,14 @@ func (s *ConfirmScreen) View() string {
 		Width((width-6)/2).
 		Align(lipgloss.Center).
 		Padding(0, 1).
-		Foreground(colorTextFg).
+		Foreground(lipgloss.Color("#000000")).
 		Background(colorAccent)
 
 	unfocusedButtonStyle := lipgloss.NewStyle().
 		Width((width-6)/2).
 		Align(lipgloss.Center).
 		Padding(0, 1).
-		Foreground(colorMutedFg).
+		Foreground(colorTextFg).
 		Background(colorBorderDim)
 
 	var confirmButton, cancelButton string
