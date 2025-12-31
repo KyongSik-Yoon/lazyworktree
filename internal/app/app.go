@@ -16,6 +16,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/table"
 	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/bubbles/viewport"
@@ -171,6 +172,8 @@ type Model struct {
 	prSelectionScreen *PRSelectionScreen
 	prSelectionSubmit func(*models.PRInfo) tea.Cmd
 	diffScreen        *DiffScreen
+	spinner           spinner.Model
+	loading           bool
 	showingFilter     bool
 	focusedPane       int // 0=table, 1=status, 2=log
 	windowWidth       int
@@ -315,6 +318,10 @@ func NewModel(cfg *config.AppConfig, initialFilter string) *Model {
 	filterInput.PromptStyle = lipgloss.NewStyle().Foreground(colorAccent)
 	filterInput.TextStyle = lipgloss.NewStyle().Foreground(colorTextFg)
 
+	sp := spinner.New()
+	sp.Spinner = spinner.Pulse
+	sp.Style = lipgloss.NewStyle().Foreground(colorAccent)
+
 	m := &Model{
 		config:          cfg,
 		git:             gitService,
@@ -337,6 +344,8 @@ func NewModel(cfg *config.AppConfig, initialFilter string) *Model {
 		focusedPane:     0,
 		infoContent:     errNoWorktreeSelected,
 		statusContent:   "Loading...",
+		spinner:         sp,
+		loading:         true,
 		debugLogger:     debugLogger,
 		debugLogFile:    debugLogFile,
 	}
@@ -354,6 +363,7 @@ func (m *Model) Init() tea.Cmd {
 	return tea.Batch(
 		m.loadCache(),
 		m.refreshWorktrees(),
+		m.spinner.Tick,
 	)
 }
 
@@ -370,6 +380,10 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.MouseMsg:
 		return m.handleMouse(msg)
+
+	case spinner.TickMsg:
+		m.spinner, cmd = m.spinner.Update(msg)
+		return m, cmd
 
 	case tea.KeyMsg:
 		m.debugf("key: %s screen=%s focus=%d filter=%t", msg.String(), screenName(m.currentScreen), m.focusedPane, m.showingFilter)
@@ -538,6 +552,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 
 		case "r":
+			m.loading = true
 			return m, m.refreshWorktrees()
 
 		case "c":
@@ -553,15 +568,16 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Clear CI cache when pressing 'p' to force refresh
 			m.ciCache = make(map[string]*ciCacheEntry)
 			if !m.prDataLoaded {
+				m.loading = true
 				return m, m.fetchPRData()
 			}
 			// If PR data already loaded, just refresh current view to re-fetch CI
 			return m, m.maybeFetchCIStatus()
 
 		case "R":
+			m.loading = true
 			m.statusContent = "Fetching remotes..."
 			return m, m.fetchRemotes()
-
 		case "f":
 			m.showingFilter = true
 			m.filterInput.Focus()
@@ -622,7 +638,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case worktreesLoadedMsg:
 		m.worktreesLoaded = true
+		m.loading = false
 		if msg.err != nil {
+			m.statusContent = fmt.Sprintf("Error loading worktrees: %v", msg.err)
 			return m, nil
 		}
 		m.worktrees = msg.worktrees
@@ -641,6 +659,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.welcomeScreen = nil
 		}
 		if m.config.AutoFetchPRs && !m.prDataLoaded {
+			m.loading = true
 			return m, m.fetchPRData()
 		}
 		return m, m.updateDetailsView()
@@ -658,6 +677,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case prDataLoadedMsg:
+		m.loading = false
 		if msg.err == nil && msg.prMap != nil {
 			for _, wt := range m.worktrees {
 				if pr, ok := msg.prMap[wt.Branch]; ok {
@@ -723,10 +743,12 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case fetchRemotesCompleteMsg:
+		m.loading = false
 		m.statusContent = "Remotes fetched"
 		return m, m.refreshWorktrees()
 
 	case pruneResultMsg:
+		m.loading = false
 		if msg.err == nil && msg.worktrees != nil {
 			m.worktrees = msg.worktrees
 			m.updateTable()
@@ -2899,7 +2921,18 @@ func (m *Model) renderFooter(layout layoutDims) string {
 		m.renderKeyHint("?", "Help"),
 		m.renderKeyHint("ctrl+p", "Palette"),
 	)
-	return footerStyle.Width(layout.width).Render(strings.Join(hints, "  "))
+	footerContent := strings.Join(hints, "  ")
+	if !m.loading {
+		return footerStyle.Width(layout.width).Render(footerContent)
+	}
+	spinnerView := m.spinner.View()
+	gap := "  "
+	available := layout.width - lipgloss.Width(spinnerView) - lipgloss.Width(gap)
+	if available < 0 {
+		available = 0
+	}
+	footer := footerStyle.Width(available).Render(footerContent)
+	return lipgloss.JoinHorizontal(lipgloss.Left, footer, gap, spinnerView)
 }
 
 func (m *Model) customFooterHints() []string {
