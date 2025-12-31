@@ -1,6 +1,7 @@
 ## Project
 
-Textual-based TUI for managing Git worktrees. Python 3.12+.
+Go bubbletea TUI for managing GIT worktrees. Read the README if you really need
+to know what this project do.
 
 ## Building
 
