@@ -3170,7 +3170,21 @@ func (m *Model) updateTableColumns(totalWidth int) {
 
 func (m *Model) updateLogColumns(totalWidth int) {
 	sha := 8
-	message := maxInt(10, totalWidth-sha)
+
+	// The table library handles separators internally (3 spaces per separator)
+	// 2 columns = 1 separator = 3 spaces
+	separatorSpace := 3
+
+	message := maxInt(10, totalWidth-sha-separatorSpace)
+
+	// Final adjustment: ensure column widths + separator space sum exactly to totalWidth
+	actualTotal := sha + message + separatorSpace
+	if actualTotal < totalWidth {
+		message += (totalWidth - actualTotal)
+	} else if actualTotal > totalWidth {
+		message = maxInt(10, message-(actualTotal-totalWidth))
+	}
+
 	m.logTable.SetColumns([]table.Column{
 		{Title: "SHA", Width: sha},
 		{Title: "Message", Width: message},
