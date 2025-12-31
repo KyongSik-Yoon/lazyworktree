@@ -247,7 +247,7 @@ custom_commands:
 | `X` | Prune merged worktrees |
 | `p` | Fetch PR/MR status (also refreshes CI checks) |
 | `o` | Open PR/MR in browser |
-| `ctrl+p` | Command palette |
+| `ctrl+p`, `P` | Command palette |
 | `g` | Open LazyGit |
 | `r` | Refresh list |
 | `R` | Fetch all remotes |

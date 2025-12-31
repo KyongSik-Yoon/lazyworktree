@@ -30,6 +30,7 @@ const (
 	// Key constants (keyEnter and keyEsc are defined in app.go)
 	keyCtrlD = "ctrl+d"
 	keyCtrlU = "ctrl+u"
+	keyCtrlC = "ctrl+c"
 	keyDown  = "down"
 	keyQ     = "q"
 	keyUp    = "up"
@@ -161,7 +162,7 @@ func (s *ConfirmScreen) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			s.result <- false
 		}
 		return s, tea.Quit
-	case keyEsc, keyQ:
+	case keyEsc, keyQ, keyCtrlC:
 		s.result <- false
 		return s, tea.Quit
 	}
@@ -275,7 +276,7 @@ func (s *InputScreen) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			value := s.input.Value()
 			s.result <- value
 			return s, tea.Quit
-		case keyEsc:
+		case keyEsc, keyCtrlC:
 			s.result <- ""
 			return s, tea.Quit
 		}
@@ -363,7 +364,7 @@ func NewHelpScreen(maxWidth, maxHeight int, customCommands map[string]*config.Cu
 - D: Delete selected worktree
 - A: Absorb worktree into main (merge + delete)
 - X: Prune merged PR worktrees
-- Ctrl+p: Command Palette
+- Ctrl+p, P: Command Palette
 - R: Fetch all remotes
 - p: Fetch PR status from GitHub
 - r: Refresh list
@@ -501,7 +502,7 @@ func (s *HelpScreen) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				s.refreshContent()
 				return s, nil
 			}
-		case keyEsc:
+		case keyEsc, keyCtrlC:
 			if s.searching || s.searchQuery != "" {
 				s.searching = false
 				s.searchInput.SetValue("")
@@ -555,10 +556,10 @@ func (s *CommandPaletteScreen) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch keyMsg.String() {
 		case keyEnter:
 			return s, tea.Quit
-		case keyEsc:
+		case keyEsc, keyCtrlC:
 			s.cursor = -1
 			return s, tea.Quit
-		case keyUp, "k":
+		case keyUp:
 			if s.cursor > 0 {
 				s.cursor--
 				if s.cursor < s.scrollOffset {
@@ -566,7 +567,7 @@ func (s *CommandPaletteScreen) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 			return s, nil
-		case keyDown, "j":
+		case keyDown:
 			if s.cursor < len(s.filtered)-1 {
 				s.cursor++
 				if s.cursor >= s.scrollOffset+maxVisible {
@@ -648,10 +649,10 @@ func (s *PRSelectionScreen) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch keyMsg.String() {
 		case keyEnter:
 			return s, tea.Quit
-		case keyEsc:
+		case keyEsc, keyCtrlC:
 			s.cursor = -1
 			return s, tea.Quit
-		case keyUp, "k", "ctrl+p":
+		case keyUp:
 			if s.cursor > 0 {
 				s.cursor--
 				if s.cursor < s.scrollOffset {
@@ -659,7 +660,7 @@ func (s *PRSelectionScreen) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 			return s, nil
-		case keyDown, "j", "ctrl+n":
+		case keyDown:
 			if s.cursor < len(s.filtered)-1 {
 				s.cursor++
 				if s.cursor >= s.scrollOffset+maxVisible {
@@ -830,7 +831,7 @@ func (s *DiffScreen) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	keyMsg, ok := msg.(tea.KeyMsg)
 	if ok {
 		switch keyMsg.String() {
-		case keyQ, keyEsc:
+		case keyQ, keyEsc, keyCtrlC:
 			return s, tea.Quit
 		case "j", keyDown:
 			s.viewport.ScrollDown(1)
@@ -1151,7 +1152,7 @@ func (s *TrustScreen) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "b", "B":
 			s.result <- "block"
 			return s, tea.Quit
-		case keyEsc, "c", "C":
+		case keyEsc, "c", "C", keyCtrlC:
 			s.result <- "cancel"
 			return s, tea.Quit
 		}
@@ -1222,7 +1223,7 @@ func (s *WelcomeScreen) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "r", "R":
 			s.result <- true
 			return s, tea.Quit
-		case "q", "Q", keyEsc:
+		case "q", "Q", keyEsc, keyCtrlC:
 			s.result <- false
 			return s, tea.Quit
 		}
@@ -1308,7 +1309,7 @@ func (s *CommitScreen) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	keyMsg, ok := msg.(tea.KeyMsg)
 	if ok {
 		switch keyMsg.String() {
-		case keyQ, keyEsc:
+		case keyQ, keyEsc, keyCtrlC:
 			return s, tea.Quit
 		case "j", keyDown:
 			s.viewport.ScrollDown(1)

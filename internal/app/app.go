@@ -515,7 +515,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.filterInput.Focus()
 			return m, textinput.Blink
 
-		case "ctrl+p":
+		case "ctrl+p", "P":
 			return m, m.showCommandPalette()
 
 		case "?":
@@ -2618,7 +2618,7 @@ func (m *Model) renderFooter(layout layoutDims) string {
 		m.renderKeyHint("/", "Filter"),
 		m.renderKeyHint("q", "Quit"),
 		m.renderKeyHint("?", "Help"),
-		m.renderKeyHint("ctrl+p", "Palette"),
+		m.renderKeyHint("P", "Palette"),
 	)
 	return footerStyle.Width(layout.width).Render(strings.Join(hints, "  "))
 }
