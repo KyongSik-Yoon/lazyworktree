@@ -1082,8 +1082,6 @@ func (m *Model) updateDetailsView() tea.Cmd {
 				})
 			}
 		}
-		m.logEntries = logEntries
-
 		// Build status content with automatic diff if dirty
 		statusContent := m.buildStatusContent(statusRaw)
 		if wt.Dirty {
