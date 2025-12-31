@@ -66,6 +66,19 @@ lazyworktree --worktree-dir ~/worktrees
 
 Pre-built binaries for various platforms are available in the [Releases](https://github.com/chmouel/lazyworktree/releases) section.
 
+### 🍺 Homebrew
+
+```shell
+brew tap chmouel/lazyworktree https://github.com/chmouel/lazyworktree
+brew install lazyworktree
+```
+
+## [Arch](https://aur.archlinux.org/packages/lazyworktree-bin)
+
+```shell
+yay -S lazyworktree-bin
+```
+
 ## Shell Integration (Zsh)
 
 To enable the "jump" functionality (changing your shell's current directory on exit), add the helper functions from `shell/functions.shell` to your `.zshrc`. The helper uses `--output-selection` to write the selected path to a temp file.
