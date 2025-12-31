@@ -12,7 +12,7 @@ A Bubble Tea-based TUI for managing Git worktrees efficiently. Visualize status,
 - **Command Palette**: Fuzzy search and run actions quickly.
 - **Status at a Glance**: View dirty state, ahead/behind counts, and divergence from main.
 - **Forge Integration**: Fetch and display associated Pull Request (GitHub) or Merge Request (GitLab) status, including CI check results (via `gh` or `glab` CLI).
-- **Diff Viewer**: Three-part diff with optional `delta` support and a full-screen viewer.
+- **Diff Viewer**: Three-part diff with optional [delta](https://github.com/dandavison/delta) support and a full-screen viewer.
 - **Commit Details**: Open commit metadata and diffs directly from the log pane.
 - **Repo Automation**: `.wt` init/terminate commands with TOFU security.
 - **LazyGit Integration**: Launch `lazygit` directly for the selected worktree.
