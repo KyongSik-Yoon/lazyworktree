@@ -7,6 +7,7 @@ bumpversion() {
   if [[ -z ${current} ]]; then
     current=0.0.0
   fi
+  current=${current#v}
   echo "Current version is ${current}"
 
   major=$(uv run --with semver python3 -c "import semver,sys;print(str(semver.VersionInfo.parse(sys.argv[1]).bump_major()))" ${current})
@@ -29,11 +30,6 @@ bumpversion() {
     exit
   fi
   VERSION=$(uv run --with semver python3 -c "import semver,sys;print(str(semver.VersionInfo.parse(sys.argv[1]).bump_${mode}()))" ${current})
-  [[ -z ${VERSION} ]] && {
-    echo "could not bump version automatically"
-    exit
-  }
-  echo "Releasing ${VERSION}"
 }
 
 [[ $(git rev-parse --abbrev-ref HEAD) != main ]] && {
@@ -41,7 +37,16 @@ bumpversion() {
   exit 1
 }
 [[ -z ${VERSION} ]] && bumpversion
+[[ -z ${VERSION} ]] && {
+  echo "no version specified"
+  exit 1
+}
+if [[ ${VERSION} != v* ]]; then
+  VERSION="v${VERSION}"
+fi
+echo "Releasing version ${VERSION}"
 
 git tag -s ${VERSION} -m "Releasing version ${VERSION}"
 git push --tags origin ${VERSION}
+git pull origin main
 git push origin main
