@@ -48,6 +48,9 @@ const (
 
 	osDarwin  = "darwin"
 	osWindows = "windows"
+
+	// Visual symbols for enhanced UI
+	symbolFilledCircle = "●"
 )
 
 type (
@@ -315,11 +318,15 @@ func NewModel(cfg *config.AppConfig, initialFilter string) *Model {
 		BorderForeground(thm.BorderDim).
 		BorderBottom(true).
 		Bold(true).
-		Foreground(thm.Cyan)
+		Foreground(thm.Cyan).
+		Background(thm.AccentDim) // Add subtle background to header
 	s.Selected = s.Selected.
 		Foreground(thm.TextFg).
-		Background(thm.AccentDim).
+		Background(thm.Accent). // Use Accent instead of AccentDim for better visibility
 		Bold(true)
+	// Add subtle background to unselected cells for better readability
+	s.Cell = s.Cell.
+		Foreground(thm.TextFg)
 	t.SetStyles(s)
 
 	statusVp := viewport.New(40, 5)
@@ -1373,12 +1380,14 @@ func (m *Model) updateTable() {
 	for _, wt := range m.filteredWts {
 		name := filepath.Base(wt.Path)
 		if wt.IsMain {
-			name = mainWorktreeName
+			name = " " + mainWorktreeName
+		} else {
+			name = " " + name
 		}
 
-		status := "✔"
+		status := "✓ "
 		if wt.Dirty {
-			status = "✎"
+			status = "✎ "
 		}
 
 		// Build lazygit-style sync status: ↓N↑M, ✓ (in sync), or - (no upstream)
@@ -1387,7 +1396,7 @@ func (m *Model) updateTable() {
 		case !wt.HasUpstream:
 			abStr = "-"
 		case wt.Ahead == 0 && wt.Behind == 0:
-			abStr = "✓"
+			abStr = "✓ "
 		default:
 			var parts []string
 			if wt.Behind > 0 {
@@ -1414,7 +1423,7 @@ func (m *Model) updateTable() {
 				var stateSymbol string
 				switch wt.PR.State {
 				case "OPEN":
-					stateSymbol = "●"
+					stateSymbol = symbolFilledCircle
 				case "MERGED":
 					stateSymbol = "◆"
 				case "CLOSED":
@@ -3533,31 +3542,40 @@ func (m *Model) applyLayout(layout layoutDims) {
 }
 
 func (m *Model) renderHeader(layout layoutDims) string {
-	// Create a "toolbar" style header
+	// Create a "toolbar" style header with visual flair
 	headerStyle := lipgloss.NewStyle().
 		Background(m.theme.Accent).
-		Foreground(m.theme.AccentDim).
+		Foreground(lipgloss.Color("#FFFFFF")). // Pure white for better contrast
 		Bold(true).
 		Width(layout.width).
-		Padding(0, 1)
+		Padding(0, 2) // Increased padding for breathing room
 
-	title := "Git Worktree Status"
-	repoStyle := lipgloss.NewStyle().Italic(true).Foreground(m.theme.AccentDim)
+	// Add decorative icon to title
+	title := "⚡ Lazy Worktree Manager"
+	repoStyle := lipgloss.NewStyle().
+		Italic(true).
+		Foreground(lipgloss.Color("#FFFFFF")).
+		Faint(true) // Subtle dimming for hierarchy
 	repoKey := strings.TrimSpace(m.repoKey)
 	content := title
 	if repoKey != "" && repoKey != "unknown" && !strings.HasPrefix(repoKey, "local-") {
-		content = fmt.Sprintf("%s - %s", content, repoStyle.Render(repoKey))
+		content = fmt.Sprintf("%s  •  %s", content, repoStyle.Render(repoKey))
 	}
 
 	return headerStyle.Render(content)
 }
 
 func (m *Model) renderFilter(layout layoutDims) string {
-	labelStyle := lipgloss.NewStyle().Foreground(m.theme.Accent).Bold(true)
+	// Enhanced filter bar with visual flair
+	labelStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("#FFFFFF")).
+		Background(m.theme.Accent).
+		Bold(true).
+		Padding(0, 1) // Pill effect
 	filterStyle := lipgloss.NewStyle().
 		Foreground(m.theme.TextFg).
 		Padding(0, 1)
-	line := fmt.Sprintf("%s %s", labelStyle.Render("/ Filter:"), m.filterInput.View())
+	line := fmt.Sprintf("%s %s", labelStyle.Render("🔍 Filter"), m.filterInput.View())
 	return filterStyle.Width(layout.width).Render(line)
 }
 
@@ -3629,8 +3647,8 @@ func (m *Model) renderRightBottomPane(layout layoutDims) string {
 
 func (m *Model) renderFooter(layout layoutDims) string {
 	footerStyle := lipgloss.NewStyle().
-		Foreground(m.theme.MutedFg).
-		Background(m.theme.Background).
+		Foreground(m.theme.TextFg).
+		Background(m.theme.BorderDim).
 		Padding(0, 1)
 	hints := []string{
 		m.renderKeyHint("1-3", "Pane Focus"),
@@ -3693,7 +3711,12 @@ func (m *Model) customFooterHints() []string {
 }
 
 func (m *Model) renderKeyHint(key, label string) string {
-	keyStyle := lipgloss.NewStyle().Foreground(m.theme.Accent).Bold(true)
+	// Enhanced key hints with pill/badge styling
+	keyStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("#000000")).
+		Background(m.theme.Accent).
+		Bold(true).
+		Padding(0, 1) // Add padding for pill effect
 	labelStyle := lipgloss.NewStyle().Foreground(m.theme.MutedFg)
 	return fmt.Sprintf("%s %s", keyStyle.Render(key), labelStyle.Render(label))
 }
@@ -3701,13 +3724,16 @@ func (m *Model) renderKeyHint(key, label string) string {
 func (m *Model) renderPaneTitle(index int, title string, focused bool, width int) string {
 	numStyle := lipgloss.NewStyle().Foreground(m.theme.MutedFg)
 	titleStyle := lipgloss.NewStyle().Foreground(m.theme.MutedFg)
+	indicator := "○" // Hollow circle for unfocused
 	if focused {
 		numStyle = numStyle.Foreground(m.theme.Accent).Bold(true)
-		titleStyle = titleStyle.Foreground(m.theme.TextFg)
+		titleStyle = titleStyle.Foreground(m.theme.TextFg).Bold(true)
+		indicator = symbolFilledCircle // Filled circle for focused
 	}
 	num := numStyle.Render(fmt.Sprintf("[%d]", index))
+	focusIndicator := numStyle.Render(indicator)
 	name := titleStyle.Render(title)
-	return lipgloss.NewStyle().Width(width).Render(fmt.Sprintf("%s %s", num, name))
+	return lipgloss.NewStyle().Width(width).Render(fmt.Sprintf("%s %s %s", focusIndicator, num, name))
 }
 
 func (m *Model) renderInnerBox(title, content string, width, height int) string {
@@ -3795,7 +3821,7 @@ func (m *Model) buildInfoContent(wt *models.WorktreeInfo) string {
 					symbol = "⊘"
 					styledSymbol = grayStyle.Render(symbol)
 				case "pending", "":
-					symbol = "●"
+					symbol = symbolFilledCircle
 					styledSymbol = yellowStyle.Render(symbol)
 				default:
 					symbol = "?"
@@ -3950,7 +3976,7 @@ func (m *Model) updateTableColumns(totalWidth int) {
 	}
 
 	columns := []table.Column{
-		{Title: "Worktree", Width: worktree},
+		{Title: "Name", Width: worktree},
 		{Title: "Status", Width: status},
 		{Title: "±", Width: ab},
 		{Title: "Last Active", Width: last},
@@ -3988,25 +4014,29 @@ func (m *Model) updateLogColumns(totalWidth int) {
 
 func (m *Model) basePaneStyle() lipgloss.Style {
 	return lipgloss.NewStyle().
-		Border(lipgloss.ThickBorder()).
+		Border(lipgloss.RoundedBorder()).
 		BorderForeground(m.theme.BorderDim).
 		Padding(0, 1)
 }
 
 func (m *Model) paneStyle(focused bool) lipgloss.Style {
 	borderColor := m.theme.BorderDim
+	borderStyle := lipgloss.NormalBorder()
 	if focused {
 		borderColor = m.theme.Accent
+		// Use rounded border for focused panes for modern look
+		borderStyle = lipgloss.RoundedBorder()
 	}
 	return lipgloss.NewStyle().
-		Border(lipgloss.NormalBorder()).
+		Border(borderStyle).
 		BorderForeground(borderColor).
 		Padding(0, 1)
 }
 
 func (m *Model) baseInnerBoxStyle() lipgloss.Style {
+	// Use rounded border for inner boxes for softer appearance
 	return lipgloss.NewStyle().
-		Border(lipgloss.ThickBorder()).
+		Border(lipgloss.RoundedBorder()).
 		BorderForeground(m.theme.BorderDim).
 		Padding(0, 1)
 }

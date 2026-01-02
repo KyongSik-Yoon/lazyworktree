@@ -247,9 +247,10 @@ func (s *ConfirmScreen) View() string {
 	width := 60
 	height := 11
 
+	// Enhanced confirm modal with rounded border and accent color
 	boxStyle := lipgloss.NewStyle().
-		Border(lipgloss.ThickBorder()).
-		BorderForeground(s.thm.Border).
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(s.thm.Accent).
 		Padding(1, 2).
 		Width(width).
 		Height(height)
@@ -260,11 +261,12 @@ func (s *ConfirmScreen) View() string {
 		Align(lipgloss.Center, lipgloss.Center).
 		Foreground(s.thm.TextFg)
 
+	// Enhanced button styling with better visual hierarchy
 	// Focused confirm button
 	focusedConfirmStyle := lipgloss.NewStyle().
 		Width((width-6)/2).
 		Align(lipgloss.Center).
-		Padding(0, 1).
+		Padding(0, 2). // More padding for pill effect
 		Foreground(lipgloss.Color("#FFFFFF")).
 		Background(s.thm.ErrorFg).
 		Bold(true)
@@ -273,15 +275,16 @@ func (s *ConfirmScreen) View() string {
 	focusedCancelStyle := lipgloss.NewStyle().
 		Width((width-6)/2).
 		Align(lipgloss.Center).
-		Padding(0, 1).
-		Foreground(lipgloss.Color("#000000")).
-		Background(s.thm.Accent)
+		Padding(0, 2).
+		Foreground(lipgloss.Color("#FFFFFF")).
+		Background(s.thm.Accent).
+		Bold(true)
 
 	unfocusedButtonStyle := lipgloss.NewStyle().
 		Width((width-6)/2).
 		Align(lipgloss.Center).
-		Padding(0, 1).
-		Foreground(s.thm.TextFg).
+		Padding(0, 2).
+		Foreground(s.thm.MutedFg).
 		Background(s.thm.BorderDim)
 
 	var confirmButton, cancelButton string
@@ -309,9 +312,10 @@ func (s *InfoScreen) View() string {
 	width := 60
 	height := 11
 
+	// Enhanced info modal with rounded border
 	boxStyle := lipgloss.NewStyle().
-		Border(lipgloss.ThickBorder()).
-		BorderForeground(s.thm.Border).
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(s.thm.Accent).
 		Padding(1, 2).
 		Width(width).
 		Height(height)
@@ -322,11 +326,12 @@ func (s *InfoScreen) View() string {
 		Align(lipgloss.Center, lipgloss.Center).
 		Foreground(s.thm.TextFg)
 
+	// Enhanced button with rounded corners effect
 	okStyle := lipgloss.NewStyle().
 		Width(width-6).
 		Align(lipgloss.Center).
-		Padding(0, 1).
-		Foreground(lipgloss.Color("#000000")).
+		Padding(0, 2).
+		Foreground(lipgloss.Color("#FFFFFF")).
 		Background(s.thm.Accent).
 		Bold(true)
 
@@ -436,9 +441,10 @@ func (s *InputScreen) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (s *InputScreen) View() string {
 	width := 60
 
+	// Enhanced input modal with rounded border
 	boxStyle := lipgloss.NewStyle().
-		Border(lipgloss.ThickBorder()).
-		BorderForeground(s.thm.Border).
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(s.thm.Accent).
 		Padding(1, 2).
 		Width(width)
 
@@ -517,7 +523,7 @@ func (s *InputScreen) View() string {
 
 // NewHelpScreen initializes help content with the available screen size.
 func NewHelpScreen(maxWidth, maxHeight int, customCommands map[string]*config.CustomCommand, thm *theme.Theme) *HelpScreen {
-	helpText := `# Git Worktree Status Help
+	helpText := `# LazyWorktree Help
 
 **Navigation**
 - j / Down: Move cursor down
@@ -1033,10 +1039,10 @@ func (s *ListSelectionScreen) Selected() (selectionItem, bool) {
 func (s *PRSelectionScreen) View() string {
 	maxVisible := s.height - 6 // Account for header, input, footer
 
-	// Styles
+	// Enhanced PR selection modal with rounded border
 	boxStyle := lipgloss.NewStyle().
-		Border(lipgloss.ThickBorder()).
-		BorderForeground(s.thm.Border).
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(s.thm.Accent).
 		Width(s.width).
 		Padding(0)
 
@@ -1047,7 +1053,7 @@ func (s *PRSelectionScreen) View() string {
 		BorderForeground(s.thm.BorderDim).
 		Width(s.width-2).
 		Padding(0, 1).
-		Render("Select PR/MR to Create Worktree")
+		Render("🔀 Select PR/MR to Create Worktree")
 
 	inputStyle := lipgloss.NewStyle().
 		Padding(0, 1).
@@ -1143,10 +1149,10 @@ func (s *PRSelectionScreen) View() string {
 func (s *ListSelectionScreen) View() string {
 	maxVisible := s.height - 6 // Account for header, input, footer
 
-	// Styles
+	// Enhanced list selection modal with rounded border
 	boxStyle := lipgloss.NewStyle().
-		Border(lipgloss.ThickBorder()).
-		BorderForeground(s.thm.Border).
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(s.thm.Accent).
 		Width(s.width).
 		Padding(0)
 
@@ -1403,10 +1409,10 @@ func (s *HelpScreen) View() string {
 	s.viewport.Height = vHeight
 	s.viewport.SetContent(content)
 
-	// Styles
+	// Enhanced help modal with rounded border
 	boxStyle := lipgloss.NewStyle().
-		Border(lipgloss.ThickBorder()).
-		BorderForeground(s.thm.Border).
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(s.thm.Accent).
 		Width(s.width).
 		Padding(0)
 
@@ -1417,7 +1423,7 @@ func (s *HelpScreen) View() string {
 		BorderForeground(s.thm.BorderDim).
 		Width(s.width-2).
 		Padding(0, 1).
-		Render("Help")
+		Render("❓ Help")
 
 	// Search bar styling
 	searchView := ""
@@ -1465,10 +1471,10 @@ func (s *CommandPaletteScreen) View() string {
 	width := 80
 	maxVisible := 12
 
-	// Styles
+	// Enhanced palette modal with rounded border
 	boxStyle := lipgloss.NewStyle().
-		Border(lipgloss.ThickBorder()).
-		BorderForeground(s.thm.Border).
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(s.thm.Accent).
 		Width(width).
 		Padding(0)
 
@@ -1571,12 +1577,13 @@ func (s *CommandPaletteScreen) View() string {
 // View renders the diff text inside a scrollable viewport.
 func (s *DiffScreen) View() string {
 	titleStyle := lipgloss.NewStyle().Bold(true).Foreground(s.thm.Accent)
-	title := titleStyle.Render(s.title)
+	title := titleStyle.Render("📄 " + s.title)
 
 	content := lipgloss.JoinVertical(lipgloss.Left, title, "", s.viewport.View())
+	// Enhanced diff view with rounded border
 	return lipgloss.NewStyle().
-		Border(lipgloss.ThickBorder()).
-		BorderForeground(s.thm.Border).
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(s.thm.Accent).
 		Padding(1, 2).
 		Width(maxInt(80, s.viewport.Width)).
 		Render(content)
@@ -1632,9 +1639,10 @@ func (s *TrustScreen) View() string {
 	width := 70
 	height := 25
 
+	// Enhanced trust warning with rounded border and warning color
 	boxStyle := lipgloss.NewStyle().
-		Border(lipgloss.ThickBorder()).
-		BorderForeground(s.thm.Border).
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(s.thm.WarnFg). // Use warning color for attention
 		Padding(1, 2).
 		Width(width).
 		Height(height)
@@ -1703,9 +1711,10 @@ func (s *WelcomeScreen) View() string {
 	width := 70
 	height := 20
 
+	// Enhanced welcome screen with rounded border
 	boxStyle := lipgloss.NewStyle().
-		Border(lipgloss.ThickBorder()).
-		BorderForeground(s.thm.Border).
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(s.thm.Accent).
 		Padding(1, 2).
 		Width(width).
 		Height(height)
@@ -1715,6 +1724,8 @@ func (s *WelcomeScreen) View() string {
 		Foreground(s.thm.Accent).
 		Align(lipgloss.Center).
 		MarginBottom(1)
+
+	welcomeIcon := "👋"
 
 	messageStyle := lipgloss.NewStyle().
 		Align(lipgloss.Center).
@@ -1734,13 +1745,13 @@ func (s *WelcomeScreen) View() string {
 		Foreground(s.thm.Accent).
 		Render("[Retry]")
 
-	message := fmt.Sprintf("No worktrees found.\n\nCurrent Directory: %s\nWorktree Root: %s\n\nPlease ensure you are in a git repository or the configured worktree root.\nYou may need to initialize a repository or configure 'worktree_dir' in config.",
+	message := fmt.Sprintf(" No worktrees found.\n\n Current Directory: %s\n Worktree Root: %s\n\nPlease ensure you are in a git repository or the configured worktree root.\nYou may need to initialize a repository or configure 'worktree_dir' in config.",
 		s.currentDir,
 		s.worktreeDir,
 	)
 
 	content := fmt.Sprintf("%s\n%s\n\n%s  %s",
-		titleStyle.Render("Welcome to LazyWorktree"),
+		titleStyle.Render(welcomeIcon+" Welcome to LazyWorktree"),
 		messageStyle.Render(message),
 		quitButton,
 		retryButton,
@@ -1854,9 +1865,10 @@ func (s *CommitScreen) renderHeader() string {
 func (s *CommitScreen) View() string {
 	width := maxInt(100, s.viewport.Width)
 
+	// Enhanced commit view with rounded border
 	boxStyle := lipgloss.NewStyle().
-		Border(lipgloss.ThickBorder()).
-		BorderForeground(s.thm.Border).
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(s.thm.Accent).
 		Padding(0, 1).
 		Width(width)
 
