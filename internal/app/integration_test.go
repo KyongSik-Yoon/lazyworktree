@@ -124,6 +124,21 @@ func TestFilterInput(t *testing.T) {
 	tm.WaitFinished(t, teatest.WithFinalTimeout(2*time.Second))
 }
 
+func TestSearchAutoSelectStartsFocused(t *testing.T) {
+	cfg := &config.AppConfig{
+		WorktreeDir:      t.TempDir(),
+		SearchAutoSelect: true,
+	}
+	m := NewModel(cfg, "")
+
+	if !m.showingFilter {
+		t.Error("Expected showingFilter to be true when search auto-select is enabled")
+	}
+	if !m.filterInput.Focused() {
+		t.Error("Expected filter input to be focused when search auto-select is enabled")
+	}
+}
+
 // TestSortToggle tests the sort toggle functionality
 func TestSortToggle(t *testing.T) {
 	cfg := &config.AppConfig{

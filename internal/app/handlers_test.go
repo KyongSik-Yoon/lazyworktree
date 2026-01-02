@@ -53,6 +53,47 @@ func TestHandleEnterKeySelectsWorktree(t *testing.T) {
 	}
 }
 
+func TestFilterEnterSelectsFirstMatch(t *testing.T) {
+	cfg := &config.AppConfig{
+		WorktreeDir:      t.TempDir(),
+		SortByActive:     false,
+		SearchAutoSelect: true,
+	}
+	m := NewModel(cfg, "")
+	m.focusedPane = 0
+
+	m.worktrees = []*models.WorktreeInfo{
+		{Path: filepath.Join(cfg.WorktreeDir, "b-worktree"), Branch: "feat"},
+		{Path: filepath.Join(cfg.WorktreeDir, "a-worktree"), Branch: "feat"},
+	}
+	m.filterQuery = "feat"
+	m.filterInput.SetValue("feat")
+	m.updateTable()
+	m.showingFilter = true
+	m.filterInput.Focus()
+	m.worktreeTable.SetCursor(1)
+	m.selectedIndex = 1
+
+	updated, cmd := m.handleKeyMsg(tea.KeyMsg{Type: tea.KeyEnter})
+	updatedModel, ok := updated.(*Model)
+	if !ok {
+		t.Fatalf("expected updated model, got %T", updated)
+	}
+	m = updatedModel
+
+	if cmd == nil {
+		t.Fatal("expected quit command to be returned")
+	}
+	msg := cmd()
+	if _, ok := msg.(tea.QuitMsg); !ok {
+		t.Fatalf("expected quit message, got %T", msg)
+	}
+	expected := filepath.Join(cfg.WorktreeDir, "a-worktree")
+	if m.selectedPath != expected {
+		t.Fatalf("expected selected path %q, got %q", expected, m.selectedPath)
+	}
+}
+
 func TestHandleCachedWorktreesUpdatesState(t *testing.T) {
 	cfg := &config.AppConfig{
 		WorktreeDir: t.TempDir(),

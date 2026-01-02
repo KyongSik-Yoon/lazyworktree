@@ -327,6 +327,7 @@ settings. Example (also in [config.example.yaml](./config.example.yaml)):
 worktree_dir: ~/.local/share/worktrees
 sort_by_active: true
 auto_fetch_prs: false
+search_auto_select: false
 max_untracked_diffs: 10
 max_diff_chars: 200000
 theme: dracula  # Options: "dracula" (default), "narna", "clean-light", "solarized-dark",
@@ -359,6 +360,7 @@ Notes:
   commands (if present).
 - Set `sort_by_active` to `false` to sort by path.
 - Set `auto_fetch_prs` to `true` to fetch PR data on startup.
+- Set `search_auto_select` to `true` to start with the filter focused and let `Enter` pick the first match (or pass `--search-auto-select`).
 - Use `max_untracked_diffs: 0` to hide untracked diffs; `max_diff_chars: 0` disables truncation.
 - Run `lazyworktree --show-syntax-themes` to print the default delta `--syntax-theme` values for each UI theme.
 - Use `lazyworktree --theme <name>` to pick a UI theme directly; the supported names match the ones listed above.

@@ -44,6 +44,7 @@ type AppConfig struct {
 	TerminateCommands []string
 	SortByActive      bool
 	AutoFetchPRs      bool
+	SearchAutoSelect  bool // Start with filter focused and select first match on Enter.
 	MaxUntrackedDiffs int
 	MaxDiffChars      int
 	DeltaArgs         []string
@@ -70,6 +71,7 @@ func DefaultConfig() *AppConfig {
 	return &AppConfig{
 		SortByActive:      true,
 		AutoFetchPRs:      false,
+		SearchAutoSelect:  false,
 		MaxUntrackedDiffs: 10,
 		MaxDiffChars:      200000,
 		DeltaArgs:         DefaultDeltaArgsForTheme("dracula"),
@@ -317,6 +319,7 @@ func parseConfig(data map[string]any) *AppConfig {
 	cfg.TerminateCommands = normalizeCommandList(data["terminate_commands"])
 	cfg.SortByActive = coerceBool(data["sort_by_active"], true)
 	cfg.AutoFetchPRs = coerceBool(data["auto_fetch_prs"], false)
+	cfg.SearchAutoSelect = coerceBool(data["search_auto_select"], false)
 	cfg.MaxUntrackedDiffs = coerceInt(data["max_untracked_diffs"], 10)
 	cfg.MaxDiffChars = coerceInt(data["max_diff_chars"], 200000)
 	if _, ok := data["delta_args"]; ok {

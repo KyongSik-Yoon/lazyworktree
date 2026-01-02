@@ -384,17 +384,27 @@ func NewModel(cfg *config.AppConfig, initialFilter string) *Model {
 		m.showingFilter = true
 		m.filterInput.SetValue(initialFilter)
 	}
+	if cfg.SearchAutoSelect && !m.showingFilter {
+		m.showingFilter = true
+	}
+	if m.showingFilter {
+		m.filterInput.Focus()
+	}
 
 	return m
 }
 
 // Init satisfies the tea.Model interface and starts with no command.
 func (m *Model) Init() tea.Cmd {
-	return tea.Batch(
+	cmds := []tea.Cmd{
 		m.loadCache(),
 		m.refreshWorktrees(),
 		m.spinner.Tick,
-	)
+	}
+	if m.showingFilter {
+		cmds = append(cmds, textinput.Blink)
+	}
+	return tea.Batch(cmds...)
 }
 
 // Update processes Bubble Tea messages and routes them through the app model.
@@ -500,7 +510,21 @@ func (m *Model) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	// Handle filter input first - when filtering, only escape/enter should exit
 	if m.showingFilter {
 		keyStr := msg.String()
-		if keyStr == keyEnter || isEscKey(keyStr) {
+		if keyStr == keyEnter {
+			if m.config.SearchAutoSelect && len(m.filteredWts) > 0 {
+				m.showingFilter = false
+				m.filterInput.Blur()
+				m.worktreeTable.Focus()
+				m.worktreeTable.SetCursor(0)
+				m.selectedIndex = 0
+				return m.handleEnterKey()
+			}
+			m.showingFilter = false
+			m.filterInput.Blur()
+			m.worktreeTable.Focus()
+			return m, nil
+		}
+		if isEscKey(keyStr) {
 			m.showingFilter = false
 			m.filterInput.Blur()
 			m.worktreeTable.Focus()
@@ -676,19 +700,20 @@ func (m *Model) handleBuiltInKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 // handleNavigationDown processes down arrow and 'j' key navigation.
 func (m *Model) handleNavigationDown(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	keyMsg := msg
 	var cmd tea.Cmd
 	var cmds []tea.Cmd
 
 	switch m.focusedPane {
 	case 0:
-		m.worktreeTable, cmd = m.worktreeTable.Update(msg)
+		m.worktreeTable, cmd = m.worktreeTable.Update(keyMsg)
 		cmds = append(cmds, cmd)
 		cmds = append(cmds, m.debouncedUpdateDetailsView())
 	case 1:
-		m.statusViewport, cmd = m.statusViewport.Update(msg)
+		m.statusViewport, cmd = m.statusViewport.Update(keyMsg)
 		cmds = append(cmds, cmd)
 	default:
-		m.logTable, cmd = m.logTable.Update(msg)
+		m.logTable, cmd = m.logTable.Update(keyMsg)
 		cmds = append(cmds, cmd)
 	}
 	return m, tea.Batch(cmds...)

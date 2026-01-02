@@ -1,6 +1,8 @@
 worktree_dir: ~/.local/share/worktrees
 sort_by_active: true
 auto_fetch_prs: false
+# Start with the filter focused and select the first match on Enter.
+search_auto_select: false
 max_untracked_diffs: 10
 max_diff_chars: 200000
 

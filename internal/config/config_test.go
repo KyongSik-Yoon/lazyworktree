@@ -15,6 +15,7 @@ func TestDefaultConfig(t *testing.T) {
 	assert.NotNil(t, cfg)
 	assert.True(t, cfg.SortByActive)
 	assert.False(t, cfg.AutoFetchPRs)
+	assert.False(t, cfg.SearchAutoSelect)
 	assert.Equal(t, 10, cfg.MaxUntrackedDiffs)
 	assert.Equal(t, 200000, cfg.MaxDiffChars)
 	assert.Equal(t, []string{"--syntax-theme", "Dracula"}, cfg.DeltaArgs)
@@ -411,6 +412,7 @@ func TestParseConfig(t *testing.T) {
 			validate: func(t *testing.T, cfg *AppConfig) {
 				assert.True(t, cfg.SortByActive)
 				assert.False(t, cfg.AutoFetchPRs)
+				assert.False(t, cfg.SearchAutoSelect)
 				assert.Equal(t, 10, cfg.MaxUntrackedDiffs)
 				assert.Equal(t, 200000, cfg.MaxDiffChars)
 				assert.Equal(t, []string{"--syntax-theme", "Dracula"}, cfg.DeltaArgs)
@@ -478,6 +480,15 @@ func TestParseConfig(t *testing.T) {
 			},
 			validate: func(t *testing.T, cfg *AppConfig) {
 				assert.True(t, cfg.AutoFetchPRs)
+			},
+		},
+		{
+			name: "search_auto_select true",
+			data: map[string]interface{}{
+				"search_auto_select": true,
+			},
+			validate: func(t *testing.T, cfg *AppConfig) {
+				assert.True(t, cfg.SearchAutoSelect)
 			},
 		},
 		{
