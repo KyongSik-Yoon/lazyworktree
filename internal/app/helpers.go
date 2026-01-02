@@ -203,3 +203,34 @@ func maxInt(a, b int) int {
 	}
 	return b
 }
+
+type scoredSuggestion struct {
+	suggestion string
+	score      int
+}
+
+// filterInputSuggestions filters a list of suggestions using fuzzy matching
+// and returns them sorted by relevance score.
+func filterInputSuggestions(suggestions []string, query string) []string {
+	q := strings.ToLower(strings.TrimSpace(query))
+	if q == "" {
+		return suggestions
+	}
+
+	scored := make([]scoredSuggestion, 0, len(suggestions))
+	for _, suggestion := range suggestions {
+		if score, ok := fuzzyScoreLower(q, strings.ToLower(suggestion)); ok {
+			scored = append(scored, scoredSuggestion{suggestion: suggestion, score: score})
+		}
+	}
+
+	sort.SliceStable(scored, func(i, j int) bool {
+		return scored[i].score < scored[j].score
+	})
+
+	filtered := make([]string, len(scored))
+	for i, scoredSuggestion := range scored {
+		filtered[i] = scoredSuggestion.suggestion
+	}
+	return filtered
+}

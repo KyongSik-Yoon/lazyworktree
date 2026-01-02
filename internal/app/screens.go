@@ -56,15 +56,19 @@ type InfoScreen struct {
 
 // InputScreen provides a prompt along with a text input and inline validation.
 type InputScreen struct {
-	prompt      string
-	placeholder string
-	value       string
-	input       textinput.Model
-	errorMsg    string
-	boxWidth    int
-	result      chan string
-	validate    func(string) string
-	thm         *theme.Theme
+	prompt              string
+	placeholder         string
+	value               string
+	input               textinput.Model
+	errorMsg            string
+	boxWidth            int
+	result              chan string
+	validate            func(string) string
+	thm                 *theme.Theme
+	fuzzyFinderInput    bool     // Enable fuzzy finder for suggestions
+	suggestions         []string // Available suggestions for fuzzy matching
+	filteredSuggestions []string
+	selectedSuggestion  int
 }
 
 // HelpScreen renders searchable documentation for the app controls.
@@ -348,20 +352,34 @@ func NewInputScreen(prompt, placeholder, value string, thm *theme.Theme) *InputS
 	ti.Width = 52
 
 	return &InputScreen{
-		prompt:      prompt,
-		placeholder: placeholder,
-		value:       value,
-		input:       ti,
-		errorMsg:    "",
-		boxWidth:    60,
-		result:      make(chan string, 1),
-		thm:         thm,
+		prompt:              prompt,
+		placeholder:         placeholder,
+		value:               value,
+		input:               ti,
+		errorMsg:            "",
+		boxWidth:            60,
+		result:              make(chan string, 1),
+		thm:                 thm,
+		fuzzyFinderInput:    false,
+		suggestions:         []string{},
+		filteredSuggestions: []string{},
+		selectedSuggestion:  0,
 	}
 }
 
 // SetValidation adds an optional validation callback for input submission.
 func (s *InputScreen) SetValidation(fn func(string) string) {
 	s.validate = fn
+}
+
+// SetFuzzyFinder enables fuzzy finder with the provided suggestions.
+func (s *InputScreen) SetFuzzyFinder(enabled bool, suggestions []string) {
+	s.fuzzyFinderInput = enabled
+	if enabled && len(suggestions) > 0 {
+		s.suggestions = suggestions
+		s.filteredSuggestions = suggestions
+	}
+	s.selectedSuggestion = 0
 }
 
 // Init satisfies tea.Model.Init for the input modal.
@@ -378,15 +396,39 @@ func (s *InputScreen) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch keyMsg.String() {
 		case keyEnter:
 			value := s.input.Value()
+			// If fuzzy finder is enabled and a suggestion is selected, use it
+			if s.fuzzyFinderInput && s.selectedSuggestion >= 0 && s.selectedSuggestion < len(s.filteredSuggestions) {
+				value = s.filteredSuggestions[s.selectedSuggestion]
+			}
 			s.result <- value
 			return s, tea.Quit
 		case keyEsc, keyCtrlC:
 			s.result <- ""
 			return s, tea.Quit
+		case keyDown:
+			if s.fuzzyFinderInput && len(s.filteredSuggestions) > 0 {
+				s.selectedSuggestion = (s.selectedSuggestion + 1) % len(s.filteredSuggestions)
+				return s, nil
+			}
+		case keyUp:
+			if s.fuzzyFinderInput && len(s.filteredSuggestions) > 0 {
+				s.selectedSuggestion = (s.selectedSuggestion - 1 + len(s.filteredSuggestions)) % len(s.filteredSuggestions)
+				return s, nil
+			}
 		}
 	}
 
 	s.input, cmd = s.input.Update(msg)
+
+	// Update filtered suggestions based on current input
+	if s.fuzzyFinderInput && len(s.suggestions) > 0 {
+		query := s.input.Value()
+		s.filteredSuggestions = filterInputSuggestions(s.suggestions, query)
+		if s.selectedSuggestion >= len(s.filteredSuggestions) {
+			s.selectedSuggestion = maxInt(0, len(s.filteredSuggestions)-1)
+		}
+	}
+
 	return s, cmd
 }
 
@@ -423,6 +465,37 @@ func (s *InputScreen) View() string {
 		inputWrapperStyle.Render(s.input.View()),
 	}
 
+	// Show fuzzy finder suggestions if enabled
+	if s.fuzzyFinderInput && len(s.filteredSuggestions) > 0 {
+		suggestionsStyle := lipgloss.NewStyle().
+			Foreground(s.thm.MutedFg).
+			Width(width - 6).
+			MarginTop(1)
+
+		selectedStyle := lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#FFFFFF")).
+			Background(s.thm.Accent).
+			Padding(0, 1)
+
+		unselectedStyle := lipgloss.NewStyle().
+			Foreground(s.thm.TextFg).
+			Padding(0, 1)
+
+		suggestions := []string{}
+		maxSuggestions := minInt(3, len(s.filteredSuggestions))
+		for i := 0; i < maxSuggestions; i++ {
+			var item string
+			if i == s.selectedSuggestion {
+				item = selectedStyle.Render("▸ " + s.filteredSuggestions[i])
+			} else {
+				item = unselectedStyle.Render("  " + s.filteredSuggestions[i])
+			}
+			suggestions = append(suggestions, item)
+		}
+
+		contentLines = append(contentLines, suggestionsStyle.Render(strings.Join(suggestions, "\n")))
+	}
+
 	if s.errorMsg != "" {
 		errorStyle := lipgloss.NewStyle().
 			Foreground(s.thm.ErrorFg).
@@ -431,7 +504,11 @@ func (s *InputScreen) View() string {
 		contentLines = append(contentLines, errorStyle.Render(s.errorMsg))
 	}
 
-	contentLines = append(contentLines, footerStyle.Render("Enter to confirm • Esc to cancel"))
+	footerText := "Enter to confirm • Esc to cancel"
+	if s.fuzzyFinderInput && len(s.filteredSuggestions) > 0 {
+		footerText = "↑↓ to navigate • Enter to confirm • Esc to cancel"
+	}
+	contentLines = append(contentLines, footerStyle.Render(footerText))
 
 	content := strings.Join(contentLines, "\n\n")
 

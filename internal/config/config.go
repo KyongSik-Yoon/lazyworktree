@@ -57,6 +57,7 @@ type AppConfig struct {
 	BranchNameScript  string // Script to generate branch name suggestions from diff
 	Theme             string // Theme name: see AvailableThemes in internal/theme
 	MergeMethod       string // Merge method for absorb: "rebase" or "merge" (default: "rebase")
+	FuzzyFinderInput  bool   // Enable fuzzy finder for input suggestions (default: false)
 }
 
 // RepoConfig represents repository-scoped commands from .wt
@@ -79,6 +80,7 @@ func DefaultConfig() *AppConfig {
 		TrustMode:         "tofu",
 		Theme:             "dracula",
 		MergeMethod:       "rebase",
+		FuzzyFinderInput:  false,
 		CustomCommands: map[string]*CustomCommand{
 			"t": {
 				Description: "Open tmux",
@@ -320,6 +322,7 @@ func parseConfig(data map[string]any) *AppConfig {
 	cfg.SortByActive = coerceBool(data["sort_by_active"], true)
 	cfg.AutoFetchPRs = coerceBool(data["auto_fetch_prs"], false)
 	cfg.SearchAutoSelect = coerceBool(data["search_auto_select"], false)
+	cfg.FuzzyFinderInput = coerceBool(data["fuzzy_finder_input"], false)
 	cfg.MaxUntrackedDiffs = coerceInt(data["max_untracked_diffs"], 10)
 	cfg.MaxDiffChars = coerceInt(data["max_diff_chars"], 200000)
 	if _, ok := data["delta_args"]; ok {

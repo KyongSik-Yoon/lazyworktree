@@ -322,6 +322,7 @@ worktree_dir: ~/.local/share/worktrees
 sort_by_active: true
 auto_fetch_prs: false
 search_auto_select: false
+fuzzy_finder_input: false
 max_untracked_diffs: 10
 max_diff_chars: 200000
 theme: dracula  # Options: "dracula" (default), "narna", "clean-light", "solarized-dark",
@@ -354,6 +355,7 @@ Notes:
 - Set `sort_by_active` to `false` to sort by path.
 - Set `auto_fetch_prs` to `true` to fetch PR data upon startup.
 - Set `search_auto_select` to `true` to commence with the filter focused and allow `Enter` to select the first match (alternatively, pass `--search-auto-select`).
+- Set `fuzzy_finder_input` to `true` to enable fuzzy finder suggestions in input dialogs. When enabled, typing in text input fields displays fuzzy-filtered suggestions from available options. Use arrow keys to navigate suggestions and Enter to select.
 - Use `max_untracked_diffs: 0` to conceal untracked diffs; `max_diff_chars: 0` disables truncation.
 - Execute `lazyworktree --show-syntax-themes` to display the default delta `--syntax-theme` values for each UI theme.
 - Use `lazyworktree --theme <name>` to select a UI theme directly; the supported names correspond to those listed above.
