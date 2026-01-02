@@ -161,7 +161,7 @@ You can configure this behavior in `config.yaml` via the `trust_mode` setting:
 
 ## Custom Commands
 
-You can define custom keybindings in your `~/.config/lazyworktree/config.yaml` to execute commands in the selected worktree. Custom commands are executed interactively (the TUI suspends, just like when launching `lazygit`) and show up in the command palette.
+You can define custom keybindings in your `~/.config/lazyworktree/config.yaml` to execute commands in the selected worktree. Custom commands are executed interactively (the TUI suspends, just like when launching `lazygit`) and show up in the command palette. If you set `show_output`, lazyworktree pipes the command output through the configured pager.
 
 By default, `t` opens a tmux session with a single `shell` window. You can override it by defining `custom_commands.t`.
 When `attach` is true, lazyworktree attaches to the session immediately. When `attach` is false, it shows an info modal with instructions to attach manually.
@@ -185,6 +185,11 @@ custom_commands:
     description: Run tests
     show_help: false
     wait: true
+  o: # Show output in the pager
+    command: git status -sb
+    description: Status
+    show_help: true
+    show_output: true
   a: # Open CLaude CLI in the selected workspace in a new kitty tab
     command: "kitten @ launch --type tab --cwd $WORKTREE_PATH -- claude"
     description: Open Claude
@@ -213,6 +218,7 @@ custom_commands:
 | `description` | string | `""` | Description shown in the help screen and command palette |
 | `show_help` | bool | `false` | Whether to show this command in the help screen (`?`) and footer hints |
 | `wait` | bool | `false` | Wait for key press after command completes (useful for quick commands like `ls` or `make test`) |
+| `show_output` | bool | `false` | Run non-interactively and show stdout/stderr in the pager (ignores `wait`) |
 | `tmux` | object | `null` | Configure a tmux session instead of executing a single command |
 
 #### tmux fields
@@ -327,6 +333,7 @@ theme: dracula  # Options: "dracula" (default), "narna", "clean-light", "solariz
                 #          "solarized-light", "gruvbox-dark", "gruvbox-light",
                 #          "nord", "monokai", "catppuccin-mocha"
 delta_path: delta
+pager: "less --use-color --wordwrap -qcR -P 'Press q to exit..'"
 delta_args:
   - --syntax-theme
   - Dracula
@@ -357,6 +364,7 @@ Notes:
 - Use `lazyworktree --theme <name>` to pick a UI theme directly; the supported names match the ones listed above.
 - `delta_args` sets arguments passed to `delta` (defaults follow the UI theme: Dracula → `Dracula`, Narna → `OneHalfDark`, Clean-Light → `GitHub`, Solarized Dark → `Solarized (dark)`, Solarized Light → `Solarized (light)`, Gruvbox Dark → `Gruvbox Dark`, Gruvbox Light → `Gruvbox Light`, Nord → `Nord`, Monokai → `Monokai Extended`, Catppuccin Mocha → `Catppuccin Mocha`).
 - `delta_path` sets path to delta executable (default: `delta`). Set to empty string to disable delta and use plain git diff output.
+- `pager` sets the pager for `show_output` commands (default: `$PAGER`, fallback `less --use-color --wordwrap -qcR -P 'Press q to exit..'`, then `more`, then `cat`). When the pager is `less`, lazyworktree sets `LESS=` and `LESSHISTFILE=-` to ignore user defaults.
 - `merge_method` controls how the "Absorb worktree" action integrates changes into main: `rebase` (default) rebases the feature branch onto main then fast-forwards, `merge` creates a merge commit.
 - `branch_name_script` runs a script to generate branch name suggestions when creating worktrees from changes. The script receives the git diff on stdin and should output a branch name. See [AI-powered branch names](#ai-powered-branch-names) below.
 

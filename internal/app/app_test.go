@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"strconv"
 	"strings"
 	"testing"
@@ -358,6 +359,45 @@ func TestRenderFooterIncludesCustomHelpHints(t *testing.T) {
 
 	if !strings.Contains(footer, "Run tests") {
 		t.Fatalf("expected footer to include custom command label, got %q", footer)
+	}
+}
+
+func TestPagerCommandFallbacksToLess(t *testing.T) {
+	if runtime.GOOS == osWindows {
+		t.Skip("pager fallback test relies on unix-like PATH lookup")
+	}
+
+	originalPath := os.Getenv("PATH")
+	originalPager := os.Getenv("PAGER")
+	t.Cleanup(func() {
+		_ = os.Setenv("PATH", originalPath)
+		_ = os.Setenv("PAGER", originalPager)
+	})
+
+	tempDir := t.TempDir()
+	lessPath := filepath.Join(tempDir, "less")
+	if err := os.WriteFile(lessPath, []byte("#!/bin/sh\nexit 0\n"), 0o600); err != nil {
+		t.Fatalf("failed to write fake less: %v", err)
+	}
+	// #nosec G302 -- test requires an executable file on PATH.
+	if err := os.Chmod(lessPath, 0o700); err != nil {
+		t.Fatalf("failed to chmod fake less: %v", err)
+	}
+
+	if err := os.Setenv("PATH", tempDir); err != nil {
+		t.Fatalf("failed to set PATH: %v", err)
+	}
+	if err := os.Unsetenv("PAGER"); err != nil {
+		t.Fatalf("failed to unset PAGER: %v", err)
+	}
+
+	cfg := &config.AppConfig{
+		WorktreeDir: t.TempDir(),
+	}
+	m := NewModel(cfg, "")
+
+	if pager := m.pagerCommand(); pager != "less --use-color --wordwrap -qcR -P 'Press q to exit..'" {
+		t.Fatalf("expected fallback pager to be less defaults, got %q", pager)
 	}
 }
 

@@ -1011,6 +1011,7 @@ func TestParseCustomCommands(t *testing.T) {
 						"description": "Open editor",
 						"show_help":   true,
 						"wait":        true,
+						"show_output": true,
 					},
 				},
 			},
@@ -1020,6 +1021,7 @@ func TestParseCustomCommands(t *testing.T) {
 					Description: "Open editor",
 					ShowHelp:    true,
 					Wait:        true,
+					ShowOutput:  true,
 				},
 			},
 		},
@@ -1249,6 +1251,30 @@ func TestParseCustomCommands(t *testing.T) {
 			},
 		},
 		{
+			name: "boolean coercion for show_output",
+			input: map[string]interface{}{
+				"custom_commands": map[string]interface{}{
+					"a": map[string]interface{}{
+						"command":     "cmd1",
+						"show_output": "true",
+					},
+					"b": map[string]interface{}{
+						"command":     "cmd2",
+						"show_output": "false",
+					},
+					"c": map[string]interface{}{
+						"command":     "cmd3",
+						"show_output": 1,
+					},
+				},
+			},
+			expected: map[string]*CustomCommand{
+				"a": {Command: "cmd1", ShowOutput: true},
+				"b": {Command: "cmd2", ShowOutput: false},
+				"c": {Command: "cmd3", ShowOutput: true},
+			},
+		},
+		{
 			name: "missing fields use defaults",
 			input: map[string]interface{}{
 				"custom_commands": map[string]interface{}{
@@ -1363,6 +1389,14 @@ func TestParseConfig_CustomCommands(t *testing.T) {
 			tt.validate(t, cfg)
 		})
 	}
+}
+
+func TestParseConfigPager(t *testing.T) {
+	input := map[string]interface{}{
+		"pager": "less -R",
+	}
+	cfg := parseConfig(input)
+	assert.Equal(t, "less -R", cfg.Pager)
 }
 
 func TestLoadConfigRejectsOutsideConfigDir(t *testing.T) {

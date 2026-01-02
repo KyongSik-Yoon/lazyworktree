@@ -119,6 +119,57 @@ func TestExecuteCustomCommandUsesCommandRunner(t *testing.T) {
 	}
 }
 
+func TestExecuteCustomCommandShowsOutput(t *testing.T) {
+	cfg := &config.AppConfig{
+		WorktreeDir: t.TempDir(),
+		Pager:       "less --use-color --wordwrap -qcR -P 'Press q to exit..'",
+		CustomCommands: map[string]*config.CustomCommand{
+			"x": {
+				Command:    "echo hello",
+				ShowOutput: true,
+				Wait:       true,
+			},
+		},
+	}
+	m := NewModel(cfg, "")
+	m.filteredWts = []*models.WorktreeInfo{{Path: testWorktreePath, Branch: "feat"}}
+	m.selectedIndex = 0
+
+	capture := &commandCapture{}
+	m.commandRunner = capture.runner
+	m.execProcess = capture.exec
+
+	cmd := m.executeCustomCommand("x")
+	if cmd == nil {
+		t.Fatal("expected command to be returned")
+	}
+
+	if capture.name != "bash" {
+		t.Fatalf("expected bash command, got %q", capture.name)
+	}
+	if len(capture.args) != 2 || capture.args[0] != "-c" {
+		t.Fatalf("expected bash -c args, got %v", capture.args)
+	}
+	if strings.Contains(capture.args[1], "Press any key to continue") {
+		t.Fatalf("unexpected wait prompt in output command: %q", capture.args[1])
+	}
+	if !strings.Contains(capture.args[1], "set -o pipefail") {
+		t.Fatalf("expected pipefail in command, got %q", capture.args[1])
+	}
+	if !strings.Contains(capture.args[1], "LESS= LESSHISTFILE=-") {
+		t.Fatalf("expected LESS defaults in command, got %q", capture.args[1])
+	}
+	if !strings.Contains(capture.args[1], "less --use-color --wordwrap -qcR -P 'Press q to exit..'") {
+		t.Fatalf("expected pager in command, got %q", capture.args[1])
+	}
+	if capture.dir != testWorktreePath {
+		t.Fatalf("expected worktree dir, got %q", capture.dir)
+	}
+	if value, ok := envValue(capture.env, "WORKTREE_PATH"); !ok || value != testWorktreePath {
+		t.Fatalf("expected WORKTREE_PATH in env, got %q (present=%v)", value, ok)
+	}
+}
+
 func TestOpenPRUsesCommandRunner(t *testing.T) {
 	cfg := &config.AppConfig{
 		WorktreeDir: t.TempDir(),

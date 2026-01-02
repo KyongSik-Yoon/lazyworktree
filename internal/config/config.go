@@ -18,6 +18,7 @@ type CustomCommand struct {
 	Description string
 	ShowHelp    bool
 	Wait        bool
+	ShowOutput  bool
 	Tmux        *TmuxCommand
 }
 
@@ -50,6 +51,7 @@ type AppConfig struct {
 	DeltaPath         string
 	TrustMode         string
 	DebugLog          string
+	Pager             string
 	CustomCommands    map[string]*CustomCommand
 	BranchNameScript  string // Script to generate branch name suggestions from diff
 	Theme             string // Theme name: see AvailableThemes in internal/theme
@@ -274,6 +276,7 @@ func parseCustomCommands(data map[string]any) map[string]*CustomCommand {
 		}
 		cmd.ShowHelp = coerceBool(cmdMap["show_help"], false)
 		cmd.Wait = coerceBool(cmdMap["wait"], false)
+		cmd.ShowOutput = coerceBool(cmdMap["show_output"], false)
 		if tmuxRaw, ok := cmdMap["tmux"].(map[string]any); ok {
 			cmd.Tmux = parseTmuxCommand(tmuxRaw)
 		}
@@ -301,6 +304,12 @@ func parseConfig(data map[string]any) *AppConfig {
 		debugLog = strings.TrimSpace(debugLog)
 		if debugLog != "" {
 			cfg.DebugLog = debugLog
+		}
+	}
+	if pager, ok := data["pager"].(string); ok {
+		pager = strings.TrimSpace(pager)
+		if pager != "" {
+			cfg.Pager = pager
 		}
 	}
 

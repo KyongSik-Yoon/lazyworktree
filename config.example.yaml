@@ -15,6 +15,9 @@ theme: dracula
 # Example: delta_path: /usr/local/bin/delta  # custom path
 delta_path: delta
 
+# Pager used for show_output custom commands (default: $PAGER or less)
+pager: "less --use-color --wordwrap -qcR -P 'Press q to exit..'"
+
 # Extra arguments passed to delta for diff rendering.
 # If omitted, lazyworktree picks a syntax theme matching your UI:
 #   - dracula -> Dracula
@@ -60,6 +63,7 @@ terminate_commands:
 #   description: Description shown in help screen (optional)
 #   show_help: Show in help screen and footer hints (default: false)
 #   wait: Wait for key press after command completes (default: false, useful for quick commands like ls or make test)
+#   show_output: Show command output in the pager instead of running interactively (default: false)
 custom_commands:
   e:
     command: nvim
@@ -80,10 +84,10 @@ custom_commands:
     show_help: true
     wait: true
   "ctrl+t":
-    command: git status
-    description: Git status
+    command: "git status -sb"
+    description: Status
     show_help: true
-    wait: true
+    show_output: true
   "T":
     description: Open tmux session
     show_help: true

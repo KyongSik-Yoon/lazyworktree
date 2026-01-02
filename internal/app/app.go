@@ -487,6 +487,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.commitScreen = NewCommitScreen(msg.meta, msg.stat, msg.diff, m.git.UseDelta(), m.theme)
 		m.currentScreen = screenCommit
 		return m, nil
+
 	}
 
 	return m, tea.Batch(cmds...)
@@ -2131,6 +2132,10 @@ func (m *Model) executeCustomCommand(key string) tea.Cmd {
 		return m.openTmuxSession(customCmd.Tmux, wt)
 	}
 
+	if customCmd.ShowOutput {
+		return m.executeCustomCommandWithPager(customCmd, wt)
+	}
+
 	// Set environment variables
 	env := m.buildCommandEnv(wt.Branch, wt.Path)
 	envVars := os.Environ()
@@ -2150,6 +2155,34 @@ func (m *Model) executeCustomCommand(key string) tea.Cmd {
 	// #nosec G204 -- command comes from user's own config file
 	c = m.commandRunner("bash", "-c", cmdStr)
 
+	c.Dir = wt.Path
+	c.Env = envVars
+
+	return m.execProcess(c, func(err error) tea.Msg {
+		if err != nil {
+			return errMsg{err: err}
+		}
+		return refreshCompleteMsg{}
+	})
+}
+
+func (m *Model) executeCustomCommandWithPager(customCmd *config.CustomCommand, wt *models.WorktreeInfo) tea.Cmd {
+	env := m.buildCommandEnv(wt.Branch, wt.Path)
+	envVars := os.Environ()
+	for k, v := range env {
+		envVars = append(envVars, fmt.Sprintf("%s=%s", k, v))
+	}
+
+	pager := m.pagerCommand()
+	pagerEnv := m.pagerEnv(pager)
+	pagerCmd := pager
+	if pagerEnv != "" {
+		pagerCmd = fmt.Sprintf("%s %s", pagerEnv, pager)
+	}
+	cmdStr := fmt.Sprintf("set -o pipefail; (%s) 2>&1 | %s", customCmd.Command, pagerCmd)
+	// Always run via shell to support pipes, redirects, and shell features
+	// #nosec G204 -- command comes from user's own config file
+	c := m.commandRunner("bash", "-c", cmdStr)
 	c.Dir = wt.Path
 	c.Env = envVars
 
@@ -2762,6 +2795,42 @@ func (m *Model) getWorktreeDir() string {
 	}
 	home, _ := os.UserHomeDir()
 	return filepath.Join(home, ".local", "share", "worktrees")
+}
+
+func (m *Model) pagerCommand() string {
+	if m.config != nil {
+		if pager := strings.TrimSpace(m.config.Pager); pager != "" {
+			return pager
+		}
+	}
+	if pager := strings.TrimSpace(os.Getenv("PAGER")); pager != "" {
+		return pager
+	}
+	if _, err := exec.LookPath("less"); err == nil {
+		return "less --use-color --wordwrap -qcR -P 'Press q to exit..'"
+	}
+	if _, err := exec.LookPath("more"); err == nil {
+		return "more"
+	}
+	return "cat"
+}
+
+func (m *Model) pagerEnv(pager string) string {
+	if pagerIsLess(pager) {
+		return "LESS= LESSHISTFILE=-"
+	}
+	return ""
+}
+
+func pagerIsLess(pager string) bool {
+	fields := strings.Fields(pager)
+	for _, field := range fields {
+		if strings.Contains(field, "=") && !strings.HasPrefix(field, "-") && !strings.Contains(field, "/") {
+			continue
+		}
+		return filepath.Base(field) == "less"
+	}
+	return false
 }
 
 // GetSelectedPath returns the selected worktree path for shell integration.
