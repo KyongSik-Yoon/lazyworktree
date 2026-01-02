@@ -60,6 +60,26 @@ func TestSyntaxThemeForUITheme(t *testing.T) {
 	}
 }
 
+func TestNormalizeThemeName(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		want  string
+	}{
+		{name: "lowercase", input: "dracula", want: "dracula"},
+		{name: "uppercase", input: "NARNA", want: "narna"},
+		{name: "trimmed whitespace", input: "  clean-light  ", want: "clean-light"},
+		{name: "unknown theme", input: "invalid", want: ""},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, NormalizeThemeName(tt.input))
+		})
+	}
+}
+
 func TestNormalizeArgsList(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -483,6 +503,7 @@ func TestParseConfig(t *testing.T) {
 				"delta_args": "--syntax-theme Dracula",
 			},
 			validate: func(t *testing.T, cfg *AppConfig) {
+				assert.True(t, cfg.DeltaArgsSet)
 				assert.Equal(t, []string{"--syntax-theme", "Dracula"}, cfg.DeltaArgs)
 			},
 		},

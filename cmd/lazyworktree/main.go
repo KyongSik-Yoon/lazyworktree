@@ -25,12 +25,14 @@ func main() {
 	var worktreeDir string
 	var debugLog string
 	var outputSelection string
+	var themeName string
 	var showVersion bool
 	var showSyntaxThemes bool
 
 	flag.StringVar(&worktreeDir, "worktree-dir", "", "Override the default worktree root directory")
 	flag.StringVar(&debugLog, "debug-log", "", "Path to debug log file")
 	flag.StringVar(&outputSelection, "output-selection", "", "Write selected worktree path to a file")
+	flag.StringVar(&themeName, "theme", "", "Override the UI theme (supported: dracula, narna, clean-light, solarized-dark, solarized-light, gruvbox-dark, gruvbox-light, nord, monokai, catppuccin-mocha)")
 	flag.BoolVar(&showVersion, "version", false, "Print version information")
 	flag.BoolVar(&showSyntaxThemes, "show-syntax-themes", false, "List available delta syntax themes")
 	flag.Parse()
@@ -50,6 +52,18 @@ func main() {
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error loading config: %v\n", err)
 		cfg = config.DefaultConfig()
+	}
+
+	if themeName != "" {
+		normalized := config.NormalizeThemeName(themeName)
+		if normalized == "" {
+			fmt.Fprintf(os.Stderr, "Unknown theme %q\n", themeName)
+			os.Exit(1)
+		}
+		cfg.Theme = normalized
+		if !cfg.DeltaArgsSet {
+			cfg.DeltaArgs = config.DefaultDeltaArgsForTheme(normalized)
+		}
 	}
 
 	switch {

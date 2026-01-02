@@ -357,6 +357,7 @@ Notes:
 - Set `auto_fetch_prs` to `true` to fetch PR data on startup.
 - Use `max_untracked_diffs: 0` to hide untracked diffs; `max_diff_chars: 0` disables truncation.
 - Run `lazyworktree --show-syntax-themes` to print the default delta `--syntax-theme` values for each UI theme.
+- Use `lazyworktree --theme <name>` to pick a UI theme directly; the supported names match the ones listed above.
 - `delta_args` sets arguments passed to `delta` (defaults follow the UI theme: Dracula → `Dracula`, Narna → `OneHalfDark`, Clean-Light → `GitHub`, Solarized Dark → `Solarized (dark)`, Solarized Light → `Solarized (light)`, Gruvbox Dark → `Gruvbox Dark`, Gruvbox Light → `Gruvbox Light`, Nord → `Nord`, Monokai → `Monokai Extended`, Catppuccin Mocha → `Catppuccin Mocha`).
 - `delta_path` sets path to delta executable (default: `delta`). Set to empty string to disable delta and use plain git diff output.
 - `branch_name_script` runs a script to generate branch name suggestions when creating worktrees from changes. The script receives the git diff on stdin and should output a branch name. See [AI-powered branch names](#ai-powered-branch-names) below.

@@ -46,6 +46,7 @@ type AppConfig struct {
 	MaxUntrackedDiffs int
 	MaxDiffChars      int
 	DeltaArgs         []string
+	DeltaArgsSet      bool `yaml:"-"`
 	DeltaPath         string
 	TrustMode         string
 	DebugLog          string
@@ -68,7 +69,7 @@ func DefaultConfig() *AppConfig {
 		AutoFetchPRs:      false,
 		MaxUntrackedDiffs: 10,
 		MaxDiffChars:      200000,
-		DeltaArgs:         defaultDeltaArgsForTheme("dracula"),
+		DeltaArgs:         DefaultDeltaArgsForTheme("dracula"),
 		DeltaPath:         "delta",
 		TrustMode:         "tofu",
 		Theme:             "dracula",
@@ -286,7 +287,6 @@ func parseCustomCommands(data map[string]any) map[string]*CustomCommand {
 
 func parseConfig(data map[string]any) *AppConfig {
 	cfg := DefaultConfig()
-	deltaArgsProvided := false
 
 	if worktreeDir, ok := data["worktree_dir"].(string); ok {
 		worktreeDir = strings.TrimSpace(worktreeDir)
@@ -310,7 +310,7 @@ func parseConfig(data map[string]any) *AppConfig {
 	cfg.MaxDiffChars = coerceInt(data["max_diff_chars"], 200000)
 	if _, ok := data["delta_args"]; ok {
 		cfg.DeltaArgs = normalizeArgsList(data["delta_args"])
-		deltaArgsProvided = true
+		cfg.DeltaArgsSet = true
 	}
 	if deltaPath, ok := data["delta_path"].(string); ok {
 		cfg.DeltaPath = strings.TrimSpace(deltaPath)
@@ -324,24 +324,13 @@ func parseConfig(data map[string]any) *AppConfig {
 	}
 
 	if theme, ok := data["theme"].(string); ok {
-		theme = strings.ToLower(strings.TrimSpace(theme))
-		switch theme {
-		case "dracula",
-			"narna",
-			"clean-light",
-			"solarized-dark",
-			"solarized-light",
-			"gruvbox-dark",
-			"gruvbox-light",
-			"nord",
-			"monokai",
-			"catppuccin-mocha":
-			cfg.Theme = theme
+		if normalized := NormalizeThemeName(theme); normalized != "" {
+			cfg.Theme = normalized
 		}
 	}
 
-	if !deltaArgsProvided {
-		cfg.DeltaArgs = defaultDeltaArgsForTheme(cfg.Theme)
+	if !cfg.DeltaArgsSet {
+		cfg.DeltaArgs = DefaultDeltaArgsForTheme(cfg.Theme)
 	}
 
 	if branchNameScript, ok := data["branch_name_script"].(string); ok {
@@ -486,7 +475,8 @@ func isPathWithin(base, target string) bool {
 	return true
 }
 
-func defaultDeltaArgsForTheme(theme string) []string {
+// DefaultDeltaArgsForTheme returns the default delta arguments for a given theme.
+func DefaultDeltaArgsForTheme(theme string) []string {
 	switch theme {
 	case "narna":
 		return []string{"--syntax-theme", "OneHalfDark"}
@@ -513,11 +503,31 @@ func defaultDeltaArgsForTheme(theme string) []string {
 
 // SyntaxThemeForUITheme returns the default delta syntax theme for a UI theme.
 func SyntaxThemeForUITheme(theme string) string {
-	args := defaultDeltaArgsForTheme(theme)
+	args := DefaultDeltaArgsForTheme(theme)
 	for i := 0; i < len(args)-1; i++ {
 		if args[i] == "--syntax-theme" {
 			return args[i+1]
 		}
 	}
 	return ""
+}
+
+// NormalizeThemeName returns the canonical theme name if it is supported.
+func NormalizeThemeName(name string) string {
+	name = strings.ToLower(strings.TrimSpace(name))
+	switch name {
+	case "dracula",
+		"narna",
+		"clean-light",
+		"solarized-dark",
+		"solarized-light",
+		"gruvbox-dark",
+		"gruvbox-light",
+		"nord",
+		"monokai",
+		"catppuccin-mocha":
+		return name
+	default:
+		return ""
+	}
 }
