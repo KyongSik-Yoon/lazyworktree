@@ -53,6 +53,7 @@ type AppConfig struct {
 	CustomCommands    map[string]*CustomCommand
 	BranchNameScript  string // Script to generate branch name suggestions from diff
 	Theme             string // Theme name: see AvailableThemes in internal/theme
+	MergeMethod       string // Merge method for absorb: "rebase" or "merge" (default: "rebase")
 }
 
 // RepoConfig represents repository-scoped commands from .wt
@@ -73,6 +74,7 @@ func DefaultConfig() *AppConfig {
 		DeltaPath:         "delta",
 		TrustMode:         "tofu",
 		Theme:             "dracula",
+		MergeMethod:       "rebase",
 		CustomCommands: map[string]*CustomCommand{
 			"t": {
 				Description: "Open tmux",
@@ -337,6 +339,13 @@ func parseConfig(data map[string]any) *AppConfig {
 		branchNameScript = strings.TrimSpace(branchNameScript)
 		if branchNameScript != "" {
 			cfg.BranchNameScript = branchNameScript
+		}
+	}
+
+	if mergeMethod, ok := data["merge_method"].(string); ok {
+		mergeMethod = strings.ToLower(strings.TrimSpace(mergeMethod))
+		if mergeMethod == "rebase" || mergeMethod == "merge" {
+			cfg.MergeMethod = mergeMethod
 		}
 	}
 

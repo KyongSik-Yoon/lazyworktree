@@ -20,6 +20,7 @@ func TestDefaultConfig(t *testing.T) {
 	assert.Equal(t, []string{"--syntax-theme", "Dracula"}, cfg.DeltaArgs)
 	assert.Equal(t, "delta", cfg.DeltaPath)
 	assert.Equal(t, "tofu", cfg.TrustMode)
+	assert.Equal(t, "rebase", cfg.MergeMethod)
 	assert.Empty(t, cfg.WorktreeDir)
 	assert.Empty(t, cfg.InitCommands)
 	assert.Empty(t, cfg.TerminateCommands)
@@ -714,6 +715,42 @@ func TestParseConfig(t *testing.T) {
 			},
 			validate: func(t *testing.T, cfg *AppConfig) {
 				assert.Equal(t, "echo test", cfg.BranchNameScript)
+			},
+		},
+		{
+			name: "merge_method rebase",
+			data: map[string]interface{}{
+				"merge_method": "rebase",
+			},
+			validate: func(t *testing.T, cfg *AppConfig) {
+				assert.Equal(t, "rebase", cfg.MergeMethod)
+			},
+		},
+		{
+			name: "merge_method merge",
+			data: map[string]interface{}{
+				"merge_method": "merge",
+			},
+			validate: func(t *testing.T, cfg *AppConfig) {
+				assert.Equal(t, "merge", cfg.MergeMethod)
+			},
+		},
+		{
+			name: "merge_method uppercase converted to lowercase",
+			data: map[string]interface{}{
+				"merge_method": "REBASE",
+			},
+			validate: func(t *testing.T, cfg *AppConfig) {
+				assert.Equal(t, "rebase", cfg.MergeMethod)
+			},
+		},
+		{
+			name: "invalid merge_method uses default",
+			data: map[string]interface{}{
+				"merge_method": "invalid",
+			},
+			validate: func(t *testing.T, cfg *AppConfig) {
+				assert.Equal(t, "rebase", cfg.MergeMethod)
 			},
 		},
 		{

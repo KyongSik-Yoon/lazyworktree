@@ -141,6 +141,10 @@ const (
 	minLeftPaneWidth  = 32
 	minRightPaneWidth = 32
 	mainWorktreeName  = "main"
+
+	// Merge methods for absorb worktree
+	mergeMethodRebase = "rebase"
+	mergeMethodMerge  = "merge"
 )
 
 // Model represents the main application model
@@ -836,7 +840,8 @@ func (m *Model) handlePruneResult(msg pruneResultMsg) (tea.Model, tea.Cmd) {
 // handleAbsorbResult processes absorb merge result message.
 func (m *Model) handleAbsorbResult(msg absorbMergeResultMsg) (tea.Model, tea.Cmd) {
 	if msg.err != nil {
-		m.statusContent = msg.err.Error()
+		m.infoScreen = NewInfoScreen(fmt.Sprintf("Absorb failed\n\n%s", msg.err.Error()), m.theme)
+		m.currentScreen = screenInfo
 		return m, nil
 	}
 	cmd := m.deleteWorktreeCmd(&models.WorktreeInfo{Path: msg.path, Branch: msg.branch})
@@ -1854,29 +1859,75 @@ func (m *Model) showAbsorbWorktree() tea.Cmd {
 	}
 	wt := m.filteredWts[m.selectedIndex]
 	if wt.IsMain {
-		m.statusContent = "Cannot absorb the main worktree."
+		m.infoScreen = NewInfoScreen("Cannot absorb the main worktree.", m.theme)
+		m.currentScreen = screenInfo
 		return nil
 	}
 
 	mainBranch := m.git.GetMainBranch(m.ctx)
 
-	// Find the main worktree explicitly (don't use fallback)
-	var mainPath string
-	for _, w := range m.worktrees {
-		if w.IsMain {
-			mainPath = w.Path
-			break
-		}
-	}
-	if mainPath == "" {
-		m.statusContent = "Cannot find main worktree."
+	// Prevent absorbing if the selected worktree is on the main branch
+	if wt.Branch == mainBranch {
+		m.infoScreen = NewInfoScreen(
+			fmt.Sprintf("Cannot absorb: worktree is on the main branch (%s).", mainBranch),
+			m.theme,
+		)
+		m.currentScreen = screenInfo
 		return nil
 	}
 
-	m.confirmScreen = NewConfirmScreen(fmt.Sprintf("Absorb worktree into %s?\n\nPath: %s\nBranch: %s -> %s", mainBranch, wt.Path, wt.Branch, mainBranch), m.theme)
+	// Find the main worktree explicitly (don't use fallback)
+	var mainWorktree *models.WorktreeInfo
+	for _, w := range m.worktrees {
+		if w.IsMain {
+			mainWorktree = w
+			break
+		}
+	}
+	if mainWorktree == nil {
+		m.infoScreen = NewInfoScreen("Cannot find main worktree.", m.theme)
+		m.currentScreen = screenInfo
+		return nil
+	}
+
+	// Check if main worktree has uncommitted changes
+	if mainWorktree.Dirty {
+		m.infoScreen = NewInfoScreen(
+			fmt.Sprintf("Cannot absorb: main worktree has uncommitted changes.\n\nCommit or stash changes in:\n%s", mainWorktree.Path),
+			m.theme,
+		)
+		m.currentScreen = screenInfo
+		return nil
+	}
+
+	mainPath := mainWorktree.Path
+	mergeMethod := m.config.MergeMethod
+	if mergeMethod == "" {
+		mergeMethod = mergeMethodRebase
+	}
+
+	m.confirmScreen = NewConfirmScreen(fmt.Sprintf("Absorb worktree into %s (%s)?\n\nPath: %s\nBranch: %s -> %s", mainBranch, mergeMethod, wt.Path, wt.Branch, mainBranch), m.theme)
 	m.confirmAction = func() tea.Cmd {
 		return func() tea.Msg {
-			if !m.git.RunCommandChecked(m.ctx, []string{"git", "-C", mainPath, "merge", "--no-edit", wt.Branch}, "", fmt.Sprintf("Failed to merge %s into %s", wt.Branch, mainBranch)) {
+			if mergeMethod == mergeMethodRebase {
+				// Rebase: first rebase the feature branch onto main, then fast-forward main
+				if !m.git.RunCommandChecked(m.ctx, []string{"git", "-C", wt.Path, "rebase", mainBranch}, "", fmt.Sprintf("Failed to rebase %s onto %s", wt.Branch, mainBranch)) {
+					return absorbMergeResultMsg{
+						path:   wt.Path,
+						branch: wt.Branch,
+						err:    fmt.Errorf("rebase failed; resolve conflicts in %s and retry", wt.Path),
+					}
+				}
+				// Fast-forward main to the rebased branch
+				if !m.git.RunCommandChecked(m.ctx, []string{"git", "-C", mainPath, "merge", "--ff-only", wt.Branch}, "", fmt.Sprintf("Failed to fast-forward %s to %s", mainBranch, wt.Branch)) {
+					return absorbMergeResultMsg{
+						path:   wt.Path,
+						branch: wt.Branch,
+						err:    fmt.Errorf("fast-forward failed; the branch may have diverged"),
+					}
+				}
+			} else if !m.git.RunCommandChecked(m.ctx, []string{"git", "-C", mainPath, "merge", "--no-edit", wt.Branch}, "", fmt.Sprintf("Failed to merge %s into %s", wt.Branch, mainBranch)) {
+				// Merge: traditional merge
 				return absorbMergeResultMsg{
 					path:   wt.Path,
 					branch: wt.Branch,

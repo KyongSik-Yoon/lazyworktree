@@ -335,6 +335,7 @@ delta_args:
   - --syntax-theme
   - Dracula
 trust_mode: "tofu" # Options: "tofu" (default), "never", "always"
+merge_method: "rebase" # Options: "rebase" (default), "merge"
 init_commands:
   - link_topsymlinks
 terminate_commands:
@@ -360,6 +361,7 @@ Notes:
 - Use `lazyworktree --theme <name>` to pick a UI theme directly; the supported names match the ones listed above.
 - `delta_args` sets arguments passed to `delta` (defaults follow the UI theme: Dracula → `Dracula`, Narna → `OneHalfDark`, Clean-Light → `GitHub`, Solarized Dark → `Solarized (dark)`, Solarized Light → `Solarized (light)`, Gruvbox Dark → `Gruvbox Dark`, Gruvbox Light → `Gruvbox Light`, Nord → `Nord`, Monokai → `Monokai Extended`, Catppuccin Mocha → `Catppuccin Mocha`).
 - `delta_path` sets path to delta executable (default: `delta`). Set to empty string to disable delta and use plain git diff output.
+- `merge_method` controls how the "Absorb worktree" action integrates changes into main: `rebase` (default) rebases the feature branch onto main then fast-forwards, `merge` creates a merge commit.
 - `branch_name_script` runs a script to generate branch name suggestions when creating worktrees from changes. The script receives the git diff on stdin and should output a branch name. See [AI-powered branch names](#ai-powered-branch-names) below.
 
 ## Themes

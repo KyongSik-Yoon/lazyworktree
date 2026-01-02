@@ -28,6 +28,10 @@ delta_args:
 # Options: "tofu" (default - ask on first use/change), "never", "always"
 trust_mode: "tofu"
 
+# Merge method for "Absorb worktree" action
+# Options: "rebase" (default - rebases onto main, then fast-forwards), "merge" (creates merge commit)
+merge_method: "rebase"
+
 # Script to generate branch name suggestions when creating worktrees from changes.
 # The script receives the git diff on stdin and should output a branch name.
 # Useful for AI-powered branch name generation.

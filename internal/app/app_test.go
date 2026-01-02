@@ -555,8 +555,11 @@ func TestShowAbsorbWorktreeOnMainWorktree(t *testing.T) {
 	if cmd != nil {
 		t.Error("Expected nil command when trying to absorb main worktree")
 	}
-	if m.statusContent != "Cannot absorb the main worktree." {
-		t.Errorf("Expected error message about main worktree, got %q", m.statusContent)
+	if m.currentScreen != screenInfo {
+		t.Error("Expected screenInfo to be shown for error")
+	}
+	if m.infoScreen == nil {
+		t.Error("Expected infoScreen to be set")
 	}
 }
 
@@ -623,8 +626,63 @@ func TestShowAbsorbWorktreeNoMainWorktree(t *testing.T) {
 	if cmd != nil {
 		t.Error("Expected nil command when no main worktree exists")
 	}
-	if m.statusContent != "Cannot find main worktree." {
-		t.Errorf("Expected error message about missing main worktree, got %q", m.statusContent)
+	if m.currentScreen != screenInfo {
+		t.Error("Expected screenInfo to be shown for error")
+	}
+	if m.infoScreen == nil {
+		t.Error("Expected infoScreen to be set")
+	}
+}
+
+func TestShowAbsorbWorktreeOnMainBranch(t *testing.T) {
+	cfg := &config.AppConfig{
+		WorktreeDir: t.TempDir(),
+	}
+	m := NewModel(cfg, "")
+
+	// Set up worktrees where a non-main worktree is on the main branch
+	m.worktrees = []*models.WorktreeInfo{
+		{Path: "/path/to/main", Branch: mainWorktreeName, IsMain: true},
+		{Path: "/path/to/other", Branch: mainWorktreeName, IsMain: false}, // Same branch as main
+	}
+	m.filteredWts = m.worktrees
+	m.selectedIndex = 1 // Select the non-main worktree that's on main branch
+
+	cmd := m.showAbsorbWorktree()
+	if cmd != nil {
+		t.Error("Expected nil command when worktree is on main branch")
+	}
+	if m.currentScreen != screenInfo {
+		t.Error("Expected screenInfo to be shown for error")
+	}
+	if m.infoScreen == nil {
+		t.Error("Expected infoScreen to be set")
+	}
+}
+
+func TestShowAbsorbWorktreeDirtyMainWorktree(t *testing.T) {
+	cfg := &config.AppConfig{
+		WorktreeDir: t.TempDir(),
+	}
+	m := NewModel(cfg, "")
+
+	// Set up worktrees where main worktree is dirty
+	m.worktrees = []*models.WorktreeInfo{
+		{Path: "/path/to/main", Branch: mainWorktreeName, IsMain: true, Dirty: true},
+		{Path: "/path/to/feature", Branch: "feature-branch", IsMain: false},
+	}
+	m.filteredWts = m.worktrees
+	m.selectedIndex = 1 // Select the feature worktree
+
+	cmd := m.showAbsorbWorktree()
+	if cmd != nil {
+		t.Error("Expected nil command when main worktree is dirty")
+	}
+	if m.currentScreen != screenInfo {
+		t.Error("Expected screenInfo to be shown for error")
+	}
+	if m.infoScreen == nil {
+		t.Error("Expected infoScreen to be set")
 	}
 }
 

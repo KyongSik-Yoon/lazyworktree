@@ -278,9 +278,16 @@ func TestHandleAbsorbResult(t *testing.T) {
 	if cmd != nil {
 		t.Fatal("expected no command on error")
 	}
-	if m.statusContent != "boom" {
-		t.Fatalf("expected error status, got %q", m.statusContent)
+	if m.currentScreen != screenInfo {
+		t.Fatal("expected screenInfo to be shown for error")
 	}
+	if m.infoScreen == nil {
+		t.Fatal("expected infoScreen to be set")
+	}
+
+	// Reset for next test
+	m.currentScreen = screenNone
+	m.infoScreen = nil
 
 	_, cmd = m.handleAbsorbResult(absorbMergeResultMsg{path: "/tmp/wt", branch: featureBranch})
 	if cmd == nil {
