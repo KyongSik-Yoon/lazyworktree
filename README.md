@@ -178,13 +178,13 @@ Add a `custom_commands` section to your config:
 custom_commands:
   e:
     command: nvim
-    description: Open editor
+    description: Editor
     show_help: true
   s:
     command: zsh
-    description: Open shell
+    description: Shell
     show_help: true
-  t: # Run tests and wait for keypress
+  T: # Run tests and wait for keypress
     command: make test
     description: Run tests
     show_help: false
