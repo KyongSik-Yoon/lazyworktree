@@ -72,7 +72,7 @@ Pre-built binaries for various platforms are provided in the [Releases](https://
 
 ```shell
 brew tap chmouel/lazyworktree https://github.com/chmouel/lazyworktree
-brew install lazyworktree
+brew install lazyworktree --cask
 ```
 
 ## [Arch](https://aur.archlinux.org/packages/lazyworktree-bin)
