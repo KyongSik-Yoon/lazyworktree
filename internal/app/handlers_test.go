@@ -59,11 +59,10 @@ func TestHandleEnterKeySelectsWorktree(t *testing.T) {
 	}
 }
 
-func TestFilterEnterSelectsFirstMatch(t *testing.T) {
+func TestFilterEnterSelectsHighlightedMatch(t *testing.T) {
 	cfg := &config.AppConfig{
-		WorktreeDir:      t.TempDir(),
-		SortByActive:     false,
-		SearchAutoSelect: true,
+		WorktreeDir:  t.TempDir(),
+		SortByActive: false,
 	}
 	m := NewModel(cfg, "")
 	m.focusedPane = 0
@@ -94,7 +93,8 @@ func TestFilterEnterSelectsFirstMatch(t *testing.T) {
 	if _, ok := msg.(tea.QuitMsg); !ok {
 		t.Fatalf("expected quit message, got %T", msg)
 	}
-	expected := filepath.Join(cfg.WorktreeDir, "a-worktree")
+	// Should select the item at cursor position 1 (b-worktree)
+	expected := filepath.Join(cfg.WorktreeDir, "b-worktree")
 	if m.selectedPath != expected {
 		t.Fatalf("expected selected path %q, got %q", expected, m.selectedPath)
 	}
@@ -401,5 +401,149 @@ func TestHandleCIStatusLoadedUpdatesCache(t *testing.T) {
 	}
 	if !strings.Contains(m.infoContent, "CI Checks:") {
 		t.Fatalf("expected info content to include CI checks, got %q", m.infoContent)
+	}
+}
+
+func TestFilterEnterSelectsHighlightedItem(t *testing.T) {
+	cfg := &config.AppConfig{
+		WorktreeDir:      t.TempDir(),
+		SortByActive:     false,
+		SearchAutoSelect: false,
+	}
+	m := NewModel(cfg, "")
+	m.focusedPane = 0
+
+	wt1Path := filepath.Join(cfg.WorktreeDir, "srv-api")
+	wt2Path := filepath.Join(cfg.WorktreeDir, "srv-auth")
+	wt3Path := filepath.Join(cfg.WorktreeDir, "srv-worker")
+	m.worktrees = []*models.WorktreeInfo{
+		{Path: wt1Path, Branch: "feature/srv-api"},
+		{Path: wt2Path, Branch: "feature/srv-auth"},
+		{Path: wt3Path, Branch: "feature/srv-worker"},
+	}
+
+	// Apply filter for "srv"
+	m.filterQuery = "srv"
+	m.filterInput.SetValue("srv")
+	m.updateTable()
+	m.showingFilter = true
+	m.filterInput.Focus()
+
+	// Navigate to the second item (srv-auth)
+	m.worktreeTable.SetCursor(1)
+	m.selectedIndex = 1
+
+	// Press Enter - should select the highlighted item (srv-auth)
+	updated, cmd := m.handleKeyMsg(tea.KeyMsg{Type: tea.KeyEnter})
+	updatedModel, ok := updated.(*Model)
+	if !ok {
+		t.Fatalf("expected updated model, got %T", updated)
+	}
+	m = updatedModel
+
+	if cmd == nil {
+		t.Fatal("expected quit command to be returned")
+	}
+	msg := cmd()
+	if _, ok := msg.(tea.QuitMsg); !ok {
+		t.Fatalf("expected quit message, got %T", msg)
+	}
+	if m.selectedPath != wt2Path {
+		t.Fatalf("expected selected path %q, got %q", wt2Path, m.selectedPath)
+	}
+}
+
+func TestFilterNavigationThroughMultipleFilteredItems(t *testing.T) {
+	cfg := &config.AppConfig{
+		WorktreeDir:  t.TempDir(),
+		SortByActive: false,
+	}
+	m := NewModel(cfg, "")
+
+	// Create 5 worktrees, 3 of which match "srv" filter
+	wt1Path := filepath.Join(cfg.WorktreeDir, "main")
+	wt2Path := filepath.Join(cfg.WorktreeDir, "srv-api")
+	wt3Path := filepath.Join(cfg.WorktreeDir, "frontend")
+	wt4Path := filepath.Join(cfg.WorktreeDir, "srv-auth")
+	wt5Path := filepath.Join(cfg.WorktreeDir, "srv-worker")
+
+	m.worktrees = []*models.WorktreeInfo{
+		{Path: wt1Path, Branch: "main", IsMain: true},
+		{Path: wt2Path, Branch: "feature/srv-api"},
+		{Path: wt3Path, Branch: "feature/frontend"},
+		{Path: wt4Path, Branch: "feature/srv-auth"},
+		{Path: wt5Path, Branch: "feature/srv-worker"},
+	}
+
+	// Apply filter for "srv"
+	m.filterQuery = "srv"
+	m.filterInput.SetValue("srv")
+	m.updateTable()
+	m.showingFilter = true
+	m.filterInput.Focus()
+	m.worktreeTable.SetCursor(0)
+	m.selectedIndex = 0
+
+	// Verify we have exactly 3 filtered items
+	if len(m.filteredWts) != 3 {
+		t.Fatalf("expected 3 filtered items, got %d", len(m.filteredWts))
+	}
+
+	// Navigate down through all filtered items
+	for i := 0; i < 2; i++ {
+		updated, _ := m.handleKeyMsg(tea.KeyMsg{Type: tea.KeyDown})
+		updatedModel, ok := updated.(*Model)
+		if !ok {
+			t.Fatalf("expected updated model, got %T", updated)
+		}
+		m = updatedModel
+	}
+
+	// Should be at the last filtered item (index 2)
+	cursor := m.worktreeTable.Cursor()
+	if cursor != 2 {
+		t.Fatalf("expected cursor at index 2, got %d", cursor)
+	}
+
+	// Try to navigate down again - should stay at last item
+	updated, _ := m.handleKeyMsg(tea.KeyMsg{Type: tea.KeyDown})
+	updatedModel, ok := updated.(*Model)
+	if !ok {
+		t.Fatalf("expected updated model, got %T", updated)
+	}
+	m = updatedModel
+
+	cursor = m.worktreeTable.Cursor()
+	if cursor != 2 {
+		t.Fatalf("expected cursor to stay at index 2, got %d", cursor)
+	}
+
+	// Navigate back up
+	for i := 0; i < 2; i++ {
+		updated, _ := m.handleKeyMsg(tea.KeyMsg{Type: tea.KeyUp})
+		updatedModel, ok := updated.(*Model)
+		if !ok {
+			t.Fatalf("expected updated model, got %T", updated)
+		}
+		m = updatedModel
+	}
+
+	// Should be at the first filtered item (index 0)
+	cursor = m.worktreeTable.Cursor()
+	if cursor != 0 {
+		t.Fatalf("expected cursor at index 0, got %d", cursor)
+	}
+
+	// Try to navigate up again - should stay at first item
+	updated, _ = m.handleKeyMsg(tea.KeyMsg{Type: tea.KeyUp})
+	updatedModel, ok = updated.(*Model)
+	if !ok {
+		t.Fatalf("expected updated model, got %T", updated)
+	}
+	m = updatedModel
+
+	cursor = m.worktreeTable.Cursor()
+	if cursor != 0 {
+		t.Fatalf("expected cursor to stay at index 0, got %d", cursor)
 	}
 }

@@ -531,24 +531,24 @@ func (m *Model) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	if m.showingFilter {
 		keyStr := msg.String()
 		if keyStr == keyEnter {
-			if m.filterQuery == "" && len(m.filteredWts) > 0 {
+			// If there are filtered items, select the currently highlighted one
+			if len(m.filteredWts) > 0 {
 				m.showingFilter = false
 				m.filterInput.Blur()
 				m.worktreeTable.Focus()
+
+				// Always select the currently highlighted item
 				cursor := m.worktreeTable.Cursor()
 				if cursor >= 0 && cursor < len(m.filteredWts) {
 					m.selectedIndex = cursor
-					return m.handleEnterKey()
+				} else {
+					// If cursor is invalid, default to first item
+					m.selectedIndex = 0
+					m.worktreeTable.SetCursor(0)
 				}
-			}
-			if m.config.SearchAutoSelect && len(m.filteredWts) > 0 {
-				m.showingFilter = false
-				m.filterInput.Blur()
-				m.worktreeTable.Focus()
-				m.worktreeTable.SetCursor(0)
-				m.selectedIndex = 0
 				return m.handleEnterKey()
 			}
+			// No filtered items - just close the filter
 			m.showingFilter = false
 			m.filterInput.Blur()
 			m.worktreeTable.Focus()
@@ -783,25 +783,55 @@ func (m *Model) handleNavigationUp(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 }
 
 func (m *Model) handleFilterNavigation(keyStr string, fillInput bool) (tea.Model, tea.Cmd) {
-	sorted := m.sortedWorktrees()
-	if len(sorted) == 0 {
+	// When fillInput is true (Alt+n/Alt+p), navigate through all worktrees
+	// When fillInput is false (Up/Down), navigate through filtered worktrees only
+	var workList []*models.WorktreeInfo
+	if fillInput {
+		// Alt+n/Alt+p: navigate through all worktrees (sorted)
+		workList = make([]*models.WorktreeInfo, len(m.worktrees))
+		copy(workList, m.worktrees)
+		if m.sortByActive {
+			sort.Slice(workList, func(i, j int) bool {
+				return workList[i].LastActiveTS > workList[j].LastActiveTS
+			})
+		} else {
+			sort.Slice(workList, func(i, j int) bool {
+				return workList[i].Path < workList[j].Path
+			})
+		}
+	} else {
+		// Up/Down: navigate through filtered worktrees
+		workList = m.filteredWts
+	}
+
+	if len(workList) == 0 {
 		return m, nil
 	}
 
+	// Find current position
 	currentPath := ""
-	if m.selectedIndex >= 0 && m.selectedIndex < len(m.filteredWts) {
-		currentPath = m.filteredWts[m.selectedIndex].Path
-	}
-	if currentPath == "" {
-		cursor := m.worktreeTable.Cursor()
-		if cursor >= 0 && cursor < len(m.filteredWts) {
-			currentPath = m.filteredWts[cursor].Path
+	if !fillInput {
+		// For filtered navigation, use table cursor
+		currentIndex := m.worktreeTable.Cursor()
+		if currentIndex >= 0 && currentIndex < len(m.filteredWts) {
+			currentPath = m.filteredWts[currentIndex].Path
+		}
+	} else {
+		// For all-worktree navigation, find current selection
+		if m.selectedIndex >= 0 && m.selectedIndex < len(m.filteredWts) {
+			currentPath = m.filteredWts[m.selectedIndex].Path
+		}
+		if currentPath == "" {
+			cursor := m.worktreeTable.Cursor()
+			if cursor >= 0 && cursor < len(m.filteredWts) {
+				currentPath = m.filteredWts[cursor].Path
+			}
 		}
 	}
 
 	currentIndex := -1
 	if currentPath != "" {
-		for i, wt := range sorted {
+		for i, wt := range workList {
 			if wt.Path == currentPath {
 				currentIndex = i
 				break
@@ -814,46 +844,28 @@ func (m *Model) handleFilterNavigation(keyStr string, fillInput bool) (tea.Model
 	case "alt+n", keyDown:
 		if currentIndex == -1 {
 			targetIndex = 0
-		} else if currentIndex < len(sorted)-1 {
+		} else if currentIndex < len(workList)-1 {
 			targetIndex = currentIndex + 1
 		}
 	case "alt+p", keyUp:
 		if currentIndex == -1 {
-			targetIndex = len(sorted) - 1
+			targetIndex = len(workList) - 1
 		} else if currentIndex > 0 {
 			targetIndex = currentIndex - 1
 		}
 	default:
 		return m, nil
 	}
-	if targetIndex < 0 || targetIndex >= len(sorted) {
+	if targetIndex < 0 || targetIndex >= len(workList) {
 		return m, nil
 	}
 
-	target := sorted[targetIndex]
+	target := workList[targetIndex]
 	if fillInput {
 		m.setFilterToWorktree(target)
 	}
 	m.selectFilteredWorktree(target.Path)
 	return m, m.debouncedUpdateDetailsView()
-}
-
-func (m *Model) sortedWorktrees() []*models.WorktreeInfo {
-	if len(m.worktrees) == 0 {
-		return nil
-	}
-	sorted := make([]*models.WorktreeInfo, len(m.worktrees))
-	copy(sorted, m.worktrees)
-	if m.sortByActive {
-		sort.Slice(sorted, func(i, j int) bool {
-			return sorted[i].LastActiveTS > sorted[j].LastActiveTS
-		})
-	} else {
-		sort.Slice(sorted, func(i, j int) bool {
-			return sorted[i].Path < sorted[j].Path
-		})
-	}
-	return sorted
 }
 
 func (m *Model) setFilterToWorktree(wt *models.WorktreeInfo) {
