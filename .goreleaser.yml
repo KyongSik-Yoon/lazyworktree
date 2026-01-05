@@ -50,10 +50,6 @@ homebrew_casks:
       - formula: lazygit
       - formula: less
       - formula: tmux
-    install:
-      - bin: lazyworktree
-      - { path: "shell/functions.shell", target: "share/lazyworktree/functions.shell" }
-      - { path: "lazyworktree.1", target: "share/man/man1/lazyworktree.1" }
 snapshot:
   version_template: "{{ .Tag }}-next"
 

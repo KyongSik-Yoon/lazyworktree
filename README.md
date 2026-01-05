@@ -75,11 +75,18 @@ brew tap chmouel/lazyworktree https://github.com/chmouel/lazyworktree
 brew install lazyworktree --cask
 ```
 
-For shell integration with the "jump" functionality, source the helper functions from the Homebrew installation:
+For shell integration with the "jump" functionality, download and source the helper functions:
 
 ```bash
+# Download the helper functions
+mkdir -p ~/.shell/functions
+curl -sL https://raw.githubusercontent.com/chmouel/lazyworktree/refs/heads/main/shell/functions.shell -o ~/.shell/functions/lazyworktree.shell
+
+# Review and customize the functions if needed
+# nano ~/.shell/functions/lazyworktree.shell
+
 # Add to .zshrc
-source $(brew --prefix)/opt/lazyworktree/share/lazyworktree/functions.shell
+source ~/.shell/functions/lazyworktree.shell
 
 # Create an alias for a specific repository
 jt() { worktree_jump ~/path/to/your/main/repo "$@"; }

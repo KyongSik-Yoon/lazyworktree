@@ -1,3 +1,5 @@
+# lazyworktree shell functions
+# Review and customize these functions as needed for your workflow
 # Example function to jump between git worktrees using lazyworktree and GitHub
 # CLI
 _git_repo_slug() {
