@@ -95,10 +95,6 @@ nfpms:
       apk:
         dependencies:
           - git
-          - delta
-          - lazygit
-          - less
-          - tmux
 changelog:
   sort: asc
   use: github
@@ -130,7 +126,7 @@ aurs:
     git_url: ssh://aur@aur.archlinux.org/lazyworktree-bin.git
     depends:
       - git
-      - delta
+      - git-delta
       - lazygit
       - less
       - tmux
