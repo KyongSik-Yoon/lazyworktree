@@ -51,7 +51,7 @@ worktree_jump() {
 
     local tmp selected
     tmp=$(mktemp "${TMPDIR:-/tmp}/lazyworktree.selection.XXXXXX") || return 1
-    lazyworktree --output-selection="$tmp" --search-auto-select
+    lazyworktree --output-selection="$tmp" # --search-auto-select # Add search auto select if desired
     local rc=$?
     if [[ $rc -ne 0 ]]; then
         rm -f "$tmp"
