@@ -306,6 +306,14 @@ custom_commands:
 | `C` | Cherry-pick commit to another worktree |
 | `j/k` | Navigate commits |
 
+**Info/Diff Pane** (when focused on status):
+
+| Key | Action |
+| --- | --- |
+| `j/k` | Navigate between changed files |
+| `Enter` | Show diff for selected file in pager |
+| `d` | Show full diff of all files in pager |
+
 **Filter Mode:**
 
 - `alt+n`, `alt+p`: Navigate and update filter input with selected item

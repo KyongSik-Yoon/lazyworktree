@@ -633,8 +633,10 @@ func NewHelpScreen(maxWidth, maxHeight int, customCommands map[string]*config.Cu
 - Tab: Next pane (cycle)
 - Enter: Jump to selected worktree (exit and cd)
 
-**Diff/Status Pane Navigation (when focused)**
-- j/k: Line up/down
+**Diff/Status Pane (when focused)**
+- j/k: Select file (navigate changed files)
+- Enter: Show diff for selected file in pager
+- d: Show full diff (all files) in pager
 - Ctrl+D / Space: Half page down
 - Ctrl+U: Half page up
 - PageDown / PageUp: Full page up/down

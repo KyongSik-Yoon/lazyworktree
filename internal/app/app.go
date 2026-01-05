@@ -127,6 +127,13 @@ type commitLogEntry struct {
 	message string
 }
 
+// StatusFile represents a file entry from git status.
+type StatusFile struct {
+	Filename    string
+	Status      string // XY status code (e.g., ".M", "M.", " ?")
+	IsUntracked bool
+}
+
 type commitMeta struct {
 	sha     string
 	author  string
@@ -195,6 +202,8 @@ type Model struct {
 	windowHeight      int
 	infoContent       string
 	statusContent     string
+	statusFiles       []StatusFile // parsed list of files from git status
+	statusFileIndex   int          // currently selected file index in status pane
 
 	// Cache
 	cache           map[string]any
@@ -1188,6 +1197,85 @@ if [ -n "$untracked" ]; then
   fi
 fi
 `, maxUntracked, maxUntracked)
+
+	// Pipe through delta if configured, then through pager
+	var cmdStr string
+	if m.git.UseDelta() {
+		deltaArgs := strings.Join(m.config.DeltaArgs, " ")
+		cmdStr = fmt.Sprintf("set -o pipefail; (%s) | %s %s | %s", script, m.config.DeltaPath, deltaArgs, pagerCmd)
+	} else {
+		cmdStr = fmt.Sprintf("set -o pipefail; (%s) | %s", script, pagerCmd)
+	}
+
+	// Create command
+	// #nosec G204 -- command is constructed from config and controlled inputs
+	c := m.commandRunner("bash", "-c", cmdStr)
+	c.Dir = wt.Path
+	c.Env = envVars
+
+	return m.execProcess(c, func(err error) tea.Msg {
+		if err != nil {
+			return errMsg{err: err}
+		}
+		return refreshCompleteMsg{}
+	})
+}
+
+// showFileDiff shows the diff for a single file in a pager.
+func (m *Model) showFileDiff(sf StatusFile) tea.Cmd {
+	if m.selectedIndex < 0 || m.selectedIndex >= len(m.filteredWts) {
+		return nil
+	}
+	wt := m.filteredWts[m.selectedIndex]
+
+	// Build environment variables
+	env := m.buildCommandEnv(wt.Branch, wt.Path)
+	envVars := os.Environ()
+	for k, v := range env {
+		envVars = append(envVars, fmt.Sprintf("%s=%s", k, v))
+	}
+
+	// Get pager configuration
+	pager := m.pagerCommand()
+	pagerEnv := m.pagerEnv(pager)
+	pagerCmd := pager
+	if pagerEnv != "" {
+		pagerCmd = fmt.Sprintf("%s %s", pagerEnv, pager)
+	}
+
+	// Build script based on file type
+	var script string
+	// Shell-escape the filename for safe use in shell commands
+	escapedFilename := fmt.Sprintf("'%s'", strings.ReplaceAll(sf.Filename, "'", "'\\''"))
+
+	if sf.IsUntracked {
+		// For untracked files, show diff against /dev/null
+		script = fmt.Sprintf(`
+set -e
+echo "=== Untracked:" %s "==="
+git diff --no-index /dev/null %s 2>/dev/null || true
+`, escapedFilename, escapedFilename)
+	} else {
+		// For tracked files, show both staged and unstaged changes
+		script = fmt.Sprintf(`
+set -e
+# Staged changes for this file
+staged=$(git diff --cached --patch --no-color -- %s 2>/dev/null || true)
+if [ -n "$staged" ]; then
+  echo "=== Staged Changes:" %s "==="
+  echo "$staged"
+  echo
+fi
+
+# Unstaged changes for this file
+unstaged=$(git diff --patch --no-color -- %s 2>/dev/null || true)
+if [ -n "$unstaged" ]; then
+  echo "=== Unstaged Changes:" %s "==="
+  echo "$unstaged"
+  echo
+fi
+`, escapedFilename, escapedFilename, escapedFilename, escapedFilename)
+	}
 
 	// Pipe through delta if configured, then through pager
 	var cmdStr string
@@ -3428,16 +3516,15 @@ func (m *Model) buildInfoContent(wt *models.WorktreeInfo) string {
 func (m *Model) buildStatusContent(statusRaw string) string {
 	statusRaw = strings.TrimRight(statusRaw, "\n")
 	if strings.TrimSpace(statusRaw) == "" {
+		m.statusFiles = nil
+		m.statusFileIndex = 0
 		return lipgloss.NewStyle().Foreground(m.theme.SuccessFg).Render("Clean working tree")
 	}
 
-	modifiedStyle := lipgloss.NewStyle().Foreground(m.theme.WarnFg)
-	addedStyle := lipgloss.NewStyle().Foreground(m.theme.SuccessFg)
-	deletedStyle := lipgloss.NewStyle().Foreground(m.theme.ErrorFg)
-	untrackedStyle := lipgloss.NewStyle().Foreground(m.theme.Yellow)
-
-	lines := []string{}
-	for _, line := range strings.Split(statusRaw, "\n") {
+	// Parse all files into statusFiles
+	statusLines := strings.Split(statusRaw, "\n")
+	parsedFiles := make([]StatusFile, 0, len(statusLines))
+	for _, line := range statusLines {
 		if line == "" || strings.HasPrefix(line, "#") {
 			continue
 		}
@@ -3449,6 +3536,7 @@ func (m *Model) buildStatusContent(statusRaw string) string {
 		}
 
 		var status, filename string
+		var isUntracked bool
 
 		switch fields[0] {
 		case "1": // Ordinary changed entry: 1 <XY> <sub> <mH> <mI> <mW> <hH> <hI> <path>
@@ -3460,6 +3548,7 @@ func (m *Model) buildStatusContent(statusRaw string) string {
 		case "?": // Untracked: ? <path>
 			status = " ?" // Single ? with space for alignment
 			filename = fields[1]
+			isUntracked = true
 		case "2": // Renamed/copied: 2 <XY> <sub> <mH> <mI> <mW> <hH> <hI> <X><score> <path><sep><origPath>
 			if len(fields) < 10 {
 				continue
@@ -3470,10 +3559,52 @@ func (m *Model) buildStatusContent(statusRaw string) string {
 			continue // Skip unhandled entry types
 		}
 
+		parsedFiles = append(parsedFiles, StatusFile{
+			Filename:    filename,
+			Status:      status,
+			IsUntracked: isUntracked,
+		})
+	}
+
+	m.statusFiles = parsedFiles
+	// Clamp statusFileIndex to valid range
+	if m.statusFileIndex < 0 {
+		m.statusFileIndex = 0
+	}
+	if len(m.statusFiles) > 0 && m.statusFileIndex >= len(m.statusFiles) {
+		m.statusFileIndex = len(m.statusFiles) - 1
+	}
+
+	return m.renderStatusFiles()
+}
+
+// renderStatusFiles renders the status file list with current selection highlighted.
+func (m *Model) renderStatusFiles() string {
+	if len(m.statusFiles) == 0 {
+		return lipgloss.NewStyle().Foreground(m.theme.SuccessFg).Render("Clean working tree")
+	}
+
+	modifiedStyle := lipgloss.NewStyle().Foreground(m.theme.WarnFg)
+	addedStyle := lipgloss.NewStyle().Foreground(m.theme.SuccessFg)
+	deletedStyle := lipgloss.NewStyle().Foreground(m.theme.ErrorFg)
+	untrackedStyle := lipgloss.NewStyle().Foreground(m.theme.Yellow)
+	// Use theme colors matching the table's selected style
+	selectedStyle := lipgloss.NewStyle().
+		Foreground(m.theme.TextFg).
+		Background(m.theme.Accent).
+		Bold(true)
+
+	// Get viewport width for full-line highlighting
+	viewportWidth := m.statusViewport.Width
+
+	lines := make([]string, 0, len(m.statusFiles))
+	for i, sf := range m.statusFiles {
+		status := sf.Status
+
 		// Determine style based on status code
 		var style lipgloss.Style
-		x := status[0] // index status
-		y := status[1] // working tree status
+		x := status[0]
+		y := status[1]
 		switch {
 		case status == " ?":
 			style = untrackedStyle
@@ -3492,21 +3623,52 @@ func (m *Model) buildStatusContent(statusRaw string) string {
 		// Convert porcelain dots to spaces for display (. means "unchanged")
 		displayStatus := strings.ReplaceAll(status, ".", " ")
 
-		// Format: "XY filename" with proper alignment
-		// Render each status character separately to avoid ANSI codes wrapping spaces
-		var statusRendered strings.Builder
-		for _, char := range displayStatus {
-			if char == ' ' {
-				statusRendered.WriteString(" ")
-			} else {
-				statusRendered.WriteString(style.Render(string(char)))
-			}
-		}
+		// Build the line content: "XY filename"
+		lineContent := fmt.Sprintf("%s %s", displayStatus, sf.Filename)
 
-		formatted := fmt.Sprintf("%s %s", statusRendered.String(), filename)
-		lines = append(lines, formatted)
+		// Highlight selected file when info pane is focused
+		if m.focusedPane == 1 && i == m.statusFileIndex {
+			// Pad the line to fill the viewport width for full-line highlight
+			if viewportWidth > 0 && len(lineContent) < viewportWidth {
+				lineContent += strings.Repeat(" ", viewportWidth-len(lineContent))
+			}
+			lines = append(lines, selectedStyle.Render(lineContent))
+		} else {
+			// Render status characters with color
+			var statusRendered strings.Builder
+			for _, char := range displayStatus {
+				if char == ' ' {
+					statusRendered.WriteString(" ")
+				} else {
+					statusRendered.WriteString(style.Render(string(char)))
+				}
+			}
+			formatted := fmt.Sprintf("%s %s", statusRendered.String(), sf.Filename)
+			lines = append(lines, formatted)
+		}
 	}
 	return strings.Join(lines, "\n")
+}
+
+// rebuildStatusContentWithHighlight re-renders the status content with current selection highlighted.
+func (m *Model) rebuildStatusContentWithHighlight() {
+	if len(m.statusFiles) == 0 {
+		return
+	}
+
+	m.statusContent = m.renderStatusFiles()
+	m.statusViewport.SetContent(m.statusContent)
+
+	// Auto-scroll to keep selected file visible
+	viewportHeight := m.statusViewport.Height
+	if viewportHeight > 0 && m.statusFileIndex >= 0 {
+		currentOffset := m.statusViewport.YOffset
+		if m.statusFileIndex < currentOffset {
+			m.statusViewport.SetYOffset(m.statusFileIndex)
+		} else if m.statusFileIndex >= currentOffset+viewportHeight {
+			m.statusViewport.SetYOffset(m.statusFileIndex - viewportHeight + 1)
+		}
+	}
 }
 
 func (m *Model) updateTableColumns(totalWidth int) {

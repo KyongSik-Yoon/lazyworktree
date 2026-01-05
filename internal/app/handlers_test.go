@@ -1,6 +1,7 @@
 package app
 
 import (
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -544,5 +545,304 @@ func TestFilterNavigationThroughMultipleFilteredItems(t *testing.T) {
 	cursor = m.worktreeTable.Cursor()
 	if cursor != 0 {
 		t.Fatalf("expected cursor to stay at index 0, got %d", cursor)
+	}
+}
+
+// TestStatusFileNavigation tests j/k navigation through status files in pane 1.
+func TestStatusFileNavigation(t *testing.T) {
+	cfg := &config.AppConfig{
+		WorktreeDir: t.TempDir(),
+	}
+	m := NewModel(cfg, "")
+	m.focusedPane = 1
+	m.statusViewport = viewport.New(40, 10)
+
+	// Set up status files
+	m.statusFiles = []StatusFile{
+		{Filename: "file1.go", Status: ".M", IsUntracked: false},
+		{Filename: "file2.go", Status: "M.", IsUntracked: false},
+		{Filename: "file3.go", Status: " ?", IsUntracked: true},
+	}
+	m.statusFileIndex = 0
+
+	// Test navigation down with j
+	_, _ = m.handleNavigationDown(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
+	if m.statusFileIndex != 1 {
+		t.Fatalf("expected statusFileIndex 1 after j, got %d", m.statusFileIndex)
+	}
+
+	// Test navigation down again
+	_, _ = m.handleNavigationDown(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
+	if m.statusFileIndex != 2 {
+		t.Fatalf("expected statusFileIndex 2 after second j, got %d", m.statusFileIndex)
+	}
+
+	// Test boundary - should not go past last item
+	_, _ = m.handleNavigationDown(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
+	if m.statusFileIndex != 2 {
+		t.Fatalf("expected statusFileIndex to stay at 2, got %d", m.statusFileIndex)
+	}
+
+	// Test navigation up with k
+	_, _ = m.handleNavigationUp(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'k'}})
+	if m.statusFileIndex != 1 {
+		t.Fatalf("expected statusFileIndex 1 after k, got %d", m.statusFileIndex)
+	}
+
+	// Navigate to first item
+	_, _ = m.handleNavigationUp(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'k'}})
+	if m.statusFileIndex != 0 {
+		t.Fatalf("expected statusFileIndex 0 after second k, got %d", m.statusFileIndex)
+	}
+
+	// Test boundary - should not go below 0
+	_, _ = m.handleNavigationUp(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'k'}})
+	if m.statusFileIndex != 0 {
+		t.Fatalf("expected statusFileIndex to stay at 0, got %d", m.statusFileIndex)
+	}
+}
+
+// TestStatusFileNavigationEmptyList tests navigation with no status files.
+func TestStatusFileNavigationEmptyList(t *testing.T) {
+	cfg := &config.AppConfig{
+		WorktreeDir: t.TempDir(),
+	}
+	m := NewModel(cfg, "")
+	m.focusedPane = 1
+	m.statusViewport = viewport.New(40, 10)
+	m.statusFiles = nil
+	m.statusFileIndex = 0
+
+	// Should not panic with empty list
+	_, _ = m.handleNavigationDown(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
+	if m.statusFileIndex != 0 {
+		t.Fatalf("expected statusFileIndex to stay at 0, got %d", m.statusFileIndex)
+	}
+
+	_, _ = m.handleNavigationUp(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'k'}})
+	if m.statusFileIndex != 0 {
+		t.Fatalf("expected statusFileIndex to stay at 0, got %d", m.statusFileIndex)
+	}
+}
+
+// TestStatusFileEnterShowsDiff tests that Enter on pane 1 triggers showFileDiff.
+func TestStatusFileEnterShowsDiff(t *testing.T) {
+	cfg := &config.AppConfig{
+		WorktreeDir: t.TempDir(),
+	}
+	m := NewModel(cfg, "")
+	m.focusedPane = 1
+	m.statusViewport = viewport.New(40, 10)
+
+	// Set up worktree and status files
+	m.filteredWts = []*models.WorktreeInfo{
+		{Path: filepath.Join(cfg.WorktreeDir, "wt1"), Branch: "feature"},
+	}
+	m.selectedIndex = 0
+	m.statusFiles = []StatusFile{
+		{Filename: "file1.go", Status: ".M", IsUntracked: false},
+		{Filename: "file2.go", Status: "M.", IsUntracked: false},
+	}
+	m.statusFileIndex = 1
+
+	// Mock execProcess to capture the command
+	var capturedCmd bool
+	m.execProcess = func(_ *exec.Cmd, cb tea.ExecCallback) tea.Cmd {
+		capturedCmd = true
+		return func() tea.Msg { return cb(nil) }
+	}
+
+	_, cmd := m.handleEnterKey()
+	if cmd == nil {
+		t.Fatal("expected command to be returned")
+	}
+
+	// Execute the command
+	_ = cmd()
+
+	if !capturedCmd {
+		t.Fatal("expected execProcess to be called")
+	}
+}
+
+// TestStatusFileEnterNoFilesDoesNothing tests Enter with no status files.
+func TestStatusFileEnterNoFilesDoesNothing(t *testing.T) {
+	cfg := &config.AppConfig{
+		WorktreeDir: t.TempDir(),
+	}
+	m := NewModel(cfg, "")
+	m.focusedPane = 1
+	m.statusFiles = nil
+
+	_, cmd := m.handleEnterKey()
+	if cmd != nil {
+		t.Fatal("expected no command when no status files")
+	}
+}
+
+// TestBuildStatusContentParsesFiles tests that buildStatusContent parses git status correctly.
+func TestBuildStatusContentParsesFiles(t *testing.T) {
+	cfg := &config.AppConfig{
+		WorktreeDir: t.TempDir(),
+	}
+	m := NewModel(cfg, "")
+	m.focusedPane = 1
+	m.statusViewport = viewport.New(40, 10)
+
+	// Simulated git status --porcelain=v2 output
+	statusRaw := `1 .M N... 100644 100644 100644 abc123 abc123 modified.go
+1 M. N... 100644 100644 100644 def456 def456 staged.go
+? untracked.txt
+1 A. N... 100644 100644 100644 ghi789 ghi789 added.go
+1 .D N... 100644 100644 100644 jkl012 jkl012 deleted.go`
+
+	_ = m.buildStatusContent(statusRaw)
+
+	if len(m.statusFiles) != 5 {
+		t.Fatalf("expected 5 status files, got %d", len(m.statusFiles))
+	}
+
+	// Check first file (modified)
+	if m.statusFiles[0].Filename != "modified.go" {
+		t.Fatalf("expected filename 'modified.go', got %q", m.statusFiles[0].Filename)
+	}
+	if m.statusFiles[0].Status != ".M" {
+		t.Fatalf("expected status '.M', got %q", m.statusFiles[0].Status)
+	}
+	if m.statusFiles[0].IsUntracked {
+		t.Fatal("expected IsUntracked to be false for modified file")
+	}
+
+	// Check untracked file
+	if m.statusFiles[2].Filename != "untracked.txt" {
+		t.Fatalf("expected filename 'untracked.txt', got %q", m.statusFiles[2].Filename)
+	}
+	if !m.statusFiles[2].IsUntracked {
+		t.Fatal("expected IsUntracked to be true for untracked file")
+	}
+}
+
+// TestBuildStatusContentCleanTree tests that clean working tree is handled.
+func TestBuildStatusContentCleanTree(t *testing.T) {
+	cfg := &config.AppConfig{
+		WorktreeDir: t.TempDir(),
+	}
+	m := NewModel(cfg, "")
+	m.focusedPane = 1
+	m.statusViewport = viewport.New(40, 10)
+	m.statusFiles = []StatusFile{{Filename: "old.go", Status: ".M"}}
+	m.statusFileIndex = 5
+
+	result := m.buildStatusContent("")
+
+	if len(m.statusFiles) != 0 {
+		t.Fatalf("expected 0 status files for clean tree, got %d", len(m.statusFiles))
+	}
+	if m.statusFileIndex != 0 {
+		t.Fatalf("expected statusFileIndex reset to 0, got %d", m.statusFileIndex)
+	}
+	if !strings.Contains(result, "Clean working tree") {
+		t.Fatalf("expected 'Clean working tree' in result, got %q", result)
+	}
+}
+
+// TestRenderStatusFilesHighlighting tests that selected file is highlighted.
+func TestRenderStatusFilesHighlighting(t *testing.T) {
+	cfg := &config.AppConfig{
+		WorktreeDir: t.TempDir(),
+	}
+	m := NewModel(cfg, "")
+	m.focusedPane = 1
+	m.statusViewport = viewport.New(40, 10)
+	m.statusFiles = []StatusFile{
+		{Filename: "file1.go", Status: ".M", IsUntracked: false},
+		{Filename: "file2.go", Status: ".M", IsUntracked: false},
+	}
+	m.statusFileIndex = 1
+
+	result := m.renderStatusFiles()
+
+	// The result should contain both filenames
+	if !strings.Contains(result, "file1.go") {
+		t.Fatalf("expected result to contain 'file1.go', got %q", result)
+	}
+	if !strings.Contains(result, "file2.go") {
+		t.Fatalf("expected result to contain 'file2.go', got %q", result)
+	}
+
+	// Result should have multiple lines
+	lines := strings.Split(result, "\n")
+	if len(lines) != 2 {
+		t.Fatalf("expected 2 lines, got %d", len(lines))
+	}
+}
+
+// TestStatusFileIndexClamping tests that statusFileIndex is clamped to valid range.
+func TestStatusFileIndexClamping(t *testing.T) {
+	cfg := &config.AppConfig{
+		WorktreeDir: t.TempDir(),
+	}
+	m := NewModel(cfg, "")
+	m.focusedPane = 1
+	m.statusViewport = viewport.New(40, 10)
+
+	// Set index out of range before parsing
+	m.statusFileIndex = 100
+
+	statusRaw := `1 .M N... 100644 100644 100644 abc123 abc123 file1.go
+1 .M N... 100644 100644 100644 abc123 abc123 file2.go`
+
+	_ = m.buildStatusContent(statusRaw)
+
+	// Index should be clamped to last valid index
+	if m.statusFileIndex != 1 {
+		t.Fatalf("expected statusFileIndex clamped to 1, got %d", m.statusFileIndex)
+	}
+
+	// Test negative index
+	m.statusFileIndex = -5
+	_ = m.buildStatusContent(statusRaw)
+
+	if m.statusFileIndex != 0 {
+		t.Fatalf("expected statusFileIndex clamped to 0, got %d", m.statusFileIndex)
+	}
+}
+
+// TestMouseScrollNavigatesFiles tests that mouse scroll navigates files in pane 1.
+func TestMouseScrollNavigatesFiles(t *testing.T) {
+	cfg := &config.AppConfig{
+		WorktreeDir: t.TempDir(),
+	}
+	m := NewModel(cfg, "")
+	m.focusedPane = 1
+	m.statusViewport = viewport.New(40, 10)
+	m.windowWidth = 100
+	m.windowHeight = 30
+
+	m.statusFiles = []StatusFile{
+		{Filename: "file1.go", Status: ".M", IsUntracked: false},
+		{Filename: "file2.go", Status: ".M", IsUntracked: false},
+		{Filename: "file3.go", Status: ".M", IsUntracked: false},
+	}
+	m.statusFileIndex = 0
+
+	// Scroll down should increment index
+	msg := tea.MouseMsg{
+		Action: tea.MouseActionPress,
+		Button: tea.MouseButtonWheelDown,
+		X:      60, // Right side of screen (pane 1)
+		Y:      5,
+	}
+
+	_, _ = m.handleMouse(msg)
+	if m.statusFileIndex != 1 {
+		t.Fatalf("expected statusFileIndex 1 after scroll down, got %d", m.statusFileIndex)
+	}
+
+	// Scroll up should decrement index
+	msg.Button = tea.MouseButtonWheelUp
+	_, _ = m.handleMouse(msg)
+	if m.statusFileIndex != 0 {
+		t.Fatalf("expected statusFileIndex 0 after scroll up, got %d", m.statusFileIndex)
 	}
 }

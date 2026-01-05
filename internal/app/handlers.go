@@ -49,7 +49,7 @@ func (m *Model) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if keyStr == "alt+n" || keyStr == "alt+p" {
 			return m.handleFilterNavigation(keyStr, true)
 		}
-		if keyStr == keyUp || keyStr == keyDown || keyStr == "ctrl+k" || keyStr == "ctrl+j" {
+		if keyStr == keyUp || keyStr == keyDown || keyStr == keyCtrlK || keyStr == keyCtrlJ {
 			return m.handleFilterNavigation(keyStr, false)
 		}
 		m.filterInput, cmd = m.filterInput.Update(msg)
@@ -77,20 +77,30 @@ func (m *Model) handleBuiltInKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, tea.Quit
 
 	case "1":
+		wasPane1 := m.focusedPane == 1
 		m.focusedPane = 0
 		m.worktreeTable.Focus()
+		if wasPane1 {
+			m.rebuildStatusContentWithHighlight()
+		}
 		return m, nil
 
 	case "2":
 		m.focusedPane = 1
+		m.rebuildStatusContentWithHighlight()
 		return m, nil
 
 	case "3":
+		wasPane1 := m.focusedPane == 1
 		m.focusedPane = 2
 		m.logTable.Focus()
+		if wasPane1 {
+			m.rebuildStatusContentWithHighlight()
+		}
 		return m, nil
 
 	case "tab", "]":
+		wasPane1 := m.focusedPane == 1
 		m.focusedPane = (m.focusedPane + 1) % 3
 		switch m.focusedPane {
 		case 0:
@@ -98,15 +108,22 @@ func (m *Model) handleBuiltInKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		case 2:
 			m.logTable.Focus()
 		}
+		if wasPane1 || m.focusedPane == 1 {
+			m.rebuildStatusContentWithHighlight()
+		}
 		return m, nil
 
 	case "[":
+		wasPane1 := m.focusedPane == 1
 		m.focusedPane = (m.focusedPane - 1 + 3) % 3
 		switch m.focusedPane {
 		case 0:
 			m.worktreeTable.Focus()
 		case 2:
 			m.logTable.Focus()
+		}
+		if wasPane1 || m.focusedPane == 1 {
+			m.rebuildStatusContentWithHighlight()
 		}
 		return m, nil
 
@@ -115,6 +132,26 @@ func (m *Model) handleBuiltInKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case "k", "up":
 		return m.handleNavigationUp(msg)
+
+	case keyCtrlJ:
+		if m.focusedPane == 1 && len(m.statusFiles) > 0 {
+			if m.statusFileIndex < len(m.statusFiles)-1 {
+				m.statusFileIndex++
+			}
+			m.rebuildStatusContentWithHighlight()
+			return m, m.showFileDiff(m.statusFiles[m.statusFileIndex])
+		}
+		return m, nil
+
+	case keyCtrlK:
+		if m.focusedPane == 1 && len(m.statusFiles) > 0 {
+			if m.statusFileIndex > 0 {
+				m.statusFileIndex--
+			}
+			m.rebuildStatusContentWithHighlight()
+			return m, m.showFileDiff(m.statusFiles[m.statusFileIndex])
+		}
+		return m, nil
 
 	case "ctrl+d", " ":
 		return m.handlePageDown(msg)
@@ -247,8 +284,13 @@ func (m *Model) handleNavigationDown(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, cmd)
 		cmds = append(cmds, m.debouncedUpdateDetailsView())
 	case 1:
-		m.statusViewport, cmd = m.statusViewport.Update(keyMsg)
-		cmds = append(cmds, cmd)
+		// Navigate through status files instead of scrolling
+		if len(m.statusFiles) > 0 {
+			if m.statusFileIndex < len(m.statusFiles)-1 {
+				m.statusFileIndex++
+			}
+			m.rebuildStatusContentWithHighlight()
+		}
 	default:
 		m.logTable, cmd = m.logTable.Update(keyMsg)
 		cmds = append(cmds, cmd)
@@ -267,8 +309,13 @@ func (m *Model) handleNavigationUp(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, cmd)
 		cmds = append(cmds, m.debouncedUpdateDetailsView())
 	case 1:
-		m.statusViewport, cmd = m.statusViewport.Update(msg)
-		cmds = append(cmds, cmd)
+		// Navigate through status files instead of scrolling
+		if len(m.statusFiles) > 0 {
+			if m.statusFileIndex > 0 {
+				m.statusFileIndex--
+			}
+			m.rebuildStatusContentWithHighlight()
+		}
 	default:
 		m.logTable, cmd = m.logTable.Update(msg)
 		cmds = append(cmds, cmd)
@@ -430,6 +477,11 @@ func (m *Model) handleEnterKey() (tea.Model, tea.Cmd) {
 			m.selectedPath = selectedPath
 			return m, tea.Quit
 		}
+	case 1:
+		// Show diff for selected file in pager
+		if len(m.statusFiles) > 0 && m.statusFileIndex >= 0 && m.statusFileIndex < len(m.statusFiles) {
+			return m, m.showFileDiff(m.statusFiles[m.statusFileIndex])
+		}
 	case 2:
 		// Open commit view
 		return m, m.openCommitView()
@@ -541,8 +593,11 @@ func (m *Model) handleMouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 			m.worktreeTable, _ = m.worktreeTable.Update(tea.KeyMsg{Type: tea.KeyUp})
 			cmds = append(cmds, m.debouncedUpdateDetailsView())
 		case 1:
-			// Scroll viewport up
-			m.statusViewport.ScrollUp(3)
+			// Navigate up through files
+			if len(m.statusFiles) > 0 && m.statusFileIndex > 0 {
+				m.statusFileIndex--
+				m.rebuildStatusContentWithHighlight()
+			}
 		case 2:
 			// Scroll log table up
 			m.logTable, _ = m.logTable.Update(tea.KeyMsg{Type: tea.KeyUp})
@@ -555,8 +610,11 @@ func (m *Model) handleMouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 			m.worktreeTable, _ = m.worktreeTable.Update(tea.KeyMsg{Type: tea.KeyDown})
 			cmds = append(cmds, m.debouncedUpdateDetailsView())
 		case 1:
-			// Scroll viewport down
-			m.statusViewport.ScrollDown(3)
+			// Navigate down through files
+			if len(m.statusFiles) > 0 && m.statusFileIndex < len(m.statusFiles)-1 {
+				m.statusFileIndex++
+				m.rebuildStatusContentWithHighlight()
+			}
 		case 2:
 			// Scroll log table down
 			m.logTable, _ = m.logTable.Update(tea.KeyMsg{Type: tea.KeyDown})
