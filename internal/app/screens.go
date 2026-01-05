@@ -645,6 +645,7 @@ func NewHelpScreen(maxWidth, maxHeight int, customCommands map[string]*config.Cu
 
 **Log Pane**
 - j / k: Move between commits
+- Ctrl+J: Next commit and open details
 - Enter: Open commit details and diff
 - C: Cherry-pick commit to another worktree
 

@@ -141,6 +141,14 @@ func (m *Model) handleBuiltInKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.rebuildStatusContentWithHighlight()
 			return m, m.showFileDiff(m.statusFiles[m.statusFileIndex])
 		}
+		if m.focusedPane == 2 {
+			prevCursor := m.logTable.Cursor()
+			_, moveCmd := m.handleNavigationDown(tea.KeyMsg{Type: tea.KeyDown})
+			if m.logTable.Cursor() == prevCursor {
+				return m, moveCmd
+			}
+			return m, tea.Batch(moveCmd, m.openCommitView())
+		}
 		return m, nil
 
 	case keyCtrlK:

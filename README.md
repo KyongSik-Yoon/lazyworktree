@@ -322,6 +322,7 @@ custom_commands:
 | `Enter` | View commit details and diff |
 | `C` | Cherry-pick commit to another worktree |
 | `j/k` | Navigate commits |
+| `ctrl+j` | Next commit and open details |
 
 **Info/Diff Pane** (when focused on status):
 

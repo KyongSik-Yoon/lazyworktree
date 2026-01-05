@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/charmbracelet/bubbles/table"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/chmouel/lazyworktree/internal/config"
@@ -599,6 +600,54 @@ func TestStatusFileNavigation(t *testing.T) {
 	_, _ = m.handleNavigationUp(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'k'}})
 	if m.statusFileIndex != 0 {
 		t.Fatalf("expected statusFileIndex to stay at 0, got %d", m.statusFileIndex)
+	}
+}
+
+func TestLogPaneCtrlJMovesNextCommit(t *testing.T) {
+	cfg := &config.AppConfig{
+		WorktreeDir: t.TempDir(),
+	}
+	m := NewModel(cfg, "")
+	m.focusedPane = 2
+	m.logTable.Focus()
+	m.filteredWts = []*models.WorktreeInfo{
+		{Path: t.TempDir(), Branch: testFeat},
+	}
+	m.selectedIndex = 0
+	m.logEntries = []commitLogEntry{
+		{sha: "abc123", message: "first"},
+		{sha: "def456", message: "second"},
+	}
+	m.logTable.SetRows([]table.Row{
+		{"abc123", "first"},
+		{"def456", "second"},
+	})
+	m.logTable.SetCursor(0)
+
+	execCalled := false
+	m.execProcess = func(_ *exec.Cmd, cb tea.ExecCallback) tea.Cmd {
+		return func() tea.Msg {
+			execCalled = true
+			return cb(nil)
+		}
+	}
+
+	updated, cmd := m.handleBuiltInKey(tea.KeyMsg{Type: tea.KeyCtrlJ})
+	updatedModel, ok := updated.(*Model)
+	if !ok {
+		t.Fatalf("expected updated model, got %T", updated)
+	}
+	m = updatedModel
+
+	if m.logTable.Cursor() != 1 {
+		t.Fatalf("expected log cursor at 1, got %d", m.logTable.Cursor())
+	}
+	if cmd == nil {
+		t.Fatal("expected command to be returned")
+	}
+	_ = cmd()
+	if !execCalled {
+		t.Fatal("expected commit view to be opened")
 	}
 }
 
