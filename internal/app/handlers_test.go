@@ -1,6 +1,7 @@
 package app
 
 import (
+	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -711,6 +712,59 @@ func TestStatusFileEnterShowsDiff(t *testing.T) {
 
 	if !capturedCmd {
 		t.Fatal("expected execProcess to be called")
+	}
+}
+
+func TestStatusFileEditOpensEditor(t *testing.T) {
+	cfg := &config.AppConfig{
+		WorktreeDir: t.TempDir(),
+		Editor:      "nvim",
+	}
+	m := NewModel(cfg, "")
+	m.focusedPane = 1
+	m.statusViewport = viewport.New(40, 10)
+
+	wtPath := filepath.Join(cfg.WorktreeDir, "wt1")
+	if err := os.MkdirAll(wtPath, 0o700); err != nil {
+		t.Fatalf("failed to create worktree dir: %v", err)
+	}
+	filename := "file1.go"
+	if err := os.WriteFile(filepath.Join(wtPath, filename), []byte("package main\n"), 0o600); err != nil {
+		t.Fatalf("failed to create file: %v", err)
+	}
+
+	m.filteredWts = []*models.WorktreeInfo{
+		{Path: wtPath, Branch: "feature"},
+	}
+	m.selectedIndex = 0
+	m.statusFiles = []StatusFile{
+		{Filename: filename, Status: ".M", IsUntracked: false},
+	}
+	m.statusFileIndex = 0
+
+	var gotCmd *exec.Cmd
+	m.execProcess = func(cmd *exec.Cmd, cb tea.ExecCallback) tea.Cmd {
+		gotCmd = cmd
+		return func() tea.Msg { return cb(nil) }
+	}
+
+	_, cmd := m.handleBuiltInKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'e'}})
+	if cmd == nil {
+		t.Fatal("expected command to be returned")
+	}
+	_ = cmd()
+
+	if gotCmd == nil {
+		t.Fatal("expected execProcess to be called")
+	}
+	if gotCmd.Dir != wtPath {
+		t.Fatalf("expected worktree dir %q, got %q", wtPath, gotCmd.Dir)
+	}
+	if len(gotCmd.Args) < 3 || gotCmd.Args[0] != "bash" || gotCmd.Args[1] != "-c" {
+		t.Fatalf("expected bash -c command, got %v", gotCmd.Args)
+	}
+	if !strings.Contains(gotCmd.Args[2], "nvim") || !strings.Contains(gotCmd.Args[2], filename) {
+		t.Fatalf("expected editor command to include nvim and file, got %q", gotCmd.Args[2])
 	}
 }
 

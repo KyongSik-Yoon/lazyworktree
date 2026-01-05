@@ -53,6 +53,7 @@ type AppConfig struct {
 	TrustMode         string
 	DebugLog          string
 	Pager             string
+	Editor            string
 	CustomCommands    map[string]*CustomCommand
 	BranchNameScript  string // Script to generate branch name suggestions from diff
 	Theme             string // Theme name: see AvailableThemes in internal/theme
@@ -314,6 +315,12 @@ func parseConfig(data map[string]any) *AppConfig {
 		pager = strings.TrimSpace(pager)
 		if pager != "" {
 			cfg.Pager = pager
+		}
+	}
+	if editor, ok := data["editor"].(string); ok {
+		editor = strings.TrimSpace(editor)
+		if editor != "" {
+			cfg.Editor = editor
 		}
 	}
 

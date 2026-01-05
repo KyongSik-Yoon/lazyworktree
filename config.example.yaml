@@ -21,6 +21,9 @@ delta_path: delta
 # Pager used for show_output custom commands (default: $PAGER or less)
 pager: "less --use-color --wordwrap -qcR -P 'Press q to exit..'"
 
+# Editor for Status pane file edits (default: $EDITOR, then nvim, then vi)
+editor: nvim
+
 # Extra arguments passed to delta for diff rendering.
 # If omitted, lazyworktree picks a syntax theme matching your UI:
 #   - dracula -> Dracula
@@ -68,10 +71,6 @@ terminate_commands:
 #   wait: Wait for key press after command completes (default: false, useful for quick commands like ls or make test)
 #   show_output: Show command output in the pager instead of running interactively (default: false)
 custom_commands:
-  e:
-    command: nvim
-    description: Open editor
-    show_help: true
   s:
     command: zsh
     description: Open shell

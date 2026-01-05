@@ -198,6 +198,12 @@ func (m *Model) handleBuiltInKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "d":
 		return m, m.showDiff()
 
+	case "e":
+		if m.focusedPane == 1 && len(m.statusFiles) > 0 && m.statusFileIndex >= 0 && m.statusFileIndex < len(m.statusFiles) {
+			return m, m.openStatusFileInEditor(m.statusFiles[m.statusFileIndex])
+		}
+		return m, nil
+
 	case "p":
 		m.ciCache = make(map[string]*ciCacheEntry)
 		m.prDataLoaded = false
@@ -559,7 +565,7 @@ func (m *Model) handleMouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 	case mouseX >= leftX && mouseX < leftMaxX && mouseY >= leftY && mouseY < leftMaxY:
 		targetPane = 0 // Worktree table
 	case mouseX >= rightX && mouseX < rightTopMaxX && mouseY >= rightTopY && mouseY < rightTopMaxY:
-		targetPane = 1 // Info/Diff viewport
+		targetPane = 1 // Status viewport
 	case mouseX >= rightX && mouseX < rightTopMaxX && mouseY >= rightBottomY && mouseY < rightBottomMaxY:
 		targetPane = 2 // Log table
 	}

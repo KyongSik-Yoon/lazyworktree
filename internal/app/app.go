@@ -1314,6 +1314,44 @@ fi
 	})
 }
 
+func (m *Model) openStatusFileInEditor(sf StatusFile) tea.Cmd {
+	if m.selectedIndex < 0 || m.selectedIndex >= len(m.filteredWts) {
+		return nil
+	}
+	wt := m.filteredWts[m.selectedIndex]
+
+	editor := m.editorCommand()
+	if strings.TrimSpace(editor) == "" {
+		m.showInfo("No editor configured. Set editor in config or $EDITOR.", nil)
+		return nil
+	}
+
+	filePath := filepath.Join(wt.Path, sf.Filename)
+	if _, err := os.Stat(filePath); err != nil {
+		m.showInfo(fmt.Sprintf("Cannot open %s: %v", sf.Filename, err), nil)
+		return nil
+	}
+
+	env := m.buildCommandEnv(wt.Branch, wt.Path)
+	envVars := os.Environ()
+	for k, v := range env {
+		envVars = append(envVars, fmt.Sprintf("%s=%s", k, v))
+	}
+
+	cmdStr := fmt.Sprintf("%s %s", editor, shellQuote(sf.Filename))
+	// #nosec G204 -- command is constructed from user config and controlled inputs
+	c := m.commandRunner("bash", "-c", cmdStr)
+	c.Dir = wt.Path
+	c.Env = envVars
+
+	return m.execProcess(c, func(err error) tea.Msg {
+		if err != nil {
+			return errMsg{err: err}
+		}
+		return refreshCompleteMsg{}
+	})
+}
+
 func (m *Model) showRenameWorktree() tea.Cmd {
 	if m.selectedIndex < 0 || m.selectedIndex >= len(m.filteredWts) {
 		return nil
@@ -2710,6 +2748,24 @@ func (m *Model) pagerCommand() string {
 	return "cat"
 }
 
+func (m *Model) editorCommand() string {
+	if m.config != nil {
+		if editor := strings.TrimSpace(m.config.Editor); editor != "" {
+			return os.ExpandEnv(editor)
+		}
+	}
+	if editor := strings.TrimSpace(os.Getenv("EDITOR")); editor != "" {
+		return editor
+	}
+	if _, err := exec.LookPath("nvim"); err == nil {
+		return "nvim"
+	}
+	if _, err := exec.LookPath("vi"); err == nil {
+		return "vi"
+	}
+	return ""
+}
+
 func (m *Model) pagerEnv(pager string) string {
 	if pagerIsLess(pager) {
 		return "LESS= LESSHISTFILE=-"
@@ -3169,7 +3225,7 @@ func (m *Model) computeLayout() layoutDims {
 
 	topRatio := 0.70
 	switch m.focusedPane {
-	case 1: // Info/Diff focused → give more height to top pane
+	case 1: // Status focused → give more height to top pane
 		topRatio = 0.82
 	case 2: // Log focused → give more height to bottom pane
 		topRatio = 0.30
@@ -3292,7 +3348,7 @@ func (m *Model) renderRightPane(layout layoutDims) string {
 }
 
 func (m *Model) renderRightTopPane(layout layoutDims) string {
-	title := m.renderPaneTitle(2, "Info/Diff", m.focusedPane == 1, layout.rightInnerWidth)
+	title := m.renderPaneTitle(2, "Status", m.focusedPane == 1, layout.rightInnerWidth)
 	infoBox := m.renderInnerBox("Info", m.infoContent, layout.rightInnerWidth, 0)
 
 	innerBoxStyle := m.baseInnerBoxStyle()
@@ -3357,12 +3413,15 @@ func (m *Model) renderFooter(layout layoutDims) string {
 			}
 		}
 
-	case 1: // Status/Info pane
+	case 1: // Status pane
 		hints = []string{
 			m.renderKeyHint("j/k", "Scroll"),
 		}
 		if len(m.statusFiles) > 0 {
-			hints = append(hints, m.renderKeyHint("Enter", "Show Diff"))
+			hints = append(hints,
+				m.renderKeyHint("Enter", "Show Diff"),
+				m.renderKeyHint("e", "Edit File"),
+			)
 		}
 		hints = append(hints,
 			m.renderKeyHint("Tab", "Switch Pane"),

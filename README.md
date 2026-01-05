@@ -324,12 +324,13 @@ custom_commands:
 | `j/k` | Navigate commits |
 | `ctrl+j` | Next commit and open details |
 
-**Info/Diff Pane** (when focused on status):
+**Status Pane** (when focused on status):
 
 | Key | Action |
 | --- | --- |
 | `j/k` | Navigate between changed files |
 | `Enter` | Show diff for selected file in pager |
+| `e` | Open selected file in editor |
 | `d` | Show full diff of all files in pager |
 
 **Filter Mode:**
@@ -357,7 +358,7 @@ When running arbitrary commands with `!`, command history is persisted per repos
 - **Click**: Select and focus panes or items
 - **Scroll Wheel**: Scroll through lists and content
   - Worktree table (left pane)
-  - Info/Diff viewer (right top pane)
+  - Status pane (right top pane)
   - Log table (right bottom pane)
 
 ## Configuration
@@ -381,6 +382,7 @@ theme: dracula  # Options: "dracula" (default), "narna", "clean-light", "solariz
                 #          "nord", "monokai", "catppuccin-mocha"
 delta_path: delta
 pager: "less --use-color --wordwrap -qcR -P 'Press q to exit..'"
+editor: nvim
 delta_args:
   - --syntax-theme
   - Dracula
@@ -391,11 +393,11 @@ init_commands:
 terminate_commands:
   - echo "Cleaning up $WORKTREE_NAME"
 custom_commands:
-  e:
-    command: nvim
-    description: Open editor
+  t:
+    command: make test
+    description: Run tests
     show_help: true
-    wait: false
+    wait: true
 ```
 
 Notes:
@@ -413,6 +415,7 @@ Notes:
 - `delta_args` configures arguments passed to `delta` (defaults follow the UI theme: Dracula → `Dracula`, Narna → `OneHalfDark`, Clean-Light → `GitHub`, Solarized Dark → `Solarized (dark)`, Solarized Light → `Solarized (light)`, Gruvbox Dark → `Gruvbox Dark`, Gruvbox Light → `Gruvbox Light`, Nord → `Nord`, Monokai → `Monokai Extended`, Catppuccin Mocha → `Catppuccin Mocha`).
 - `delta_path` specifies the path to the delta executable (default: `delta`). Set to an empty string to disable delta and use plain git diff output.
 - `pager` designates the pager for `show_output` commands and the diff viewer (default: `$PAGER`, fallback `less --use-color --wordwrap -qcR -P 'Press q to exit..'`, then `more`, then `cat`). When the pager is `less`, lazyworktree configures `LESS=` and `LESSHISTFILE=-` to disregard user defaults.
+- `editor` sets the editor command for the Status pane `e` key (default: config value, then `$EDITOR`, then `nvim`, then `vi`).
 - `merge_method` controls how the "Absorb worktree" action integrates changes into main: `rebase` (default) rebases the feature branch onto main then fast-forwards; `merge` creates a merge commit.
 - `branch_name_script` executes a script to generate branch name suggestions when creating worktrees from changes. The script receives the git diff on stdin and should output a branch name. Refer to [AI-powered branch names](#ai-powered-branch-names) below.
 

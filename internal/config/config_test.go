@@ -729,6 +729,15 @@ func TestParseConfig(t *testing.T) {
 			},
 		},
 		{
+			name: "editor config is trimmed",
+			data: map[string]interface{}{
+				"editor": "  nvim -u NORC  ",
+			},
+			validate: func(t *testing.T, cfg *AppConfig) {
+				assert.Equal(t, "nvim -u NORC", cfg.Editor)
+			},
+		},
+		{
 			name: "merge_method rebase",
 			data: map[string]interface{}{
 				"merge_method": "rebase",
