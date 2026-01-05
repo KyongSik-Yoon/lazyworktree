@@ -1,0 +1,204 @@
+.TH LAZYWORKTREE 1 "January 2026" "lazyworktree" "User Commands"
+.SH NAME
+lazyworktree \- A TUI tool to manage git worktrees
+.SH SYNOPSIS
+.B lazyworktree
+[\fIOPTIONS\fR]
+.SH DESCRIPTION
+lazyworktree is a BubbleTea-based Terminal User Interface (TUI) designed for efficient Git worktree management. It enables you to visualize the repository's status, oversee branches, and navigate between worktrees with ease.
+.SH FEATURES
+.IP \(bu 2
+Worktree Management: Create, rename, delete, absorb, and prune merged worktrees
+.IP \(bu 2
+Cherry-pick Commits: Copy commits from one worktree to another via an interactive worktree picker
+.IP \(bu 2
+Base Selection: Select a base branch or commit from a list, or enter a reference when creating a worktree
+.IP \(bu 2
+Forge Integration: Fetch and display associated Pull Request (GitHub) or Merge Request (GitLab) status
+.IP \(bu 2
+Create from PR/MR: Establish worktrees directly from open pull or merge requests via the command palette
+.IP \(bu 2
+Status at a Glance: View dirty state, ahead/behind counts, and divergence from main
+.IP \(bu 2
+Tmux Integration: Create and manage tmux sessions per worktree with multi-window support
+.IP \(bu 2
+Diff Viewer: View diff with optional delta support
+.IP \(bu 2
+Repo Automation: \fB.wt\fR init/terminate commands with TOFU security
+.IP \(bu 2
+LazyGit Integration: Launch lazygit directly for the currently selected worktree
+.SH OPTIONS
+.TP
+.B \-\-worktree\-dir \fIDIR\fR
+Override the default worktree root directory (default: ~/.local/share/worktrees)
+.TP
+.B \-\-theme \fINAME\fR
+Select a UI theme (dracula, narna, clean-light, solarized-dark, solarized-light, gruvbox-dark, gruvbox-light, nord, monokai, catppuccin-mocha)
+.TP
+.B \-\-show\-syntax\-themes
+Display the default delta syntax-theme values for each UI theme
+.TP
+.B \-\-search\-auto\-select
+Start with filter focused and allow Enter to select the first match
+.TP
+.B \-\-output\-selection \fIFILE\fR
+Write the selected worktree path to FILE on exit (for shell integration)
+.SH KEY BINDINGS
+.TP
+.B Enter
+Jump to worktree (exit and cd)
+.TP
+.B c
+Create new worktree
+.TP
+.B m
+Rename selected worktree
+.TP
+.B D
+Delete selected worktree
+.TP
+.B d
+View diff in pager
+.TP
+.B A
+Absorb worktree into main
+.TP
+.B X
+Prune merged worktrees
+.TP
+.B !
+Run arbitrary command in selected worktree
+.TP
+.B p
+Fetch PR/MR status (also refreshes CI checks)
+.TP
+.B o
+Open PR/MR in browser
+.TP
+.B ctrl+p, P
+Command palette
+.TP
+.B g
+Open LazyGit
+.TP
+.B r
+Refresh list
+.TP
+.B R
+Fetch all remotes
+.TP
+.B f, /
+Filter worktrees
+.TP
+.B s
+Toggle sort (Name/Last Active)
+.TP
+.B ?
+Show help
+.SH SHELL INTEGRATION
+To enable the "jump" functionality, source the helper functions from the installation:
+
+For source builds:
+.nf
+source /path/to/lazyworktree/shell/functions.shell
+jt() { worktree_jump ~/path/to/your/main/repo "$@"; }
+.fi
+
+For Homebrew:
+.nf
+source $(brew --prefix)/opt/lazyworktree/share/lazyworktree/functions.shell
+jt() { worktree_jump ~/path/to/your/main/repo "$@"; }
+.fi
+
+With completion:
+.nf
+_jt() { _worktree_jump ~/path/to/your/main/repo; }
+compdef _jt jt
+.fi
+.SH CONFIGURATION
+lazyworktree reads configuration from \fB~/.config/lazyworktree/config.yaml\fR. See the documentation for available options including:
+.IP \(bu 2
+worktree_dir
+.IP \(bu 2
+sort_by_active
+.IP \(bu 2
+auto_fetch_prs
+.IP \(bu 2
+theme
+.IP \(bu 2
+delta_path
+.IP \(bu 2
+pager
+.IP \(bu 2
+trust_mode (tofu, never, always)
+.IP \(bu 2
+merge_method (rebase, merge)
+.IP \(bu 2
+custom_commands
+.SH PREREQUISITES
+.IP \(bu 2
+Git 2.31+ (recommended)
+.IP \(bu 2
+Forge CLI: GitHub CLI (gh) or GitLab CLI (glab) for repo resolution and PR/MR status
+
+.SH OPTIONAL DEPENDENCIES
+.IP \(bu 2
+delta \- For syntax-highlighted diffs
+.IP \(bu 2
+lazygit \- For full TUI git control
+.IP \(bu 2
+tmux \- For tmux integration support
+.SH EXAMPLES
+.TP
+Open lazyworktree:
+.nf
+lazyworktree
+.fi
+.TP
+Specify custom worktree directory:
+.nf
+lazyworktree --worktree-dir ~/my-worktrees
+.fi
+.TP
+Select a theme:
+.nf
+lazyworktree --theme nord
+.fi
+.TP
+Use with shell function for "jump" functionality:
+.nf
+jt  # Opens TUI, select a worktree and press Enter to jump
+.fi
+.SH ENVIRONMENT
+The following environment variables affect lazyworktree's behavior when used with custom commands:
+.IP \(bu 2
+WORKTREE_BRANCH \- Name of the git branch
+.IP \(bu 2
+MAIN_WORKTREE_PATH \- Path to the main repository
+.IP \(bu 2
+WORKTREE_PATH \- Path to the selected worktree
+.IP \(bu 2
+WORKTREE_NAME \- Name of the worktree (directory name)
+.IP \(bu 2
+REPO_NAME \- Name of the repository (from GitHub/GitLab)
+.SH CONFIGURATION FILES
+.TP
+.B ~/.config/lazyworktree/config.yaml
+Main configuration file
+.TP
+.B ~/.local/share/lazyworktree/trusted.json
+Trust on First Use (TOFU) trusted file hashes
+.TP
+.B ~/.local/share/worktrees/<repo-name>/
+Default worktree storage location
+.SH SEE ALSO
+.BR git-worktree (1),
+.BR lazygit (1),
+.BR tmux (1),
+.BR delta (1)
+.SH AUTHOR
+Chmouel Boudjnah <chmouel@chmouel.com>
+.SH COPYRIGHT
+Apache License 2.0
+.SH REPORTING BUGS
+Report bugs at https://github.com/chmouel/lazyworktree/issues

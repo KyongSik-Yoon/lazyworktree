@@ -35,6 +35,7 @@ archives:
       - README.md
       - config.example.yaml
       - shell/**
+      - lazyworktree.1
 homebrew_casks:
   - name: lazyworktree
     repository:
@@ -52,6 +53,7 @@ homebrew_casks:
     install:
       - bin: lazyworktree
       - { path: "shell/functions.shell", target: "share/lazyworktree/functions.shell" }
+      - { path: "lazyworktree.1", target: "share/man/man1/lazyworktree.1" }
 snapshot:
   version_template: "{{ .Tag }}-next"
 
@@ -83,6 +85,8 @@ nfpms:
         dst: /usr/share/doc/lazyworktree/config.example.yaml
       - src: shell/functions.shell
         dst: /usr/share/lazyworktree/functions.shell
+      - src: lazyworktree.1
+        dst: /usr/share/man/man1/lazyworktree.1
     overrides:
       deb:
         dependencies:
@@ -148,3 +152,6 @@ aurs:
 
       # shell functions
       install -Dm644 "./shell/functions.shell" "${pkgdir}/usr/share/lazyworktree/functions.shell"
+
+      # man page
+      install -Dm644 "./lazyworktree.1" "${pkgdir}/usr/share/man/man1/lazyworktree.1"
