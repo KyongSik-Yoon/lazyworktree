@@ -3323,11 +3323,16 @@ func (m *Model) renderFooter(layout layoutDims) string {
 	case 1: // Status/Info pane
 		hints = []string{
 			m.renderKeyHint("j/k", "Scroll"),
+		}
+		if len(m.statusFiles) > 0 {
+			hints = append(hints, m.renderKeyHint("Enter", "Show Diff"))
+		}
+		hints = append(hints,
 			m.renderKeyHint("Tab", "Switch Pane"),
 			m.renderKeyHint("r", "Refresh"),
 			m.renderKeyHint("q", "Quit"),
 			m.renderKeyHint("?", "Help"),
-		}
+		)
 
 	default: // Worktree table (pane 0)
 		hints = []string{
