@@ -15,6 +15,7 @@ A [BubbleTea](https://github.com/charmbracelet/bubbletea)-based Terminal User In
 - **Create from PR/MR**: Establish worktrees directly from open pull or merge requests via the command palette.
 - **Status at a Glance**: View dirty state, ahead/behind counts, and divergence from main.
 - **[Tmux](https://github.com/tmux/tmux/) Integration**: Create and manage tmux sessions per worktree with multi-window support.
+- **[Zellij](https://zellij.dev/)**: Create and manage zellij sessions per worktree with multi-tab support.
 - **Diff Viewer**: View diff with optional [delta](https://github.com/dandavison/delta) support.
 - **Repo Automation**: `.wt` init/terminate commands with [TOFU](https://en.wikipedia.org/wiki/Trust_on_first_use) security.
 - **LazyGit Integration**: Launch [lazygit](https://github.com/jesseduffield/lazygit) directly for the currently selected worktree.
@@ -34,6 +35,7 @@ A [BubbleTea](https://github.com/charmbracelet/bubbletea)-based Terminal User In
 - **delta**: For syntax-highlighted diffs. (highly recommended)
 - **lazygit**: For full TUI git control.
 - **tmux**: For TMUX integration support.
+- **zellij**: For zellij integration support.
 
 ## Installation
 
@@ -181,7 +183,7 @@ This behaviour may be configured in `config.yaml` via the `trust_mode` setting:
 
 You may define custom keybindings in your `~/.config/lazyworktree/config.yaml` to execute commands within the selected worktree. Custom commands execute interactively (the Terminal User Interface suspends, much like when launching `lazygit`) and appear in the command palette. Should you set `show_output`, lazyworktree pipes the command output through the configured pager.
 
-By default, `t` opens a tmux session with a single `shell` window. You may override this by defining `custom_commands.t`. When `attach` is true, lazyworktree attaches to the session immediately; when false, it displays an information modal with instructions for manual attachment.
+By default, `t` opens a tmux session with a single `shell` window and `Z` opens a zellij session with the same layout fields. You may override these by defining `custom_commands.t` or `custom_commands.Z`. When `attach` is true, lazyworktree attaches to the session immediately; when false, it displays an information modal with instructions for manual attachment.
 
 ### Configuration Format
 
@@ -225,6 +227,20 @@ custom_commands:
           command: zsh
         - name: lazygit
           command: lazygit
+  Z: # Open a zellij session with multiple tabs
+    description: Zellij
+    show_help: true
+    zellij:
+      session_name: "${REPO_NAME}_wt_$WORKTREE_NAME"
+      attach: true
+      on_exists: switch
+      windows:
+        - name: claude
+          command: claude
+        - name: shell
+          command: zsh
+        - name: lazygit
+          command: lazygit
 ```
 
 ### Field Reference
@@ -237,6 +253,7 @@ custom_commands:
 | `wait` | bool | `false` | Wait for key press after command completes (useful for quick commands like `ls` or `make test`) |
 | `show_output` | bool | `false` | Run non-interactively and show stdout/stderr in the pager (ignores `wait`) |
 | `tmux` | object | `null` | Configure a tmux session instead of executing a single command |
+| `zellij` | object | `null` | Configure a zellij session instead of executing a single command |
 
 #### tmux fields
 
@@ -256,6 +273,26 @@ If `windows` is omitted or empty, lazyworktree creates a single `shell` window.
 | `name` | string | `window-N` | Window name (supports env vars) |
 | `command` | string | `""` | Command to run in the window (empty uses your default shell) |
 | `cwd` | string | `$WORKTREE_PATH` | Working directory for the window (supports env vars) |
+
+#### zellij fields
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `session_name` | string | `${REPO_NAME}_wt_$WORKTREE_NAME` | zellij session name (supports env vars) |
+| `attach` | bool | `true` | If true, attach immediately; if false, show info modal with attach instructions |
+| `on_exists` | string | `switch` | Behavior if session exists: `switch`, `attach`, `kill`, `new` |
+| `windows` | list | `[ { name: "shell" } ]` | Tab definitions for the session |
+
+If `windows` is omitted or empty, lazyworktree creates a single `shell` tab.
+Zellij session names cannot include `/` or `\`, so lazyworktree replaces them with `-`.
+
+#### zellij window fields
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `name` | string | `window-N` | Tab name (supports env vars) |
+| `command` | string | `""` | Command to run in the tab (empty uses your default shell) |
+| `cwd` | string | `$WORKTREE_PATH` | Working directory for the tab (supports env vars) |
 
 ### Environment Variables
 

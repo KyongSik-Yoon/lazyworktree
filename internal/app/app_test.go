@@ -363,6 +363,54 @@ func TestShowCommandPaletteIncludesTmuxCommands(t *testing.T) {
 	}
 }
 
+func TestShowCommandPaletteIncludesZellijCommands(t *testing.T) {
+	cfg := &config.AppConfig{
+		WorktreeDir: t.TempDir(),
+		CustomCommands: map[string]*config.CustomCommand{
+			"Z": {
+				Description: "Zellij",
+				ShowHelp:    true,
+				Zellij: &config.TmuxCommand{
+					SessionName: "${REPO_NAME}_wt_$WORKTREE_NAME",
+					Attach:      true,
+					OnExists:    "switch",
+					Windows: []config.TmuxWindow{
+						{Name: "shell"},
+					},
+				},
+			},
+		},
+	}
+	m := NewModel(cfg, "")
+	m.setWindowSize(120, 40)
+
+	cmd := m.showCommandPalette()
+	if cmd == nil {
+		t.Fatal("showCommandPalette returned nil command")
+	}
+	if m.paletteScreen == nil {
+		t.Fatal("paletteScreen should be initialized")
+	}
+
+	items := m.paletteScreen.items
+	found := false
+	for _, item := range items {
+		if item.id == "Z" {
+			found = true
+			if item.label != "Zellij (Z)" {
+				t.Errorf("Expected label 'Zellij (Z)', got %q", item.label)
+			}
+			if item.description != zellijSessionLabel {
+				t.Errorf("Expected description %q, got %q", zellijSessionLabel, item.description)
+			}
+			break
+		}
+	}
+	if !found {
+		t.Fatal("zellij command item not found in command palette")
+	}
+}
+
 func TestRenderFooterIncludesCustomHelpHints(t *testing.T) {
 	cfg := &config.AppConfig{
 		WorktreeDir: t.TempDir(),
@@ -458,6 +506,46 @@ func TestTmuxSessionReadyShowsInfoWhenNotAttaching(t *testing.T) {
 		t.Fatal("expected no command when not attaching")
 	}
 	if !strings.Contains(model.infoScreen.message, "tmux attach-session -t 'wt_test'") {
+		t.Errorf("expected attach message, got %q", model.infoScreen.message)
+	}
+}
+
+func TestZellijSessionReadyAttachesDirectly(t *testing.T) {
+	cfg := &config.AppConfig{
+		WorktreeDir: t.TempDir(),
+	}
+	m := NewModel(cfg, "")
+	m.setWindowSize(120, 40)
+
+	updated, cmd := m.Update(zellijSessionReadyMsg{sessionName: "wt_test", attach: true, insideZellij: false})
+	model := updated.(*Model)
+	if model.currentScreen != screenNone {
+		t.Fatalf("expected no screen change, got %v", model.currentScreen)
+	}
+	if cmd == nil {
+		t.Fatal("expected attach command to be returned")
+	}
+}
+
+func TestZellijSessionReadyShowsInfoWhenInsideZellij(t *testing.T) {
+	cfg := &config.AppConfig{
+		WorktreeDir: t.TempDir(),
+	}
+	m := NewModel(cfg, "")
+	m.setWindowSize(120, 40)
+
+	updated, cmd := m.Update(zellijSessionReadyMsg{sessionName: "wt_test", attach: true, insideZellij: true})
+	model := updated.(*Model)
+	if model.currentScreen != screenInfo {
+		t.Fatalf("expected info screen, got %v", model.currentScreen)
+	}
+	if model.infoScreen == nil {
+		t.Fatal("expected info screen to be created")
+	}
+	if cmd != nil {
+		t.Fatal("expected no command when inside zellij")
+	}
+	if !strings.Contains(model.infoScreen.message, "zellij attach 'wt_test'") {
 		t.Errorf("expected attach message, got %q", model.infoScreen.message)
 	}
 }

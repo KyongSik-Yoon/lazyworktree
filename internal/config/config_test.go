@@ -30,6 +30,8 @@ func TestDefaultConfig(t *testing.T) {
 	assert.NotNil(t, cfg.CustomCommands)
 	require.Contains(t, cfg.CustomCommands, "t")
 	assert.Equal(t, "Tmux", cfg.CustomCommands["t"].Description)
+	require.Contains(t, cfg.CustomCommands, "Z")
+	assert.Equal(t, "Zellij", cfg.CustomCommands["Z"].Description)
 	assert.Empty(t, cfg.BranchNameScript)
 }
 
@@ -1174,6 +1176,50 @@ func TestParseCustomCommands(t *testing.T) {
 			},
 		},
 		{
+			name: "zellij command with windows",
+			input: map[string]interface{}{
+				"custom_commands": map[string]interface{}{
+					"z": map[string]interface{}{
+						"description": "Zellij",
+						"show_help":   true,
+						"zellij": map[string]interface{}{
+							"session_name": "${REPO_NAME}_wt_$WORKTREE_NAME",
+							"attach":       false,
+							"on_exists":    "kill",
+							"windows": []interface{}{
+								map[string]interface{}{
+									"name":    "shell",
+									"command": "zsh",
+									"cwd":     "$WORKTREE_PATH",
+								},
+								map[string]interface{}{
+									"name":    "git",
+									"command": "lazygit",
+								},
+							},
+						},
+					},
+				},
+			},
+			expected: map[string]*CustomCommand{
+				"z": {
+					Command:     "",
+					Description: "Zellij",
+					ShowHelp:    true,
+					Wait:        false,
+					Zellij: &TmuxCommand{
+						SessionName: "${REPO_NAME}_wt_$WORKTREE_NAME",
+						Attach:      false,
+						OnExists:    "kill",
+						Windows: []TmuxWindow{
+							{Name: "shell", Command: "zsh", Cwd: "$WORKTREE_PATH"},
+							{Name: "git", Command: "lazygit", Cwd: ""},
+						},
+					},
+				},
+			},
+		},
+		{
 			name: "tmux without windows defaults to shell window",
 			input: map[string]interface{}{
 				"custom_commands": map[string]interface{}{
@@ -1393,12 +1439,13 @@ func TestParseConfig_CustomCommands(t *testing.T) {
 			validate: func(t *testing.T, cfg *AppConfig) {
 				assert.Equal(t, "/tmp/worktrees", cfg.WorktreeDir)
 				assert.Equal(t, "switched", cfg.SortMode)
-				require.Len(t, cfg.CustomCommands, 2)
+				require.Len(t, cfg.CustomCommands, 3)
 				assert.Equal(t, "nvim", cfg.CustomCommands["e"].Command)
 				assert.Equal(t, "Open editor", cfg.CustomCommands["e"].Description)
 				assert.True(t, cfg.CustomCommands["e"].ShowHelp)
 				assert.False(t, cfg.CustomCommands["e"].Wait)
 				require.Contains(t, cfg.CustomCommands, "t")
+				require.Contains(t, cfg.CustomCommands, "Z")
 			},
 		},
 		{
@@ -1409,6 +1456,8 @@ func TestParseConfig_CustomCommands(t *testing.T) {
 			validate: func(t *testing.T, cfg *AppConfig) {
 				require.Contains(t, cfg.CustomCommands, "t")
 				assert.Equal(t, "Tmux", cfg.CustomCommands["t"].Description)
+				require.Contains(t, cfg.CustomCommands, "Z")
+				assert.Equal(t, "Zellij", cfg.CustomCommands["Z"].Description)
 			},
 		},
 	}

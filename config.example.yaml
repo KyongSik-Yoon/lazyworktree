@@ -106,3 +106,17 @@ custom_commands:
           command: zsh
         - name: lazygit
           command: lazygit
+  "Z":
+    description: Zellij session
+    show_help: true
+    zellij:
+      session_name: "${REPO_NAME}_wt_$WORKTREE_NAME"
+      attach: true
+      on_exists: "switch"
+      windows:
+        - name: claude
+          command: claude
+        - name: shell
+          command: zsh
+        - name: lazygit
+          command: lazygit

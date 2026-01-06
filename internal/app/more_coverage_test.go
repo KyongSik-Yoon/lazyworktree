@@ -512,6 +512,31 @@ func TestBuildTmuxInfoMessage(t *testing.T) {
 	}
 }
 
+func TestBuildZellijInfoMessage(t *testing.T) {
+	msg := buildZellijInfoMessage("session")
+	if !strings.Contains(msg, "zellij attach") {
+		t.Fatalf("expected attach message, got %q", msg)
+	}
+}
+
+func TestSanitizeZellijSessionName(t *testing.T) {
+	got := sanitizeZellijSessionName("owner/repo\\worktree")
+	if got != "owner-repo-worktree" {
+		t.Fatalf("expected sanitized name, got %q", got)
+	}
+}
+
+func TestBuildZellijScriptDefaultOnExistsIncludesNoop(t *testing.T) {
+	cfg := &config.TmuxCommand{
+		SessionName: "session",
+		OnExists:    "",
+	}
+	script := buildZellijScript("session", cfg, []string{"/tmp/layout"})
+	if !strings.Contains(script, "if session_exists \"$session\"; then\n  :\nfi\n") {
+		t.Fatalf("expected no-op in default on_exists branch, got %q", script)
+	}
+}
+
 func TestOpenTmuxSession(t *testing.T) {
 	cfg := &config.AppConfig{WorktreeDir: t.TempDir()}
 	m := NewModel(cfg, "")
@@ -551,6 +576,57 @@ func TestOpenTmuxSession(t *testing.T) {
 	ready, ok := msg.(tmuxSessionReadyMsg)
 	if !ok {
 		t.Fatalf("expected tmuxSessionReadyMsg, got %T", msg)
+	}
+	if !called {
+		t.Fatal("expected command runner to be called")
+	}
+	if ready.sessionName != "session" {
+		t.Fatalf("unexpected session name: %q", ready.sessionName)
+	}
+	if !ready.attach {
+		t.Fatal("expected attach to be true")
+	}
+}
+
+func TestOpenZellijSession(t *testing.T) {
+	cfg := &config.AppConfig{WorktreeDir: t.TempDir()}
+	m := NewModel(cfg, "")
+	wt := &models.WorktreeInfo{Path: t.TempDir(), Branch: featureBranch}
+
+	if cmd := m.openZellijSession(nil, wt); cmd != nil {
+		t.Fatal("expected nil command for nil zellij config")
+	}
+
+	badCfg := &config.TmuxCommand{SessionName: "session"}
+	if msg := m.openZellijSession(badCfg, wt)(); msg == nil {
+		t.Fatal("expected error message for empty windows")
+	}
+
+	called := false
+	m.commandRunner = func(_ string, _ ...string) *exec.Cmd {
+		called = true
+		return exec.Command("true")
+	}
+	m.execProcess = func(_ *exec.Cmd, cb tea.ExecCallback) tea.Cmd {
+		return func() tea.Msg {
+			return cb(nil)
+		}
+	}
+
+	cfgGood := &config.TmuxCommand{
+		SessionName: "session",
+		Attach:      true,
+		OnExists:    "switch",
+		Windows:     []config.TmuxWindow{{Name: "shell"}},
+	}
+	cmd := m.openZellijSession(cfgGood, wt)
+	if cmd == nil {
+		t.Fatal("expected zellij command")
+	}
+	msg := cmd()
+	ready, ok := msg.(zellijSessionReadyMsg)
+	if !ok {
+		t.Fatalf("expected zellijSessionReadyMsg, got %T", msg)
 	}
 	if !called {
 		t.Fatal("expected command runner to be called")

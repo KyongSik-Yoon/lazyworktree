@@ -20,6 +20,7 @@ type CustomCommand struct {
 	Wait        bool
 	ShowOutput  bool
 	Tmux        *TmuxCommand
+	Zellij      *TmuxCommand
 }
 
 // TmuxCommand represents a configured tmux session layout.
@@ -89,6 +90,18 @@ func DefaultConfig() *AppConfig {
 				Description: "Tmux",
 				ShowHelp:    true,
 				Tmux: &TmuxCommand{
+					SessionName: "${REPO_NAME}_wt_$WORKTREE_NAME",
+					Attach:      true,
+					OnExists:    "switch",
+					Windows: []TmuxWindow{
+						{Name: "shell"},
+					},
+				},
+			},
+			"Z": {
+				Description: "Zellij",
+				ShowHelp:    true,
+				Zellij: &TmuxCommand{
 					SessionName: "${REPO_NAME}_wt_$WORKTREE_NAME",
 					Attach:      true,
 					OnExists:    "switch",
@@ -287,9 +300,12 @@ func parseCustomCommands(data map[string]any) map[string]*CustomCommand {
 		if tmuxRaw, ok := cmdMap["tmux"].(map[string]any); ok {
 			cmd.Tmux = parseTmuxCommand(tmuxRaw)
 		}
+		if zellijRaw, ok := cmdMap["zellij"].(map[string]any); ok {
+			cmd.Zellij = parseTmuxCommand(zellijRaw)
+		}
 
 		// Only add if command is not empty or tmux config is present
-		if cmd.Command != "" || cmd.Tmux != nil {
+		if cmd.Command != "" || cmd.Tmux != nil || cmd.Zellij != nil {
 			commands[key] = cmd
 		}
 	}

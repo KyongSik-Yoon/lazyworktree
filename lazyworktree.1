@@ -24,6 +24,8 @@ Status at a Glance: View dirty state, ahead/behind counts, and divergence from m
 .IP \(bu 2
 Tmux Integration: Create and manage tmux sessions per worktree with multi-window support
 .IP \(bu 2
+Zellij Integration: Create and manage zellij sessions per worktree with multi-tab support
+.IP \(bu 2
 Diff Viewer: View diff with optional delta support
 .IP \(bu 2
 Repo Automation: \fB.wt\fR init/terminate commands with TOFU security
@@ -184,6 +186,8 @@ trust_mode (tofu, never, always)
 merge_method (rebase, merge)
 .IP \(bu 2
 custom_commands
+.IP \(bu 2
+zellij session_name replaces / and \\ with -
 .SH PREREQUISITES
 .IP \(bu 2
 Git 2.31+ (recommended)
@@ -197,6 +201,8 @@ delta \- For syntax-highlighted diffs
 lazygit \- For full TUI git control
 .IP \(bu 2
 tmux \- For tmux integration support
+.IP \(bu 2
+zellij \- For zellij integration support
 .SH EXAMPLES
 .TP
 Open lazyworktree:
@@ -244,6 +250,7 @@ Default worktree storage location
 .BR git-worktree (1),
 .BR lazygit (1),
 .BR tmux (1),
+.BR zellij (1),
 .BR delta (1)
 .SH AUTHOR
 Chmouel Boudjnah <chmouel@chmouel.com>

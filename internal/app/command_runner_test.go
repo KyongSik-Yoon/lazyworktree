@@ -18,6 +18,8 @@ type commandCapture struct {
 	env  []string
 }
 
+const testSessionName = "session"
+
 const (
 	testWorktreePath = "/tmp/wt"
 	testBashCmd      = "bash"
@@ -230,7 +232,7 @@ func TestAttachTmuxSessionCmdUsesCommandRunner(t *testing.T) {
 	m.commandRunner = capture.runner
 	m.execProcess = capture.exec
 
-	cmd := m.attachTmuxSessionCmd("session", false)
+	cmd := m.attachTmuxSessionCmd(testSessionName, false)
 	if cmd == nil {
 		t.Fatal("expected command to be returned")
 	}
@@ -238,8 +240,31 @@ func TestAttachTmuxSessionCmdUsesCommandRunner(t *testing.T) {
 	if capture.name != "tmux" {
 		t.Fatalf("expected tmux command, got %q", capture.name)
 	}
-	if len(capture.args) != 3 || capture.args[0] != "attach-session" || capture.args[2] != "session" {
+	if len(capture.args) != 3 || capture.args[0] != "attach-session" || capture.args[2] != testSessionName {
 		t.Fatalf("unexpected tmux args: %v", capture.args)
+	}
+}
+
+func TestAttachZellijSessionCmdUsesCommandRunner(t *testing.T) {
+	cfg := &config.AppConfig{
+		WorktreeDir: t.TempDir(),
+	}
+	m := NewModel(cfg, "")
+
+	capture := &commandCapture{}
+	m.commandRunner = capture.runner
+	m.execProcess = capture.exec
+
+	cmd := m.attachZellijSessionCmd(testSessionName)
+	if cmd == nil {
+		t.Fatal("expected command to be returned")
+	}
+
+	if capture.name != "zellij" {
+		t.Fatalf("expected zellij command, got %q", capture.name)
+	}
+	if len(capture.args) != 2 || capture.args[0] != onExistsAttach || capture.args[1] != testSessionName {
+		t.Fatalf("unexpected zellij args: %v", capture.args)
 	}
 }
 
