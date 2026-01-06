@@ -41,6 +41,9 @@ const (
 	keyDown  = "down"
 	keyQ     = "q"
 	keyUp    = "up"
+
+	// Placeholder text constants
+	placeholderFilterFiles = "Filter files..."
 )
 
 // ConfirmScreen displays a modal confirmation prompt with Accept/Cancel buttons.
@@ -2010,6 +2013,7 @@ type CommitFilesScreen struct {
 	commitSHA     string
 	worktreePath  string
 	files         []models.CommitFile
+	allFiles      []models.CommitFile // Original unfiltered files
 	tree          *CommitFileTreeNode
 	treeFlat      []*CommitFileTreeNode
 	collapsedDirs map[string]bool
@@ -2018,6 +2022,12 @@ type CommitFilesScreen struct {
 	width         int
 	height        int
 	thm           *theme.Theme
+	// Filter/search support
+	filterInput   textinput.Model
+	showingFilter bool
+	filterQuery   string
+	showingSearch bool
+	searchQuery   string
 }
 
 // NewCommitFilesScreen creates a commit files tree screen.
@@ -2031,16 +2041,24 @@ func NewCommitFilesScreen(sha, wtPath string, files []models.CommitFile, maxWidt
 		height = 20
 	}
 
+	ti := textinput.New()
+	ti.Placeholder = placeholderFilterFiles
+	ti.CharLimit = 100
+	ti.Prompt = "> "
+	ti.Width = width - 6
+
 	screen := &CommitFilesScreen{
 		commitSHA:     sha,
 		worktreePath:  wtPath,
 		files:         files,
+		allFiles:      files,
 		collapsedDirs: make(map[string]bool),
 		cursor:        0,
 		scrollOffset:  0,
 		width:         width,
 		height:        height,
 		thm:           thm,
+		filterInput:   ti,
 	}
 
 	screen.tree = buildCommitFileTree(files)
@@ -2143,6 +2161,71 @@ func (s *CommitFilesScreen) rebuildFlat() {
 	s.flattenTree(s.tree, 0)
 }
 
+// applyFilter filters the files list and rebuilds the tree.
+func (s *CommitFilesScreen) applyFilter() {
+	query := strings.ToLower(strings.TrimSpace(s.filterQuery))
+	if query == "" {
+		s.files = s.allFiles
+	} else {
+		s.files = nil
+		for _, f := range s.allFiles {
+			if strings.Contains(strings.ToLower(f.Filename), query) {
+				s.files = append(s.files, f)
+			}
+		}
+	}
+
+	// Rebuild tree from filtered files
+	s.tree = buildCommitFileTree(s.files)
+	sortCommitFileTree(s.tree)
+	compressCommitFileTree(s.tree)
+	s.rebuildFlat()
+
+	// Clamp cursor
+	if s.cursor >= len(s.treeFlat) {
+		s.cursor = maxInt(0, len(s.treeFlat)-1)
+	}
+	s.scrollOffset = 0
+}
+
+// searchNext finds the next match for the search query.
+func (s *CommitFilesScreen) searchNext(forward bool) {
+	if s.searchQuery == "" || len(s.treeFlat) == 0 {
+		return
+	}
+
+	query := strings.ToLower(s.searchQuery)
+	start := s.cursor
+	n := len(s.treeFlat)
+
+	for i := 1; i <= n; i++ {
+		var idx int
+		if forward {
+			idx = (start + i) % n
+		} else {
+			idx = (start - i + n) % n
+		}
+
+		node := s.treeFlat[idx]
+		name := node.Path
+		if parts := strings.Split(node.Path, "/"); len(parts) > 0 {
+			name = parts[len(parts)-1]
+		}
+
+		if strings.Contains(strings.ToLower(name), query) {
+			s.cursor = idx
+			// Adjust scroll offset
+			maxVisible := s.height - 8
+			if s.cursor < s.scrollOffset {
+				s.scrollOffset = s.cursor
+			} else if s.cursor >= s.scrollOffset+maxVisible {
+				s.scrollOffset = s.cursor - maxVisible + 1
+			}
+			return
+		}
+	}
+}
+
 func (s *CommitFilesScreen) flattenTree(node *CommitFileTreeNode, depth int) {
 	if node == nil {
 		return
@@ -2188,8 +2271,88 @@ func (s *CommitFilesScreen) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	maxVisible := s.height - 8 // Account for header, footer, borders
+	keyStr := keyMsg.String()
 
-	switch keyMsg.String() {
+	// Handle filter mode
+	if s.showingFilter {
+		switch keyStr {
+		case keyEnter:
+			s.showingFilter = false
+			s.filterInput.Blur()
+			return s, nil
+		case keyEsc, keyCtrlC:
+			s.showingFilter = false
+			s.filterQuery = ""
+			s.filterInput.SetValue("")
+			s.filterInput.Blur()
+			s.applyFilter()
+			return s, nil
+		case keyUp, keyCtrlK:
+			if s.cursor > 0 {
+				s.cursor--
+				if s.cursor < s.scrollOffset {
+					s.scrollOffset = s.cursor
+				}
+			}
+			return s, nil
+		case keyDown, keyCtrlJ:
+			if s.cursor < len(s.treeFlat)-1 {
+				s.cursor++
+				if s.cursor >= s.scrollOffset+maxVisible {
+					s.scrollOffset = s.cursor - maxVisible + 1
+				}
+			}
+			return s, nil
+		}
+
+		// Update filter input
+		var cmd tea.Cmd
+		s.filterInput, cmd = s.filterInput.Update(msg)
+		newQuery := s.filterInput.Value()
+		if newQuery != s.filterQuery {
+			s.filterQuery = newQuery
+			s.applyFilter()
+		}
+		return s, cmd
+	}
+
+	// Handle search mode
+	if s.showingSearch {
+		switch keyStr {
+		case keyEnter:
+			s.showingSearch = false
+			s.filterInput.Blur()
+			return s, nil
+		case keyEsc, keyCtrlC:
+			s.showingSearch = false
+			s.searchQuery = ""
+			s.filterInput.SetValue("")
+			s.filterInput.Blur()
+			return s, nil
+		case "n":
+			s.searchNext(true)
+			return s, nil
+		case "N":
+			s.searchNext(false)
+			return s, nil
+		}
+
+		// Update search input and jump to first match
+		var cmd tea.Cmd
+		s.filterInput, cmd = s.filterInput.Update(msg)
+		newQuery := s.filterInput.Value()
+		if newQuery != s.searchQuery {
+			s.searchQuery = newQuery
+			// Jump to first match from current position
+			if s.searchQuery != "" {
+				s.searchNext(true)
+			}
+		}
+		return s, cmd
+	}
+
+	// Normal navigation
+	switch keyStr {
 	case "j", keyDown:
 		if s.cursor < len(s.treeFlat)-1 {
 			s.cursor++
@@ -2221,6 +2384,14 @@ func (s *CommitFilesScreen) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		s.cursor = maxInt(0, len(s.treeFlat)-1)
 		if s.cursor >= maxVisible {
 			s.scrollOffset = s.cursor - maxVisible + 1
+		}
+	case "n":
+		if s.searchQuery != "" {
+			s.searchNext(true)
+		}
+	case "N":
+		if s.searchQuery != "" {
+			s.searchNext(false)
 		}
 	}
 
@@ -2358,7 +2529,13 @@ func (s *CommitFilesScreen) View() string {
 		Border(lipgloss.NormalBorder(), true, false, false, false).
 		BorderForeground(s.thm.BorderDim)
 
-	footer := footerStyle.Render("j/k: navigate • Enter: toggle/view diff • d: full diff • q: close")
+	footerText := "j/k: navigate • Enter: toggle/view diff • d: full diff • f: filter • /: search • q: close"
+	if s.showingFilter {
+		footerText = "↑↓: navigate • Enter: apply filter • Esc: clear filter"
+	} else if s.showingSearch {
+		footerText = "n/N: next/prev match • Enter: close search • Esc: clear search"
+	}
+	footer := footerStyle.Render(footerText)
 
 	// Stats line
 	statsStyle := lipgloss.NewStyle().
@@ -2367,14 +2544,27 @@ func (s *CommitFilesScreen) View() string {
 		Padding(0, 1).
 		Align(lipgloss.Right)
 
-	stats := statsStyle.Render(fmt.Sprintf("%d files", len(s.files)))
+	statsText := fmt.Sprintf("%d files", len(s.files))
+	if s.filterQuery != "" {
+		statsText = fmt.Sprintf("%d/%d files (filtered)", len(s.files), len(s.allFiles))
+	}
+	stats := statsStyle.Render(statsText)
 
-	content := lipgloss.JoinVertical(lipgloss.Left,
-		title,
-		stats,
-		strings.Join(itemViews, "\n"),
-		footer,
-	)
+	// Build content sections
+	sections := []string{title}
+
+	// Add filter/search input if active
+	if s.showingFilter || s.showingSearch {
+		inputStyle := lipgloss.NewStyle().
+			Padding(0, 1).
+			Width(s.width - 2).
+			Foreground(s.thm.TextFg)
+		sections = append(sections, inputStyle.Render(s.filterInput.View()))
+	}
+
+	sections = append(sections, stats, strings.Join(itemViews, "\n"), footer)
+
+	content := lipgloss.JoinVertical(lipgloss.Left, sections...)
 
 	return boxStyle.Render(content)
 }

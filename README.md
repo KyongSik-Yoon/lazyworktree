@@ -335,6 +335,9 @@ custom_commands:
 | `j/k` | Navigate files and directories |
 | `Enter` | Toggle directory collapse/expand, or show file diff |
 | `d` | Show full commit diff in pager |
+| `f` | Filter files by name |
+| `/` | Search files (incremental) |
+| `n/N` | Next/previous search match |
 | `q`, `Esc` | Return to commit log |
 
 **Status Pane** (when focused on status):

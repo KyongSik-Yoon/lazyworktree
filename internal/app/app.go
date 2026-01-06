@@ -821,7 +821,7 @@ func (m *Model) filterLabel() string {
 func (m *Model) filterPlaceholder(target filterTarget) string {
 	switch target {
 	case filterTargetStatus:
-		return "Filter files..."
+		return placeholderFilterFiles
 	case filterTargetLog:
 		return "Filter commits..."
 	default:
@@ -2520,6 +2520,16 @@ func (m *Model) handleScreenKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		keyStr := msg.String()
+
+		// If filter or search is active, delegate to screen first
+		if m.commitFilesScreen.showingFilter || m.commitFilesScreen.showingSearch {
+			cs, cmd := m.commitFilesScreen.Update(msg)
+			if updated, ok := cs.(*CommitFilesScreen); ok {
+				m.commitFilesScreen = updated
+			}
+			return m, cmd
+		}
+
 		switch keyStr {
 		case keyQ, keyCtrlC:
 			m.commitFilesScreen = nil
@@ -2529,6 +2539,23 @@ func (m *Model) handleScreenKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.commitFilesScreen = nil
 			m.currentScreen = screenNone
 			return m, nil
+		case "f":
+			// Start filter mode
+			m.commitFilesScreen.showingFilter = true
+			m.commitFilesScreen.showingSearch = false
+			m.commitFilesScreen.filterInput.Placeholder = placeholderFilterFiles
+			m.commitFilesScreen.filterInput.SetValue(m.commitFilesScreen.filterQuery)
+			m.commitFilesScreen.filterInput.Focus()
+			return m, textinput.Blink
+		case "/":
+			// Start search mode
+			m.commitFilesScreen.showingSearch = true
+			m.commitFilesScreen.showingFilter = false
+			m.commitFilesScreen.filterInput.Placeholder = "Search files..."
+			m.commitFilesScreen.filterInput.SetValue("")
+			m.commitFilesScreen.searchQuery = ""
+			m.commitFilesScreen.filterInput.Focus()
+			return m, textinput.Blink
 		case "d":
 			// Show full commit diff via pager
 			sha := m.commitFilesScreen.commitSHA
