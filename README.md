@@ -578,7 +578,7 @@ branch_name_script: "gemini --model gemini-2.5-flash-lite -p "Generate a short g
 
 ### Files in commit view
 
-<img width="3835" height="2037" alt="image" src="https://github.com/user-attachments/assets/2e0bad9d-426c-47dd-bb61-c272a7cfca4a" />
+<img width="3835" height="2116" alt="files-in-git-commit-view" src="https://github.com/user-attachments/assets/031bd043-c1a2-4f88-837e-89e26812cea7" />
 
 ## How does it compare?
 
