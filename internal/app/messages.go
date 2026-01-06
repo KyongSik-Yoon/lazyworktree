@@ -50,6 +50,16 @@ func (m *Model) handleWorktreesLoaded(msg worktreesLoadedMsg) (tea.Model, tea.Cm
 	m.detailsCache = make(map[string]*detailsCacheEntry)
 	m.ensureRepoConfig()
 	m.updateTable()
+	if m.pendingSelectWorktreePath != "" {
+		for i, wt := range m.filteredWts {
+			if wt.Path == m.pendingSelectWorktreePath {
+				m.worktreeTable.SetCursor(i)
+				m.selectedIndex = i
+				break
+			}
+		}
+		m.pendingSelectWorktreePath = ""
+	}
 	m.saveCache()
 	if len(m.worktrees) == 0 {
 		cwd, _ := os.Getwd()
@@ -240,24 +250,24 @@ func (m *Model) handleOpenPRsLoaded(msg openPRsLoadedMsg) tea.Cmd {
 				return func() tea.Msg { return errMsg{err: fmt.Errorf("failed to create worktree directory: %w", err)} }, true
 			}
 
-			// Create worktree from PR branch
-			ok := m.git.CreateWorktreeFromPR(m.ctx, pr.Number, pr.Branch, pr.Branch, targetPath)
-			if !ok {
-				return func() tea.Msg {
-					return errMsg{err: fmt.Errorf("failed to create worktree from PR #%d (branch: %s)", pr.Number, pr.Branch)}
-				}, true
-			}
-
-			env := m.buildCommandEnv(pr.Branch, targetPath)
-			initCmds := m.collectInitCommands()
-			after := func() tea.Msg {
-				worktrees, err := m.git.GetWorktrees(m.ctx)
-				return worktreesLoadedMsg{
-					worktrees: worktrees,
-					err:       err,
+			// Create worktree from PR branch (can take time, so do it async with a loading pulse)
+			m.loading = true
+			m.statusContent = fmt.Sprintf("Creating worktree from PR/MR #%d...", pr.Number)
+			m.loadingScreen = NewLoadingScreen(m.statusContent, m.theme)
+			m.currentScreen = screenLoading
+			m.pendingSelectWorktreePath = targetPath
+			return func() tea.Msg {
+				ok := m.git.CreateWorktreeFromPR(m.ctx, pr.Number, pr.Branch, pr.Branch, targetPath)
+				if !ok {
+					return createFromPRResultMsg{
+						prNumber:   pr.Number,
+						branch:     pr.Branch,
+						targetPath: targetPath,
+						err:        fmt.Errorf("create worktree from PR/MR branch %q", pr.Branch),
+					}
 				}
-			}
-			return m.runCommandsWithTrust(initCmds, targetPath, env, after), true
+				return createFromPRResultMsg{prNumber: pr.Number, branch: pr.Branch, targetPath: targetPath}
+			}, true
 		}
 		m.currentScreen = screenInput
 		return textinput.Blink

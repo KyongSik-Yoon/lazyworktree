@@ -123,6 +123,12 @@ type (
 		prs []*models.PRInfo
 		err error
 	}
+	createFromPRResultMsg struct {
+		prNumber   int
+		branch     string
+		targetPath string
+		err        error
+	}
 	createFromChangesReadyMsg struct {
 		worktree      *models.WorktreeInfo
 		currentBranch string
@@ -288,6 +294,9 @@ type Model struct {
 	// Debouncing
 	detailUpdateCancel  context.CancelFunc
 	pendingDetailsIndex int
+
+	// Post-refresh selection (e.g. after creating worktree)
+	pendingSelectWorktreePath string
 
 	// Confirm screen
 	confirmScreen *ConfirmScreen
@@ -547,6 +556,25 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case openPRsLoadedMsg:
 		return m, m.handleOpenPRsLoaded(msg)
+
+	case createFromPRResultMsg:
+		m.loading = false
+		if m.currentScreen == screenLoading {
+			m.currentScreen = screenNone
+			m.loadingScreen = nil
+		}
+		if msg.err != nil {
+			m.pendingSelectWorktreePath = ""
+			m.showInfo(fmt.Sprintf("Failed to create worktree from PR/MR #%d: %v", msg.prNumber, msg.err), nil)
+			return m, nil
+		}
+		env := m.buildCommandEnv(msg.branch, msg.targetPath)
+		initCmds := m.collectInitCommands()
+		after := func() tea.Msg {
+			worktrees, err := m.git.GetWorktrees(m.ctx)
+			return worktreesLoadedMsg{worktrees: worktrees, err: err}
+		}
+		return m, m.runCommandsWithTrust(initCmds, msg.targetPath, env, after)
 
 	case createFromChangesReadyMsg:
 		return m, m.handleCreateFromChangesReady(msg)
