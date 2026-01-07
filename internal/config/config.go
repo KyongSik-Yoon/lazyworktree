@@ -100,7 +100,7 @@ func DefaultConfig() *AppConfig {
 			},
 			"Z": {
 				Description: "Zellij",
-				ShowHelp:    true,
+				ShowHelp:    false,
 				Zellij: &TmuxCommand{
 					SessionName: "${REPO_NAME}_wt_$WORKTREE_NAME",
 					Attach:      true,
