@@ -22,6 +22,10 @@ func TestAvailableThemesIncludesDefaults(t *testing.T) {
 		"dracula":          false,
 		"narna":            false,
 		"clean-light":      false,
+		"catppuccin-latte": false,
+		"rose-pine-dawn":   false,
+		"one-light":        false,
+		"everforest-light": false,
 		"solarized-dark":   false,
 		"solarized-light":  false,
 		"gruvbox-dark":     false,
@@ -50,6 +54,10 @@ func TestIsLight(t *testing.T) {
 		want bool
 	}{
 		{CleanLightName, true},
+		{CatppuccinLatteName, true},
+		{RosePineDawnName, true},
+		{OneLightName, true},
+		{EverforestLightName, true},
 		{SolarizedLightName, true},
 		{GruvboxLightName, true},
 		{DraculaName, false},

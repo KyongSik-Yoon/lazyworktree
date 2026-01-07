@@ -53,6 +53,10 @@ func TestSyntaxThemeForUITheme(t *testing.T) {
 		{name: "nord", inputTheme: "nord", want: "Nord"},
 		{name: "monokai", inputTheme: "monokai", want: "Monokai Extended"},
 		{name: "catppuccin-mocha", inputTheme: "catppuccin-mocha", want: "Catppuccin Mocha"},
+		{name: "catppuccin-latte", inputTheme: "catppuccin-latte", want: "Catppuccin Latte"},
+		{name: "rose-pine-dawn", inputTheme: "rose-pine-dawn", want: "GitHub"},
+		{name: "one-light", inputTheme: "one-light", want: "OneHalfLight"},
+		{name: "everforest-light", inputTheme: "everforest-light", want: "Gruvbox Light"},
 		{name: "unknown falls back to dracula", inputTheme: "unknown", want: "Dracula"},
 	}
 
@@ -637,6 +641,46 @@ func TestParseConfig(t *testing.T) {
 			validate: func(t *testing.T, cfg *AppConfig) {
 				assert.Equal(t, "catppuccin-mocha", cfg.Theme)
 				assert.Equal(t, []string{"--syntax-theme", "Catppuccin Mocha"}, cfg.DeltaArgs)
+			},
+		},
+		{
+			name: "theme catppuccin-latte sets default delta args when unset",
+			data: map[string]interface{}{
+				"theme": "catppuccin-latte",
+			},
+			validate: func(t *testing.T, cfg *AppConfig) {
+				assert.Equal(t, "catppuccin-latte", cfg.Theme)
+				assert.Equal(t, []string{"--syntax-theme", "Catppuccin Latte"}, cfg.DeltaArgs)
+			},
+		},
+		{
+			name: "theme rose-pine-dawn sets default delta args when unset",
+			data: map[string]interface{}{
+				"theme": "rose-pine-dawn",
+			},
+			validate: func(t *testing.T, cfg *AppConfig) {
+				assert.Equal(t, "rose-pine-dawn", cfg.Theme)
+				assert.Equal(t, []string{"--syntax-theme", "GitHub"}, cfg.DeltaArgs)
+			},
+		},
+		{
+			name: "theme one-light sets default delta args when unset",
+			data: map[string]interface{}{
+				"theme": "one-light",
+			},
+			validate: func(t *testing.T, cfg *AppConfig) {
+				assert.Equal(t, "one-light", cfg.Theme)
+				assert.Equal(t, []string{"--syntax-theme", "OneHalfLight"}, cfg.DeltaArgs)
+			},
+		},
+		{
+			name: "theme everforest-light sets default delta args when unset",
+			data: map[string]interface{}{
+				"theme": "everforest-light",
+			},
+			validate: func(t *testing.T, cfg *AppConfig) {
+				assert.Equal(t, "everforest-light", cfg.Theme)
+				assert.Equal(t, []string{"--syntax-theme", "Gruvbox Light"}, cfg.DeltaArgs)
 			},
 		},
 		{
