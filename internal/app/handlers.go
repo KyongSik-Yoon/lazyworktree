@@ -75,7 +75,7 @@ func (m *Model) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			}
 			m.filterInput, cmd = m.filterInput.Update(msg)
 			m.setFilterQuery(filterTargetLog, m.filterInput.Value())
-			m.applyLogFilter()
+			m.applyLogFilter(false)
 			return m, cmd
 		}
 	}
@@ -153,7 +153,7 @@ func (m *Model) clearCurrentPaneFilter() (tea.Model, tea.Cmd) {
 	case 2:
 		m.logFilterQuery = ""
 		m.filterInput.SetValue("")
-		m.applyLogFilter()
+		m.applyLogFilter(false)
 	}
 	return m, nil
 }

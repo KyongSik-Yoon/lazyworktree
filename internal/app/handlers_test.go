@@ -837,7 +837,7 @@ func TestFilterLogNarrowsList(t *testing.T) {
 	m.setLogEntries([]commitLogEntry{
 		{sha: "abc123", authorInitials: "ab", message: "Fix bug in parser"},
 		{sha: "def456", authorInitials: "de", message: "Add new feature"},
-	})
+	}, false)
 
 	updated, _ := m.handleKeyMsg(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'f'}})
 	updatedModel, ok := updated.(*Model)

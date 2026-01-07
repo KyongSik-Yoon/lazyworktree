@@ -79,6 +79,7 @@ type (
 		info        string
 		statusFiles []StatusFile
 		log         []commitLogEntry
+		path        string
 	}
 	refreshCompleteMsg      struct{}
 	fetchRemotesCompleteMsg struct{}
@@ -99,9 +100,11 @@ type (
 		worktrees []*models.WorktreeInfo
 	}
 	detailsCacheEntry struct {
-		statusRaw string
-		logRaw    string
-		fetchedAt time.Time
+		statusRaw    string
+		logRaw       string
+		unpushedSHAs map[string]bool
+		unmergedSHAs map[string]bool
+		fetchedAt    time.Time
 	}
 	pruneResultMsg struct {
 		worktrees []*models.WorktreeInfo
@@ -152,6 +155,8 @@ type commitLogEntry struct {
 	sha            string
 	authorInitials string
 	message        string
+	isUnpushed     bool
+	isUnmerged     bool
 }
 
 // StatusFile represents a file entry from git status.
@@ -243,6 +248,7 @@ type Model struct {
 	repoKey             string
 	repoKeyOnce         sync.Once
 	currentScreen       screenType
+	currentDetailsPath  string
 	helpScreen          *HelpScreen
 	trustScreen         *TrustScreen
 	inputScreen         *InputScreen
@@ -591,7 +597,12 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.setStatusFiles(msg.statusFiles)
 		if msg.log != nil {
-			m.setLogEntries(msg.log)
+			reset := false
+			if msg.path != "" && msg.path != m.currentDetailsPath {
+				m.currentDetailsPath = msg.path
+				reset = true
+			}
+			m.setLogEntries(msg.log, reset)
 		}
 		// Trigger CI fetch if worktree has a PR and cache is stale
 		return m, m.maybeFetchCIStatus()
@@ -1121,7 +1132,7 @@ func (m *Model) updateDetailsView() tea.Cmd {
 		return nil
 	}
 	return func() tea.Msg {
-		statusRaw, logRaw := m.getCachedDetails(wt)
+		statusRaw, logRaw, unpushed, unmerged := m.getCachedDetails(wt)
 
 		// Parse log
 		logEntries := []commitLogEntry{}
@@ -1140,12 +1151,15 @@ func (m *Model) updateDetailsView() tea.Cmd {
 				sha:            sha,
 				authorInitials: authorInitials(author),
 				message:        message,
+				isUnpushed:     unpushed[sha],
+				isUnmerged:     unmerged[sha],
 			})
 		}
 		return statusUpdatedMsg{
 			info:        m.buildInfoContent(wt),
 			statusFiles: parseStatusFiles(statusRaw),
 			log:         logEntries,
+			path:        wt.Path,
 		}
 	}
 }
@@ -3435,29 +3449,53 @@ func (m *Model) getRepoKey() string {
 	return m.repoKey
 }
 
-func (m *Model) getCachedDetails(wt *models.WorktreeInfo) (string, string) {
+func (m *Model) getCachedDetails(wt *models.WorktreeInfo) (string, string, map[string]bool, map[string]bool) {
 	if wt == nil || strings.TrimSpace(wt.Path) == "" {
-		return "", ""
+		return "", "", nil, nil
 	}
 
 	cacheKey := wt.Path
 	if cached, ok := m.detailsCache[cacheKey]; ok {
 		if time.Since(cached.fetchedAt) < detailsCacheTTL {
-			return cached.statusRaw, cached.logRaw
+			return cached.statusRaw, cached.logRaw, cached.unpushedSHAs, cached.unmergedSHAs
 		}
 	}
 
 	// Get status (using porcelain format for reliable machine parsing)
 	statusRaw := m.git.RunGit(m.ctx, []string{"git", "status", "--porcelain=v2"}, wt.Path, []int{0}, true, false)
-	logRaw := m.git.RunGit(m.ctx, []string{"git", "log", "-50", "--pretty=format:%h%x09%an%x09%s"}, wt.Path, []int{0}, true, false)
+	// Use %H for full SHA to ensure reliable matching
+	logRaw := m.git.RunGit(m.ctx, []string{"git", "log", "-50", "--pretty=format:%H%x09%an%x09%s"}, wt.Path, []int{0}, true, false)
 
-	m.detailsCache[cacheKey] = &detailsCacheEntry{
-		statusRaw: statusRaw,
-		logRaw:    logRaw,
-		fetchedAt: time.Now(),
+	// Get unpushed SHAs (commits not on any remote)
+	unpushedRaw := m.git.RunGit(m.ctx, []string{"git", "rev-list", "-100", "HEAD", "--not", "--remotes"}, wt.Path, []int{0}, true, false)
+	unpushedSHAs := make(map[string]bool)
+	for _, sha := range strings.Split(unpushedRaw, "\n") {
+		if s := strings.TrimSpace(sha); s != "" {
+			unpushedSHAs[s] = true
+		}
 	}
 
-	return statusRaw, logRaw
+	// Get unmerged SHAs (commits not in main branch)
+	mainBranch := m.git.GetMainBranch(m.ctx)
+	unmergedSHAs := make(map[string]bool)
+	if mainBranch != "" {
+		unmergedRaw := m.git.RunGit(m.ctx, []string{"git", "rev-list", "-100", "HEAD", "^" + mainBranch}, wt.Path, []int{0}, true, false)
+		for _, sha := range strings.Split(unmergedRaw, "\n") {
+			if s := strings.TrimSpace(sha); s != "" {
+				unmergedSHAs[s] = true
+			}
+		}
+	}
+
+	m.detailsCache[cacheKey] = &detailsCacheEntry{
+		statusRaw:    statusRaw,
+		logRaw:       logRaw,
+		unpushedSHAs: unpushedSHAs,
+		unmergedSHAs: unmergedSHAs,
+		fetchedAt:    time.Now(),
+	}
+
+	return statusRaw, logRaw, unpushedSHAs, unmergedSHAs
 }
 
 func (m *Model) getMainWorktreePath() string {
@@ -4934,12 +4972,12 @@ func authorInitials(name string) string {
 	return string([]rune{first[0], last[0]})
 }
 
-func (m *Model) setLogEntries(entries []commitLogEntry) {
+func (m *Model) setLogEntries(entries []commitLogEntry, reset bool) {
 	m.logEntriesAll = entries
-	m.applyLogFilter()
+	m.applyLogFilter(reset)
 }
 
-func (m *Model) applyLogFilter() {
+func (m *Model) applyLogFilter(reset bool) {
 	query := strings.ToLower(strings.TrimSpace(m.logFilterQuery))
 	filtered := m.logEntriesAll
 	if query != "" {
@@ -4952,15 +4990,27 @@ func (m *Model) applyLogFilter() {
 	}
 
 	selectedSHA := ""
-	cursor := m.logTable.Cursor()
-	if cursor >= 0 && cursor < len(m.logEntries) {
-		selectedSHA = m.logEntries[cursor].sha
+	if !reset {
+		cursor := m.logTable.Cursor()
+		if cursor >= 0 && cursor < len(m.logEntries) {
+			selectedSHA = m.logEntries[cursor].sha
+		}
 	}
 
 	m.logEntries = filtered
 	rows := make([]table.Row, 0, len(filtered))
 	for _, entry := range filtered {
-		rows = append(rows, table.Row{entry.sha, entry.authorInitials, formatCommitMessage(entry.message)})
+		sha := entry.sha
+		if len(sha) > 7 {
+			sha = sha[:7]
+		}
+		msg := formatCommitMessage(entry.message)
+		if entry.isUnpushed {
+			msg = lipgloss.NewStyle().Foreground(m.theme.WarnFg).Render("⬆ " + msg)
+		} else if entry.isUnmerged {
+			msg = lipgloss.NewStyle().Foreground(m.theme.Accent).Render(msg)
+		}
+		rows = append(rows, table.Row{sha, entry.authorInitials, msg})
 	}
 	m.logTable.SetRows(rows)
 
@@ -4973,7 +5023,7 @@ func (m *Model) applyLogFilter() {
 		}
 	}
 	if len(m.logEntries) > 0 {
-		if m.logTable.Cursor() < 0 || m.logTable.Cursor() >= len(m.logEntries) {
+		if m.logTable.Cursor() < 0 || m.logTable.Cursor() >= len(m.logEntries) || reset {
 			m.logTable.SetCursor(0)
 		}
 	} else {
