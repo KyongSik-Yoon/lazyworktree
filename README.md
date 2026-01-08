@@ -81,7 +81,7 @@ brew tap chmouel/lazyworktree https://github.com/chmouel/lazyworktree
 brew install lazyworktree --cask
 ```
 
-For shell integration with the "jump" functionality, download and source the helper functions:
+For shell integration with the "jump" functionality, download and source the [helper shell functions](./shell/functions.shell):
 
 ```bash
 # Download the helper functions
