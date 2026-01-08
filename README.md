@@ -582,17 +582,21 @@ branch_name_script: "gemini --model gemini-2.5-flash-lite -p "Generate a short g
 
 ## Screenshots
 
-### Command Palette
+### Command Palette (dracula theme)
 
 <img width="1754" height="1077" alt="image" src="https://github.com/user-attachments/assets/c765db31-0419-40f6-99c4-328a686447b1" />
 
-### Branch creation
+### Branch creation (dracula theme)
 
 <img width="1760" height="1072" alt="image" src="https://github.com/user-attachments/assets/f705c330-d1d7-4d09-9f56-85de7d37543a" />
 
-### Files in commit view
+### Files in commit view (dracula theme)
 
 <img width="3835" height="2116" alt="files-in-git-commit-view" src="https://github.com/user-attachments/assets/031bd043-c1a2-4f88-837e-89e26812cea7" />
+
+### Create a branch from a Issue (clean-light theme)
+
+https://github.com/user-attachments/assets/a733b95f-cd11-48a9-be58-810866aff1a2
 
 ## How does it compare?
 
