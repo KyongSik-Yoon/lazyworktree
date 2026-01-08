@@ -787,3 +787,102 @@ func setupGitRepo(t *testing.T, dir string) {
 		t.Fatalf("failed to create initial commit: %v\noutput: %s", err, output)
 	}
 }
+
+func TestGetCommitFiles(t *testing.T) {
+	notify := func(_ string, _ string) {}
+	notifyOnce := func(_ string, _ string, _ string) {}
+
+	service := NewService(notify, notifyOnce)
+	ctx := context.Background()
+
+	t.Run("get commit files from valid repo", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		setupGitRepo(t, tmpDir)
+
+		// Create a new file and commit it
+		newFile := filepath.Join(tmpDir, "new.txt")
+		err := os.WriteFile(newFile, []byte("content"), 0o600)
+		require.NoError(t, err)
+
+		runGit(t, tmpDir, "add", ".")
+		runGit(t, tmpDir, "commit", "-m", "Add new.txt")
+
+		// Get HEAD sha
+		sha := runGit(t, tmpDir, "rev-parse", "HEAD")
+
+		files, err := service.GetCommitFiles(ctx, sha, tmpDir)
+		require.NoError(t, err)
+		require.Len(t, files, 1)
+		assert.Equal(t, "new.txt", files[0].Filename)
+		assert.Equal(t, "A", files[0].ChangeType)
+	})
+
+	t.Run("get commit files with invalid sha", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		setupGitRepo(t, tmpDir)
+
+		files, err := service.GetCommitFiles(ctx, "invalid-sha", tmpDir)
+		// Should return empty list and no error (as RunGit returns empty string on failure currently for some paths, or we check implementation)
+		// Implementation: if raw == "" return empty. RunGit returns empty string on failure if not allowed exit code?
+		// GetCommitFiles calls RunGit with []int{0}. So if it fails, it returns empty string.
+		require.NoError(t, err)
+		assert.Empty(t, files)
+	})
+}
+
+func TestParseCommitFiles(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected []models.CommitFile
+	}{
+		{
+			name:  "added file",
+			input: "A\tfile.txt",
+			expected: []models.CommitFile{
+				{Filename: "file.txt", ChangeType: "A"},
+			},
+		},
+		{
+			name:  "modified file",
+			input: "M\tpath/to/file.go",
+			expected: []models.CommitFile{
+				{Filename: "path/to/file.go", ChangeType: "M"},
+			},
+		},
+		{
+			name:  "deleted file",
+			input: "D\tdeleted.txt",
+			expected: []models.CommitFile{
+				{Filename: "deleted.txt", ChangeType: "D"},
+			},
+		},
+		{
+			name:  "renamed file",
+			input: "R100\told.txt\tnew.txt",
+			expected: []models.CommitFile{
+				{Filename: "new.txt", ChangeType: "R", OldPath: "old.txt"},
+			},
+		},
+		{
+			name:  "multiple files",
+			input: "M\tfile1.go\nA\tfile2.go",
+			expected: []models.CommitFile{
+				{Filename: "file1.go", ChangeType: "M"},
+				{Filename: "file2.go", ChangeType: "A"},
+			},
+		},
+		{
+			name:     "empty input",
+			input:    "",
+			expected: []models.CommitFile{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := parseCommitFiles(tt.input)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}

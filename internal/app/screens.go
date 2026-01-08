@@ -2340,7 +2340,9 @@ func NewCommitFilesScreen(sha, wtPath string, files []models.CommitFile, meta co
 
 	screen.tree = buildCommitFileTree(files)
 	sortCommitFileTree(screen.tree)
-	compressCommitFileTree(screen.tree)
+	for _, child := range screen.tree.Children {
+		compressCommitFileTree(child)
+	}
 	screen.rebuildFlat()
 
 	return screen
@@ -2628,10 +2630,23 @@ func (s *CommitFilesScreen) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return s, cmd
 	}
 
-	// Normal navigation
-	switch keyStr {
-	case "j", keyDown:
-		if s.cursor < len(s.treeFlat)-1 {
+	    // Normal navigation
+	    switch keyStr {
+	    case "f":
+	        s.showingFilter = true
+	        s.showingSearch = false
+	        s.filterInput.Placeholder = placeholderFilterFiles
+	        s.filterInput.Focus()
+	        s.filterInput.SetValue(s.filterQuery)
+	        return s, textinput.Blink
+	    case "/":
+	        s.showingSearch = true
+	        s.showingFilter = false
+	        s.filterInput.Placeholder = "Search files..."
+	        s.filterInput.Focus()
+	        s.filterInput.SetValue(s.searchQuery)
+	        return s, textinput.Blink
+	    case "j", keyDown:		if s.cursor < len(s.treeFlat)-1 {
 			s.cursor++
 			if s.cursor >= s.scrollOffset+maxVisible {
 				s.scrollOffset = s.cursor - maxVisible + 1
