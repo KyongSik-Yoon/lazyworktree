@@ -732,6 +732,9 @@ Search Mode:
 - j / k: Scroll up / down
 - Ctrl+D / Ctrl+U: Scroll half page down / up
 
+**🔧 Shell Completion**
+Generate completions: lazyworktree --completion <bash|zsh|fish>
+
 💡 Tip: PR data is not fetched by default for speed.
        Press 'p' to fetch PR information on demand.`
 

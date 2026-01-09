@@ -12,6 +12,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/chmouel/lazyworktree/internal/app"
+	"github.com/chmouel/lazyworktree/internal/completion"
 	"github.com/chmouel/lazyworktree/internal/config"
 	"github.com/chmouel/lazyworktree/internal/theme"
 )
@@ -31,6 +32,7 @@ func main() {
 	var searchAutoSelect bool
 	var showVersion bool
 	var showSyntaxThemes bool
+	var completionShell string
 
 	flag.StringVar(&worktreeDir, "worktree-dir", "", "Override the default worktree root directory")
 	flag.StringVar(&debugLog, "debug-log", "", "Path to debug log file")
@@ -39,6 +41,7 @@ func main() {
 	flag.BoolVar(&searchAutoSelect, "search-auto-select", false, "Start with filter focused")
 	flag.BoolVar(&showVersion, "version", false, "Print version information")
 	flag.BoolVar(&showSyntaxThemes, "show-syntax-themes", false, "List available delta syntax themes")
+	flag.StringVar(&completionShell, "completion", "", "Generate shell completion script (bash, zsh, fish)")
 	flag.Parse()
 
 	if showVersion {
@@ -62,6 +65,13 @@ func main() {
 	}
 	if showSyntaxThemes {
 		printSyntaxThemes()
+		return
+	}
+	if completionShell != "" {
+		if err := printCompletion(completionShell); err != nil {
+			fmt.Fprintf(os.Stderr, "Error generating completion: %v\n", err)
+			os.Exit(1)
+		}
 		return
 	}
 
@@ -171,4 +181,13 @@ func printSyntaxThemes() {
 	for _, name := range names {
 		fmt.Printf("  %-16s -> %s\n", name, config.SyntaxThemeForUITheme(name))
 	}
+}
+
+func printCompletion(shell string) error {
+	script, err := completion.Generate(shell)
+	if err != nil {
+		return err
+	}
+	fmt.Println(script)
+	return nil
 }

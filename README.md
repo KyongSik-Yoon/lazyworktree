@@ -136,6 +136,23 @@ Should you require a shortcut to the last-selected worktree, use the built-in `w
 alias pl='worktree_go_last ~/path/to/your/main/repo'
 ```
 
+## Shell Completion
+
+Generate completion scripts for bash, zsh, or fish:
+
+```bash
+# Bash
+eval "$(lazyworktree --completion bash)"
+
+# Zsh
+eval "$(lazyworktree --completion zsh)"
+
+# Fish
+lazyworktree --completion fish > ~/.config/fish/completions/lazyworktree.fish
+```
+
+Package manager installations (deb, rpm, AUR) include completions automatically.
+
 ## Custom Initialization and Termination
 
 You may create a `.wt` file in your main repository to define custom commands that execute when creating or removing a worktree. This format is inspired by [wt](https://github.com/taecontrol/wt).

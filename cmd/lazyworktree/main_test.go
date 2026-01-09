@@ -67,3 +67,53 @@ func TestPrintSyntaxThemes(t *testing.T) {
 		t.Fatalf("expected theme list to include dracula, got %q", out)
 	}
 }
+
+func TestPrintCompletion(t *testing.T) {
+	shells := []string{"bash", "zsh", "fish"}
+
+	for _, shell := range shells {
+		t.Run(shell, func(t *testing.T) {
+			out := captureStdout(t, func() {
+				if err := printCompletion(shell); err != nil {
+					t.Fatalf("unexpected error: %v", err)
+				}
+			})
+
+			if out == "" {
+				t.Error("expected non-empty output")
+			}
+
+			// Verify it contains lazyworktree
+			if !strings.Contains(out, "lazyworktree") {
+				t.Error("output missing program name")
+			}
+
+			// Verify shell-specific structure
+			switch shell {
+			case "bash":
+				if !strings.Contains(out, "_lazyworktree_completion") {
+					t.Error("bash completion missing expected function")
+				}
+			case "zsh":
+				if !strings.Contains(out, "#compdef") {
+					t.Error("zsh completion missing compdef directive")
+				}
+			case "fish":
+				if !strings.Contains(out, "complete -c") {
+					t.Error("fish completion missing complete command")
+				}
+			}
+		})
+	}
+}
+
+func TestPrintCompletionInvalidShell(t *testing.T) {
+	err := printCompletion("invalid")
+	if err == nil {
+		t.Error("expected error for invalid shell")
+	}
+
+	if !strings.Contains(err.Error(), "unsupported shell") {
+		t.Errorf("unexpected error message: %v", err)
+	}
+}
