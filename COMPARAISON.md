@@ -12,6 +12,7 @@ constraints and workflow.
 | Tool | Strength |
 |----|----|
 | **lazyworktree** | Full interactive environment for humans |
+| [jean](https://github.com/coollabsio/jean-tui) | AI-powered workflows + persistent Claude sessions |
 | [git-worktree-runner (gtr)](https://github.com/coderabbitai/git-worktree-runner) | Best CLI + scripting ergonomics |
 | [worktrunk (wt)](https://github.com/max-sixty/worktrunk) | Parallel / AI-agent workflows |
 | [worktree-plus (wtp)](https://github.com/satococoa/wtp) | Minimal, predictable automation |
@@ -27,9 +28,9 @@ lazyworktree intentionally trades **simplicity and scriptability** for **interac
 
 It is built on the **DWIM (Do What I Mean)** principle, enabling **intuitiveness** by anticipating user intent rather than requiring explicit, verbose instructions. For example:
 
-*   **Smart Creation**: Creating a worktree from a PR automatically fetches code, tracks the branch, and names the directory meaningfully (e.g., `pr-123-fix-bug`).
-*   **Intelligent Absorb**: "Absorbing" a worktree doesn't just delete it; it intelligently rebases or merges changes into main and cleans up artifacts, assuming "I am finished with this feature" is the goal.
-*   **Context Aware**: Opening a terminal (`t`) automatically creates or attaches to a dedicated tmux session for that specific worktree, setting the correct working directory and window names.
+* **Smart Creation**: Creating a worktree from a PR automatically fetches code, tracks the branch, and names the directory meaningfully (e.g., `pr-123-fix-bug`).
+* **Intelligent Absorb**: "Absorbing" a worktree doesn't just delete it; it intelligently rebases or merges changes into main and cleans up artifacts, assuming "I am finished with this feature" is the goal.
+* **Context Aware**: Opening a terminal (`t`) automatically creates or attaches to a dedicated tmux session for that specific worktree, setting the correct working directory and window names.
 
 ---
 
@@ -170,26 +171,149 @@ In these cases:
 
 ---
 
+## jean
+
+A modern worktree TUIs that looks very similar to lazyworktree is jean. Here is
+a detailed comparison between the two tools.
+
+### Architecture & Codebase
+
+| Aspect | lazyworktree | jean |
+|--------|--------------|------|
+| Language | Go (Python → Go migration) | Go |
+| Lines of code | ~27,000 | ~14,000 |
+| Dependencies | Charmbracelet (TUI), Git, gh/glab, tmux/zellij | Charmbracelet (TUI), Git, gh, tmux, Claude CLI |
+| Configuration | YAML `.lazyworktree.yaml` + `.wt` files | JSON `~/.config/jean/config.json` + `jean.json` scripts |
+| Primary design goal | Full interactive power | AI-powered workflows with Claude |
+
+### Feature Comparison
+
+| Feature | lazyworktree | jean |
+|---------|--------------|------|
+| **Core Worktree Ops** | Create, delete, rename, cherry-pick, absorb | Create, delete, rename, merge (local) |
+| **AI Integration** | Via custom commands (external scripts) | Built-in: commit messages, branch names, PR content (11+ models) |
+| **Claude/IDE Integration** | Lazygit via `g` key | Persistent Claude CLI sessions + 7 editors (code, cursor, nvim, vim, subl, atom, zed) |
+| **PR/MR Management** | GitHub/GitLab, full status + CI checks | GitHub only, basic PR operations (create draft, merge, view) |
+| **Session Management** | tmux/zellij with templates | tmux only, dual mode (Claude + terminal) |
+| **Code Viewing** | Diff viewer with delta, commit log | Diff access for AI context only |
+| **Theme System** | 15 built-in themes | 5 built-in themes |
+| **Automation** | `.wt` files with TOFU security, custom commands | Setup scripts (`jean.json`), no security model |
+| **Output Selection** | Yes (via CLI flags) | No |
+| **File Tree View** | Yes | No |
+| **Search/Filtering** | Per-pane filtering | Global search in modals |
+| **Hotkeys** | 20+ keybindings | 20+ keybindings |
+| **Commit Interface** | Via external git | Dedicated commit modal with AI generation |
+
+### Strengths & Weaknesses
+
+#### jean Advantages
+
+* **AI-first design**: Integrated OpenRouter API for commit messages, branch naming, PR content
+* **Claude ecosystem**: Persistent Claude CLI sessions tracked per branch with initialization state
+* **Simpler codebase**: ~14K lines vs 27K, easier to understand and extend
+* **Editor integration**: 7 popular editors supported natively
+* **Workflow automation**: Auto-commit, auto-rename, auto-PR creation with AI
+* **Minimal dependencies**: No need for `glab` (GitLab), simpler setup
+* **Settings UI**: Visual settings menu instead of config files
+
+#### jean Disadvantages
+
+* **Less comprehensive**: No cherry-pick, no absorb, limited merge support (local only)
+* **GitHub-only**: No GitLab/Gitea support (lazyworktree supports both)
+* **Limited forge integration**: No CI checks display, simpler PR management
+* **No code viewer**: Can't browse diffs or commit logs in TUI (unlike lazyworktree's diff viewer)
+* **Smaller feature surface**: Fewer worktree operations, no command palette
+* **No TOFU security**: Setup scripts run without trust verification
+* **Single session type focus**: tmux-centric, no Zellij support (lazyworktree supports both)
+* **Less production-proven**: Newer tool, lower battle-tested status
+
+#### lazyworktree Advantages
+
+* **Richer information display**: 3-pane layout with diff viewer and commit log
+* **Multi-platform forge**: GitHub + GitLab + Gitea support
+* **Advanced CI integration**: Real-time CI status checks with caching
+* **More worktree operations**: Absorb, cherry-pick, prune merged
+* **Flexible automation**: Command palette, custom commands, TOFU security model
+* **Session flexibility**: tmux AND Zellij support with templates
+* **More themes**: 15 vs 5 options
+* **Better SSH support**: Tested for high-latency environments
+* **Output selection mode**: For piping worktree selection to shell scripts
+
+#### lazyworktree Disadvantages
+
+* **Higher complexity**: 27K lines, more learning curve
+* **More configuration needed**: YAML + `.wt` files per repo
+* **No built-in AI**: Requires external scripts for AI workflows
+* **No IDE/editor integration**: Use shell opener or external integration
+* **External dependencies**: Requires `gh` AND `glab` for full forge support
+* **No dedicated commit UI**: Uses external git/editor for commits
+* **Slower to grasp**: More modes, more keybindings, steeper learning curve
+
+### When to Choose Each
+
+#### Choose **jean** if you
+
+* Work with Claude AI and want persistent sessions
+* Want simple, focused worktree management
+* Prefer AI-generated commits/PRs over manual entry
+* Use GitHub exclusively
+* Like visual settings menus over config files
+* Want a minimal, learnable tool (~14K lines)
+* Develop with VS Code, Cursor, or Neovim
+* Need auto-naming and auto-commit workflows
+
+#### Choose **lazyworktree** if you
+
+* Need advanced worktree operations (absorb, cherry-pick)
+* Use GitHub/GitLab/Gitea (multi-platform)
+* Want real-time CI status visibility
+* Prefer code browsing within TUI (diffs, commit logs)
+* Need flexible session management (tmux/Zellij)
+* Require TOFU-secured automation
+* Work over SSH with high latency
+* Value comprehensive feature depth over simplicity
+* Need output selection for scripting
+
+### Code Quality Comparison
+
+| Aspect | lazyworktree | jean |
+|--------|--------------|------|
+| Test coverage | 62.6% | Minimal (basic tests only) |
+| Commit discipline | Conventional commits | Conventional commits |
+| Refactoring status | In progress (`app.go` large) | Clean separation of concerns |
+| Documentation | Comprehensive (README, guides) | Good (README, CLAUDE.md) |
+| Stability | Production-ready | Stable but newer |
+
+---
+
 ## General Git TUIs (lazygit, gitui)
 
 Tools like [lazygit](https://github.com/jesseduffield/lazygit) or [gitui](https://github.com/extrawurst/gitui) are excellent general-purpose Git interfaces. They do support worktrees, but they treat them as just another list to manage.
 
 **lazyworktree** has been heavily inspired by the ease of use and "lazy" philosophy of **lazygit**. It is designed to complement it, featuring a **built-in integration** (via the `g` key) that allows you to launch lazygit directly inside the currently selected worktree for full Git control.
 
-However, **lazyworktree** remains different because it treats the **worktree as the primary unit of work**, building the entire workflow (switching, creating from PRs, opening in editor/tmux) around that concept.
+**jean** takes a different approach, focusing on AI automation and Claude integration, but remains a worktree-first tool.
+
+Both **lazyworktree** and **jean** remain different from general Git TUIs because they treat the **worktree as the primary unit of work**, building the entire workflow (switching, creating from PRs, opening in editor/tmux) around that concept.
 
 ---
 
 ## Summary
 
-**lazyworktree** provides the **largest feature surface** and the richest interactive experience for Git worktrees.
+**lazyworktree** provides the **largest feature surface** and the richest interactive experience for Git worktrees, with the deepest forge integration (GitHub/GitLab/Gitea), most advanced CI status display, and most flexible automation.
 
-However, other tools are objectively better when:
+**jean** is a specialized worktree manager optimized for **AI-powered workflows with Claude ecosystem integration**, offering simplicity and AI automation at the cost of feature depth.
 
-* simplicity matters more than power
-* scripting and automation are primary
-* environments are constrained
-* users prefer explicit Git semantics
+Other tools are objectively better when:
 
-lazyworktree is a **workspace manager for humans**.
-Other tools remain excellent **worktree utilities for systems**.
+* simplicity matters more than power (use **branchlet** or **wtp**)
+* scripting and automation are primary (use **gtr** or **wtp**)
+* environments are constrained (use **newt** or **wtm**)
+* users prefer explicit Git semantics (use any CLI tool)
+* you need AI integration and Claude sessions (use **jean**)
+
+**Positioning:**
+
+* **lazyworktree** is a **comprehensive workspace manager for humans** with maximum interactive capability
+* **jean** is an **AI-first worktree manager** designed around Claude workflows
+* Other tools remain excellent **worktree utilities for systems** and specialized use cases
