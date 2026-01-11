@@ -1606,7 +1606,8 @@ func TestBuildStatusContentParsesFiles(t *testing.T) {
 1 A. N... 100644 100644 100644 ghi789 ghi789 added.go
 1 .D N... 100644 100644 100644 jkl012 jkl012 deleted.go`
 
-	_ = m.buildStatusContent(statusRaw)
+	m.setStatusFiles(parseStatusFiles(statusRaw))
+	m.rebuildStatusContentWithHighlight()
 
 	if len(m.statusFiles) != 5 {
 		t.Fatalf("expected 5 status files, got %d", len(m.statusFiles))
@@ -1643,7 +1644,8 @@ func TestBuildStatusContentCleanTree(t *testing.T) {
 	m.statusFiles = []StatusFile{{Filename: "old.go", Status: ".M"}}
 	m.statusFileIndex = 5
 
-	result := m.buildStatusContent("")
+	m.setStatusFiles(parseStatusFiles(""))
+	m.rebuildStatusContentWithHighlight()
 
 	if len(m.statusFiles) != 0 {
 		t.Fatalf("expected 0 status files for clean tree, got %d", len(m.statusFiles))
@@ -1651,8 +1653,8 @@ func TestBuildStatusContentCleanTree(t *testing.T) {
 	if m.statusFileIndex != 0 {
 		t.Fatalf("expected statusFileIndex reset to 0, got %d", m.statusFileIndex)
 	}
-	if !strings.Contains(result, "Clean working tree") {
-		t.Fatalf("expected 'Clean working tree' in result, got %q", result)
+	if !strings.Contains(m.statusContent, "Clean working tree") {
+		t.Fatalf("expected 'Clean working tree' in result, got %q", m.statusContent)
 	}
 }
 
@@ -1758,7 +1760,8 @@ func TestStatusTreeIndexClamping(t *testing.T) {
 	statusRaw := `1 .M N... 100644 100644 100644 abc123 abc123 file1.go
 1 .M N... 100644 100644 100644 abc123 abc123 file2.go`
 
-	_ = m.buildStatusContent(statusRaw)
+	m.setStatusFiles(parseStatusFiles(statusRaw))
+	m.rebuildStatusContentWithHighlight()
 
 	// Index should be clamped to last valid index
 	if m.statusTreeIndex != 1 {
@@ -1767,7 +1770,8 @@ func TestStatusTreeIndexClamping(t *testing.T) {
 
 	// Test negative index
 	m.statusTreeIndex = -5
-	_ = m.buildStatusContent(statusRaw)
+	m.setStatusFiles(parseStatusFiles(statusRaw))
+	m.rebuildStatusContentWithHighlight()
 
 	if m.statusTreeIndex != 0 {
 		t.Fatalf("expected statusTreeIndex clamped to 0, got %d", m.statusTreeIndex)

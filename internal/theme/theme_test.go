@@ -49,34 +49,6 @@ func TestAvailableThemesIncludesDefaults(t *testing.T) {
 	}
 }
 
-func TestIsLight(t *testing.T) {
-	tests := []struct {
-		name string
-		want bool
-	}{
-		{DraculaLightName, true},
-		{CleanLightName, true},
-		{CatppuccinLatteName, true},
-		{RosePineDawnName, true},
-		{OneLightName, true},
-		{EverforestLightName, true},
-		{SolarizedLightName, true},
-		{GruvboxLightName, true},
-		{DraculaName, false},
-		{NarnaName, false},
-		{SolarizedDarkName, false},
-		{"unknown", false},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := IsLight(tt.name); got != tt.want {
-				t.Errorf("IsLight(%q) = %v, want %v", tt.name, got, tt.want)
-			}
-		})
-	}
-}
-
 func TestDefaults(t *testing.T) {
 	if got := DefaultDark(); got != DraculaName {
 		t.Errorf("DefaultDark() = %q, want %q", got, DraculaName)

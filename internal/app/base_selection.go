@@ -418,37 +418,6 @@ func (m *Model) branchSelectionItems(preferred string) []selectionItem {
 	return items
 }
 
-func parseBranchOptions(raw string) []branchOption {
-	lines := strings.Split(strings.TrimSpace(raw), "\n")
-	if len(lines) == 1 && strings.TrimSpace(lines[0]) == "" {
-		return nil
-	}
-
-	options := make([]branchOption, 0, len(lines))
-	for _, line := range lines {
-		if line == "" {
-			continue
-		}
-		parts := strings.Split(line, "\t")
-		if len(parts) < 2 {
-			continue
-		}
-		name := strings.TrimSpace(parts[0])
-		fullRef := strings.TrimSpace(parts[1])
-		if name == "" || fullRef == "" {
-			continue
-		}
-		if strings.HasSuffix(name, "/HEAD") {
-			continue
-		}
-		options = append(options, branchOption{
-			name:     name,
-			isRemote: strings.HasPrefix(fullRef, "refs/remotes/"),
-		})
-	}
-	return options
-}
-
 func parseBranchOptionsWithDate(raw string) []branchOption {
 	lines := strings.Split(strings.TrimSpace(raw), "\n")
 	if len(lines) == 1 && strings.TrimSpace(lines[0]) == "" {
@@ -545,27 +514,6 @@ func sortBranchOptions(options []branchOption) []branchOption {
 
 	result = append(result, others...)
 	return result
-}
-
-func prioritizeBranchOptions(options []branchOption, preferred string) []branchOption {
-	if preferred == "" || len(options) == 0 {
-		return options
-	}
-	idx := -1
-	for i, opt := range options {
-		if opt.name == preferred {
-			idx = i
-			break
-		}
-	}
-	if idx <= 0 {
-		return options
-	}
-	ordered := make([]branchOption, 0, len(options))
-	ordered = append(ordered, options[idx])
-	ordered = append(ordered, options[:idx]...)
-	ordered = append(ordered, options[idx+1:]...)
-	return ordered
 }
 
 func parseCommitOptions(raw string) []commitOption {

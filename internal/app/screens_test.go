@@ -391,11 +391,3 @@ func TestListSelectionScreenUpdate(t *testing.T) {
 		t.Fatalf("expected cursor to move up, got %d", screen.cursor)
 	}
 }
-
-func TestDiffScreenView(t *testing.T) {
-	screen := NewDiffScreen("Diff Title", "diff content", theme.Dracula())
-	view := screen.View()
-	if !strings.Contains(view, "Diff Title") {
-		t.Fatalf("expected diff view to include title, got %q", view)
-	}
-}

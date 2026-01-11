@@ -287,7 +287,6 @@ type Model struct {
 	prSelectionSubmit    func(*models.PRInfo) tea.Cmd
 	listScreen           *ListSelectionScreen
 	listSubmit           func(selectionItem) tea.Cmd
-	diffScreen           *DiffScreen
 	spinner              spinner.Model
 	loading              bool
 	showingFilter        bool
@@ -806,8 +805,6 @@ func screenName(screen screenType) string {
 		return "commit"
 	case screenPalette:
 		return "palette"
-	case screenDiff:
-		return "diff"
 	case screenPRSelect:
 		return "pr-select"
 	case screenIssueSelect:
@@ -3289,22 +3286,6 @@ func (m *Model) handleScreenKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.commitScreen = updated
 		}
 		return m, cmd
-	case screenDiff:
-		if m.diffScreen == nil {
-			m.currentScreen = screenNone
-			return m, nil
-		}
-		keyStr := msg.String()
-		if keyStr == keyQ || isEscKey(keyStr) {
-			m.diffScreen = nil
-			m.currentScreen = screenNone
-			return m, nil
-		}
-		ds, cmd := m.diffScreen.Update(msg)
-		if updated, ok := ds.(*DiffScreen); ok {
-			m.diffScreen = updated
-		}
-		return m, cmd
 	case screenInput:
 		if m.inputScreen == nil {
 			m.currentScreen = screenNone
@@ -3426,10 +3407,6 @@ func (m *Model) renderScreen() string {
 				)
 			}
 			return content
-		}
-	case screenDiff:
-		if m.diffScreen != nil {
-			return m.diffScreen.View()
 		}
 	case screenInput:
 		if m.inputScreen != nil {
@@ -5049,11 +5026,6 @@ func (n *StatusTreeNode) CollectFiles() []*StatusFile {
 		files = append(files, child.CollectFiles()...)
 	}
 	return files
-}
-
-func (m *Model) buildStatusContent(statusRaw string) string {
-	m.setStatusFiles(parseStatusFiles(statusRaw))
-	return m.statusContent
 }
 
 func (m *Model) setStatusFiles(files []StatusFile) {

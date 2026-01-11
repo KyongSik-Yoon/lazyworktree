@@ -184,14 +184,6 @@ type ListSelectionScreen struct {
 	thm          *theme.Theme
 }
 
-// DiffScreen renders a full commit diff inside a viewport.
-type DiffScreen struct {
-	title    string
-	content  string
-	viewport viewport.Model
-	thm      *theme.Theme
-}
-
 // LoadingScreen displays a modal with a pulsing border and braille spinner.
 type LoadingScreen struct {
 	message         string
@@ -804,22 +796,6 @@ func NewCommandPaletteScreen(items []paletteItem, thm *theme.Theme) *CommandPale
 		thm:          thm,
 	}
 	return screen
-}
-
-// NewDiffScreen displays a commit diff title and body inside a viewport.
-func NewDiffScreen(title, diff string, thm *theme.Theme) *DiffScreen {
-	vp := viewport.New(100, 40)
-	content := title
-	if diff != "" {
-		content += "\n\n" + diff
-	}
-	vp.SetContent(content)
-	return &DiffScreen{
-		title:    title,
-		content:  content,
-		viewport: vp,
-		thm:      thm,
-	}
 }
 
 // Init prepares the help screen before it starts handling updates.
@@ -1651,41 +1627,6 @@ func (s *ListSelectionScreen) View() string {
 }
 
 // Init sets up the diff viewport state before rendering.
-func (s *DiffScreen) Init() tea.Cmd {
-	return nil
-}
-
-// Update processes navigation keys while the diff is visible.
-func (s *DiffScreen) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	var cmd tea.Cmd
-	keyMsg, ok := msg.(tea.KeyMsg)
-	if ok {
-		switch keyMsg.String() {
-		case keyQ, keyEsc, keyCtrlC:
-			return s, tea.Quit
-		case "j", keyDown:
-			s.viewport.ScrollDown(1)
-			return s, nil
-		case "k", keyUp:
-			s.viewport.ScrollUp(1)
-			return s, nil
-		case keyCtrlD, " ":
-			s.viewport.HalfPageDown()
-			return s, nil
-		case keyCtrlU:
-			s.viewport.HalfPageUp()
-			return s, nil
-		case "g":
-			s.viewport.GotoTop()
-			return s, nil
-		case "G":
-			s.viewport.GotoBottom()
-			return s, nil
-		}
-	}
-	s.viewport, cmd = s.viewport.Update(msg)
-	return s, cmd
-}
 
 func (s *HelpScreen) refreshContent() {
 	content := s.renderContent()
@@ -1963,21 +1904,6 @@ func (s *CommandPaletteScreen) View() string {
 	)
 
 	return boxStyle.Render(content)
-}
-
-// View renders the diff text inside a scrollable viewport.
-func (s *DiffScreen) View() string {
-	titleStyle := lipgloss.NewStyle().Bold(true).Foreground(s.thm.Accent)
-	title := titleStyle.Render("📄 " + s.title)
-
-	content := lipgloss.JoinVertical(lipgloss.Left, title, "", s.viewport.View())
-	// Enhanced diff view with rounded border
-	return lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(s.thm.Accent).
-		Padding(1, 2).
-		Width(maxInt(80, s.viewport.Width)).
-		Render(content)
 }
 
 // NewTrustScreen warns the user when a repo config has changed or is untrusted.

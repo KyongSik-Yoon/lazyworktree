@@ -14,45 +14,6 @@ import (
 	"github.com/chmouel/lazyworktree/internal/models"
 )
 
-func TestParseBranchOptions(t *testing.T) {
-	raw := strings.Join([]string{
-		"main\trefs/heads/main",
-		"feature/x\trefs/heads/feature/x",
-		"origin/main\trefs/remotes/origin/main",
-		"origin/HEAD\trefs/remotes/origin/HEAD",
-		"",
-	}, "\n")
-
-	got := parseBranchOptions(raw)
-	if len(got) != 3 {
-		t.Fatalf("expected 3 branch options, got %d", len(got))
-	}
-	if got[0].name != mainWorktreeName || got[0].isRemote {
-		t.Errorf("expected main to be local, got %+v", got[0])
-	}
-	if got[1].name != "feature/x" || got[1].isRemote {
-		t.Errorf("expected feature/x to be local, got %+v", got[1])
-	}
-	if got[2].name != "origin/main" || !got[2].isRemote {
-		t.Errorf("expected origin/main to be remote, got %+v", got[2])
-	}
-}
-
-func TestPrioritizeBranchOptions(t *testing.T) {
-	options := []branchOption{
-		{name: "dev"},
-		{name: mainWorktreeName},
-		{name: "feature"},
-	}
-	got := prioritizeBranchOptions(options, mainWorktreeName)
-	if len(got) != 3 {
-		t.Fatalf("expected 3 options, got %d", len(got))
-	}
-	if got[0].name != mainWorktreeName || got[1].name != "dev" || got[2].name != "feature" {
-		t.Errorf("unexpected order: %#v", got)
-	}
-}
-
 func TestParseCommitOptions(t *testing.T) {
 	raw := strings.Join([]string{
 		"full1\x1fshort1\x1f2024-01-01\x1fFirst commit",

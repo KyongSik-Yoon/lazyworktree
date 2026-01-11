@@ -376,16 +376,6 @@ func GetTheme(name string) *Theme {
 	}
 }
 
-// IsLight returns true if the theme is a light theme.
-func IsLight(name string) bool {
-	switch name {
-	case DraculaLightName, CleanLightName, SolarizedLightName, GruvboxLightName, CatppuccinLatteName, RosePineDawnName, OneLightName, EverforestLightName:
-		return true
-	default:
-		return false
-	}
-}
-
 // DefaultDark returns the default dark theme name.
 func DefaultDark() string {
 	return DraculaName

@@ -2054,8 +2054,6 @@ func TestRenderScreenVariants(t *testing.T) {
 		t.Fatal("expected palette screen to render")
 	}
 
-	m.diffScreen = NewDiffScreen("Diff", "diff", m.theme)
-	m.currentScreen = screenDiff
 	if out = m.renderScreen(); out == "" {
 		t.Fatal("expected diff screen to render")
 	}
