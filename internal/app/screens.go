@@ -2081,14 +2081,11 @@ func (s *WelcomeScreen) Init() tea.Cmd {
 	return nil
 }
 
-// Update listens for retry or quit keys on the welcome screen.
+// Update listens for quit keys on the welcome screen.
 func (s *WelcomeScreen) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	keyMsg, ok := msg.(tea.KeyMsg)
 	if ok {
 		switch keyMsg.String() {
-		case "r", "R":
-			s.result <- true
-			return s, tea.Quit
 		case keyQ, "Q", keyEsc, keyCtrlC:
 			s.result <- false
 			return s, tea.Quit
@@ -2099,53 +2096,108 @@ func (s *WelcomeScreen) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // View renders the welcome dialog with guidance and action buttons.
 func (s *WelcomeScreen) View() string {
-	width := 70
-	height := 20
-
-	// Enhanced welcome screen with rounded border
-	boxStyle := lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(s.thm.Accent).
-		Padding(1, 2).
-		Width(width).
-		Height(height)
-
-	titleStyle := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(s.thm.Accent).
-		Align(lipgloss.Center).
-		MarginBottom(1)
-
-	welcomeIcon := "👋"
-
-	messageStyle := lipgloss.NewStyle().
-		Align(lipgloss.Center).
-		MarginBottom(2)
-
-	buttonStyle := lipgloss.NewStyle().
-		Width(20).
-		Align(lipgloss.Center).
-		Padding(0, 1).
-		Margin(0, 1)
-
-	quitButton := buttonStyle.
-		Foreground(s.thm.ErrorFg).
-		Render("[Quit]")
-
-	retryButton := buttonStyle.
-		Foreground(s.thm.Accent).
-		Render("[Retry]")
-
-	message := fmt.Sprintf(" No worktrees found.\n\n Current Directory: %s\n Worktree Root: %s\n\nPlease ensure you are in a git repository or the configured worktree root.\nYou may need to initialize a repository or configure 'worktree_dir' in config.",
-		s.currentDir,
-		s.worktreeDir,
+	const (
+		width  = 80
+		height = 20
 	)
 
-	content := fmt.Sprintf("%s\n%s\n\n%s  %s",
-		titleStyle.Render(welcomeIcon+" Welcome to LazyWorktree"),
-		messageStyle.Render(message),
-		quitButton,
-		retryButton,
+	var (
+		accent = s.thm.Accent
+		errFg  = s.thm.ErrorFg
+		text   = s.thm.TextFg
+		muted  = s.thm.MutedFg
+		border = s.thm.Border
+	)
+
+	// Base Box
+	boxStyle := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(border).
+		Padding(1, 2).
+		Width(width).
+		Height(height).
+		Align(lipgloss.Center)
+
+	// Title
+	titleStyle := lipgloss.NewStyle().
+		Foreground(accent).
+		Bold(true).
+		MarginBottom(1)
+
+	// Error Header
+	errorStyle := lipgloss.NewStyle().
+		Foreground(errFg).
+		Bold(true).
+		MarginBottom(1)
+
+	// Info Block (Directory details)
+	labelStyle := lipgloss.NewStyle().
+		Foreground(muted).
+		Width(20)
+
+	valueStyle := lipgloss.NewStyle().
+		Foreground(text)
+
+	rowStyle := lipgloss.NewStyle().
+		MarginBottom(1)
+
+	// Helper to create rows
+	makeRow := func(label, value string) string {
+		return rowStyle.Render(
+			lipgloss.JoinHorizontal(lipgloss.Top,
+				labelStyle.Render(label),
+				valueStyle.Render(value),
+			),
+		)
+	}
+
+	// Help Text
+	helpStyle := lipgloss.NewStyle().
+		Foreground(muted).
+		Align(lipgloss.Center).
+		MarginTop(1).
+		MarginBottom(1)
+
+	// Buttons
+	btnKeyStyle := lipgloss.NewStyle().
+		Foreground(accent).
+		Bold(true)
+
+	btnDescStyle := lipgloss.NewStyle().
+		Foreground(text)
+
+	makeBtn := func(key, desc string) string {
+		return fmt.Sprintf("%s %s", btnKeyStyle.Render("["+key+"]"), btnDescStyle.Render(desc))
+	}
+
+	footerStyle := lipgloss.NewStyle().
+		MarginTop(1)
+
+	// Content Construction
+	title := titleStyle.Render("LazyWorktree")
+	errorMsg := errorStyle.Render("⚠️  No worktrees found")
+
+	infoBlock := lipgloss.JoinVertical(lipgloss.Left,
+		makeRow("Current Directory:", s.currentDir),
+		makeRow("Worktree Root:", s.worktreeDir),
+	)
+
+	helpText := helpStyle.Render(
+		"Please ensure you are in a git repository.",
+	)
+
+	controls := footerStyle.Render(
+		lipgloss.JoinHorizontal(lipgloss.Center,
+			makeBtn("Q", "Quit"),
+		),
+	)
+
+	content := lipgloss.JoinVertical(lipgloss.Center,
+		title,
+		errorMsg,
+		lipgloss.NewStyle().Align(lipgloss.Left).Render(infoBlock),
+		helpText,
+		controls,
 	)
 
 	return boxStyle.Render(content)

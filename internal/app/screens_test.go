@@ -37,17 +37,20 @@ func TestWelcomeScreenUpdateAndView(t *testing.T) {
 	thm := theme.Dracula()
 	screen := NewWelcomeScreen("/tmp", "/tmp/worktrees", thm)
 
-	_, cmd := screen.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("r")})
+	_, cmd := screen.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("q")})
 	if cmd == nil {
-		t.Fatal("expected quit command for retry")
+		t.Fatal("expected quit command for quit key")
+	}
+	if _, ok := cmd().(tea.QuitMsg); !ok {
+		t.Fatal("expected quit command to return tea.QuitMsg")
 	}
 	select {
 	case result := <-screen.result:
-		if !result {
-			t.Fatal("expected retry result to be true")
+		if result {
+			t.Fatal("expected quit result to be false")
 		}
 	default:
-		t.Fatal("expected retry result to be sent")
+		t.Fatal("expected quit result to be sent")
 	}
 
 	view := screen.View()

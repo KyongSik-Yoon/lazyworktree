@@ -3407,7 +3407,11 @@ func (m *Model) renderScreen() string {
 			cwd, _ := os.Getwd()
 			m.welcomeScreen = NewWelcomeScreen(cwd, m.getRepoWorktreeDir(), m.theme)
 		}
-		return m.welcomeScreen.View()
+		content := m.welcomeScreen.View()
+		if m.windowWidth > 0 && m.windowHeight > 0 {
+			return lipgloss.Place(m.windowWidth, m.windowHeight, lipgloss.Center, lipgloss.Center, content)
+		}
+		return content
 	case screenPalette:
 		if m.paletteScreen != nil {
 			content := m.paletteScreen.View()
