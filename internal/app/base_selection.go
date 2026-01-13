@@ -38,8 +38,14 @@ type commitOption struct {
 }
 
 func (m *Model) showBaseSelection(defaultBase string) tea.Cmd {
+	// Determine current branch for menu label
+	currentBranch := m.getCurrentBranchForMenu()
+
+	// Format label with ellipsis if needed
+	fromCurrentLabel := formatCreateFromCurrentLabel(currentBranch)
+
 	items := []selectionItem{
-		{id: "from-current", label: "Create from current", description: "Create from current branch (with or without changes)"},
+		{id: "from-current", label: fromCurrentLabel, description: "Create from current branch (with or without changes)"},
 		{id: "branch-list", label: "Pick a base branch or tag", description: "Branches, tags, and remotes"},
 		{id: "commit-list", label: "Pick a base commit", description: "Choose a branch, then a commit"},
 		{id: "from-pr", label: "Create from PR/MR", description: "Create from a pull/merge request"},

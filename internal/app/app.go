@@ -1469,6 +1469,44 @@ func (m *Model) showCreateFromCurrent() tea.Cmd {
 	}
 }
 
+// getCurrentBranchForMenu returns the current branch name for menu display.
+// Returns empty string on error (caller should fallback to static label).
+func (m *Model) getCurrentBranchForMenu() string {
+	// Find current worktree (same logic as showCreateFromCurrent)
+	var currentWt *models.WorktreeInfo
+	cwd, err := os.Getwd()
+	if err == nil {
+		for _, wt := range m.worktrees {
+			if strings.HasPrefix(cwd, wt.Path) {
+				currentWt = wt
+				break
+			}
+		}
+	}
+	if currentWt == nil {
+		for _, wt := range m.worktrees {
+			if wt.IsMain {
+				currentWt = wt
+				break
+			}
+		}
+	}
+	if currentWt == nil {
+		return ""
+	}
+
+	// Get current branch
+	branch := m.git.RunGit(
+		m.ctx,
+		[]string{"git", "rev-parse", "--abbrev-ref", "HEAD"},
+		currentWt.Path,
+		[]int{0},
+		true,
+		false,
+	)
+	return strings.TrimSpace(branch)
+}
+
 func (m *Model) showCreateFromPR() tea.Cmd {
 	// Fetch all open PRs
 	return func() tea.Msg {

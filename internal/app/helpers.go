@@ -307,3 +307,23 @@ func formatRelativeTime(t time.Time) string {
 		return t.Format("Jan 2, 2006")
 	}
 }
+
+// formatCreateFromCurrentLabel formats the "Create from current" menu label
+// with the current branch name, applying ellipsis if the total length exceeds maxLength.
+func formatCreateFromCurrentLabel(branch string) string {
+	const maxLength = 78
+	const baseLabel = "Create from current"
+
+	if branch == "" {
+		return baseLabel
+	}
+
+	labelWithBranch := fmt.Sprintf("%s (%s)", baseLabel, branch)
+	if len(labelWithBranch) <= maxLength {
+		return labelWithBranch
+	}
+
+	// Truncate to maxLength - 3 (for "...") and append ellipsis
+	truncated := labelWithBranch[:maxLength-3]
+	return truncated + "..."
+}

@@ -550,3 +550,60 @@ func TestRunBranchNameScript(t *testing.T) {
 		})
 	}
 }
+
+func TestFormatCreateFromCurrentLabel(t *testing.T) {
+	tests := []struct {
+		name     string
+		branch   string
+		expected string
+	}{
+		{
+			name:     "empty branch returns base label",
+			branch:   "",
+			expected: "Create from current",
+		},
+		{
+			name:     "short branch name",
+			branch:   "main",
+			expected: "Create from current (main)",
+		},
+		{
+			name:     "medium branch name",
+			branch:   "feature/add-new-feature",
+			expected: "Create from current (feature/add-new-feature)",
+		},
+		{
+			name:     "branch name at exactly 58 chars total",
+			branch:   "feature/this-is-exactly-thirty-eight-chars",
+			expected: "Create from current (feature/this-is-exactly-thirty-eight-chars)",
+		},
+		{
+			name:     "long branch name gets truncated",
+			branch:   "feature/this-is-a-very-long-branch-name-that-exceeds-the-seventy-eight-character-limit-and-should-be-truncated",
+			expected: "Create from current (feature/this-is-a-very-long-branch-name-that-exceeds-t...",
+		},
+		{
+			name:     "branch name with special characters",
+			branch:   "feature/fix-bug-#123",
+			expected: "Create from current (feature/fix-bug-#123)",
+		},
+		{
+			name:     "detached HEAD",
+			branch:   "HEAD",
+			expected: "Create from current (HEAD)",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := formatCreateFromCurrentLabel(tt.branch)
+			if result != tt.expected {
+				t.Errorf("formatCreateFromCurrentLabel(%q) = %q, want %q", tt.branch, result, tt.expected)
+			}
+			// Verify result is at most 78 chars
+			if len(result) > 78 {
+				t.Errorf("formatCreateFromCurrentLabel(%q) result length = %d, want <= 78", tt.branch, len(result))
+			}
+		})
+	}
+}
