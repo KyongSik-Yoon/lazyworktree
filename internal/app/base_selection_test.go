@@ -671,11 +671,13 @@ func TestCreateWorktreeFromBase(t *testing.T) {
 	if cmd == nil {
 		t.Fatal("expected command to be returned")
 	}
+
 	msg := cmd()
 	loaded, ok := msg.(worktreesLoadedMsg)
 	if !ok {
 		t.Fatalf("expected worktreesLoadedMsg, got %T", msg)
 	}
+
 	if loaded.err != nil {
 		t.Fatalf("unexpected load error: %v", loaded.err)
 	}

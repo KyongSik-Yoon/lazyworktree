@@ -189,6 +189,9 @@ type (
 	customPostCommandResultMsg struct {
 		err error
 	}
+	loadingProgressMsg struct {
+		message string
+	}
 )
 
 type commitLogEntry struct {
@@ -506,7 +509,7 @@ func NewModel(cfg *config.AppConfig, initialFilter string) *Model {
 	filterInput.TextStyle = lipgloss.NewStyle().Foreground(thm.TextFg)
 
 	sp := spinner.New()
-	sp.Spinner = spinner.Pulse
+	sp.Spinner = spinner.MiniDot
 	sp.Style = lipgloss.NewStyle().Foreground(thm.Accent)
 
 	// Convert config sort mode string to int constant
@@ -733,6 +736,13 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, func() tea.Msg {
 			return worktreesLoadedMsg{worktrees: worktrees, err: err}
 		}
+
+	case loadingProgressMsg:
+		// Update the loading screen message with progress information
+		if m.loadingScreen != nil {
+			m.loadingScreen.message = msg.message
+		}
+		return m, nil
 
 	case createFromChangesReadyMsg:
 		return m, m.handleCreateFromChangesReady(msg)
@@ -2105,7 +2115,7 @@ func (m *Model) showDiffNonInteractive() tea.Cmd {
 	  echo "$staged"
 	  echo
 	fi
-	
+
 	# Part 2: Unstaged changes
 	unstaged=$(git diff --patch --no-color 2>/dev/null || true)
 	if [ -n "$unstaged" ]; then
@@ -2113,7 +2123,7 @@ func (m *Model) showDiffNonInteractive() tea.Cmd {
 	  echo "$unstaged"
 	  echo
 	fi
-	
+
 	# Part 3: Untracked files (limited to %d)
 	untracked=$(git status --porcelain 2>/dev/null | grep '^?? ' | cut -d' ' -f2- || true)
 	if [ -n "$untracked" ]; then
@@ -2127,7 +2137,7 @@ func (m *Model) showDiffNonInteractive() tea.Cmd {
 	    echo
 	    count=$((count + 1))
 	  done <<< "$untracked"
-	
+
 	  if [ $total -gt $max_count ]; then
 	    echo "[...showing $count of $total untracked files]"
 	  fi

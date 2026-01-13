@@ -256,7 +256,16 @@ func (m *Model) showBranchNameInput(baseRef, defaultName string) tea.Cmd {
 			return nil, false
 		}
 
-		return m.createWorktreeFromBase(newBranch, targetPath, baseRef), true
+		// Show loading screen immediately (before returning from inputSubmit)
+		if err := os.MkdirAll(m.getRepoWorktreeDir(), defaultDirPerms); err != nil {
+			return func() tea.Msg { return errMsg{err: fmt.Errorf("failed to create worktree directory: %w", err)} }, true
+		}
+		m.loading = true
+		m.statusContent = fmt.Sprintf("Creating worktree from %s...", baseRef)
+		m.loadingScreen = NewLoadingScreen(m.statusContent, m.theme)
+		m.currentScreen = screenLoading
+
+		return m.createWorktreeFromBaseAsync(newBranch, targetPath, baseRef), true
 	}
 	m.currentScreen = screenInput
 	return textinput.Blink
@@ -355,46 +364,69 @@ func sanitizeBranchNameFromTitle(title, fallback string) string {
 	return sanitized
 }
 
+// createWorktreeFromBaseAsync performs the actual async worktree creation.
+// The LoadingScreen should be set up before calling this.
+func (m *Model) createWorktreeFromBaseAsync(newBranch, targetPath, baseRef string) tea.Cmd {
+	return func() tea.Msg {
+		args := []string{"git", "worktree", "add", "-b", newBranch}
+		if strings.Contains(baseRef, "/") {
+			args = append(args, "--track")
+		}
+		args = append(args, targetPath, baseRef)
+
+		ok := m.git.RunCommandChecked(
+			m.ctx,
+			args,
+			"",
+			fmt.Sprintf("Failed to create worktree %s", newBranch),
+		)
+		if !ok {
+			return errMsg{err: fmt.Errorf("failed to create worktree %s", newBranch)}
+		}
+
+		env := m.buildCommandEnv(newBranch, targetPath)
+		initCmds := m.collectInitCommands()
+
+		// Run init commands with trust checks, passing after callback
+		after := func() tea.Msg {
+			// If there's a custom menu with post-command, run it
+			if m.pendingCustomMenu != nil && m.pendingCustomMenu.PostCommand != "" {
+				return customPostCommandPendingMsg{
+					targetPath: targetPath,
+					env:        env,
+				}
+			}
+
+			// Otherwise just reload worktrees
+			worktrees, err := m.git.GetWorktrees(m.ctx)
+			return worktreesLoadedMsg{
+				worktrees: worktrees,
+				err:       err,
+			}
+		}
+
+		// Return the init commands execution, which will handle the 'after' callback
+		cmd := m.runCommandsWithTrust(initCmds, targetPath, env, after)
+		if cmd != nil {
+			return cmd()
+		}
+		return after()
+	}
+}
+
+// createWorktreeFromBase is kept for backward compatibility (e.g., custom create menus)
 func (m *Model) createWorktreeFromBase(newBranch, targetPath, baseRef string) tea.Cmd {
 	if err := os.MkdirAll(m.getRepoWorktreeDir(), defaultDirPerms); err != nil {
 		return func() tea.Msg { return errMsg{err: fmt.Errorf("failed to create worktree directory: %w", err)} }
 	}
 
-	args := []string{"git", "worktree", "add", "-b", newBranch}
-	if strings.Contains(baseRef, "/") {
-		args = append(args, "--track")
-	}
-	args = append(args, targetPath, baseRef)
+	// Show loading screen while creating worktree (can take time, so do it async with a loading pulse)
+	m.loading = true
+	m.statusContent = fmt.Sprintf("Creating worktree from %s...", baseRef)
+	m.loadingScreen = NewLoadingScreen(m.statusContent, m.theme)
+	m.currentScreen = screenLoading
 
-	ok := m.git.RunCommandChecked(
-		m.ctx,
-		args,
-		"",
-		fmt.Sprintf("Failed to create worktree %s", newBranch),
-	)
-	if !ok {
-		return func() tea.Msg { return errMsg{err: fmt.Errorf("failed to create worktree %s", newBranch)} }
-	}
-
-	env := m.buildCommandEnv(newBranch, targetPath)
-	initCmds := m.collectInitCommands()
-	after := func() tea.Msg {
-		// If there's a custom menu with post-command, run it
-		if m.pendingCustomMenu != nil && m.pendingCustomMenu.PostCommand != "" {
-			return customPostCommandPendingMsg{
-				targetPath: targetPath,
-				env:        env,
-			}
-		}
-
-		// Otherwise just reload worktrees
-		worktrees, err := m.git.GetWorktrees(m.ctx)
-		return worktreesLoadedMsg{
-			worktrees: worktrees,
-			err:       err,
-		}
-	}
-	return m.runCommandsWithTrust(initCmds, targetPath, env, after)
+	return m.createWorktreeFromBaseAsync(newBranch, targetPath, baseRef)
 }
 
 func (m *Model) clearListSelection() {
