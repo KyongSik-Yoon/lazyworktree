@@ -1821,6 +1821,9 @@ func (m *Model) handleCreateFromCurrentReady(msg createFromCurrentReadyMsg) tea.
 		m.createFromCurrentAIName = ""
 		m.createFromCurrentBranch = ""
 
+		// Set pending selection so the new worktree is selected after creation
+		m.pendingSelectWorktreePath = targetPath
+
 		includeChanges := m.inputScreen.checkboxChecked
 		// Only attempt to move changes if checkbox is checked AND there are actual changes
 		// This prevents accidentally applying an unrelated existing stash when workspace is clean
