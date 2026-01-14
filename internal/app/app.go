@@ -6418,7 +6418,6 @@ func (m *Model) renderFooter(layout layoutDims) string {
 			m.renderKeyHint("d", "Diff"),
 			m.renderKeyHint("D", "Delete"),
 			m.renderKeyHint("p", "PR Info"),
-			m.renderKeyHint("P", "Push"),
 			m.renderKeyHint("S", "Sync"),
 		}
 		// Show "o" key hint only when current worktree has PR info
