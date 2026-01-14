@@ -16,6 +16,7 @@ type PRInfo struct {
 	Body        string // For branch_name_script input
 	URL         string
 	Branch      string // Branch name (headRefName for GitHub, source_branch for GitLab)
+	BaseBranch  string // Base branch name (baseRefName for GitHub, target_branch for GitLab)
 	Author      string // PR/MR author username
 	AuthorName  string // PR/MR author full name
 	AuthorIsBot bool   // Whether the author is a bot

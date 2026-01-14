@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -389,6 +390,7 @@ type Model struct {
 	// Confirm screen
 	confirmScreen *ConfirmScreen
 	confirmAction func() tea.Cmd
+	confirmCancel func() tea.Cmd
 	infoScreen    *InfoScreen
 	infoAction    tea.Cmd
 	loadingScreen *LoadingScreen
@@ -1603,6 +1605,15 @@ func (m *Model) syncWithUpstream() tea.Cmd {
 		m.showInfo("Cannot synchronise a detached worktree.", nil)
 		return nil
 	}
+
+	// Check if this worktree has a PR and if we're behind the base branch
+	if wt.PR != nil && wt.PR.BaseBranch != "" {
+		if m.isBehindBase(wt) {
+			return m.showSyncChoice(wt)
+		}
+	}
+
+	// Normal sync (pull + push)
 	if wt.HasUpstream {
 		remote, branch, ok := m.validatedUpstream(wt, "synchronise")
 		if !ok {
@@ -1631,6 +1642,93 @@ func (m *Model) beginSync(wt *models.WorktreeInfo, pullArgs, pushArgs []string) 
 	m.loadingScreen = NewLoadingScreen("Synchronising with upstream...", m.theme)
 	m.currentScreen = screenLoading
 	return m.runSync(wt, pullArgs, pushArgs)
+}
+
+func (m *Model) isBehindBase(wt *models.WorktreeInfo) bool {
+	if wt.PR == nil || wt.PR.BaseBranch == "" {
+		return false
+	}
+	// Check if current branch is behind the base branch
+	// Use git merge-base to find common ancestor, then check if we're behind
+	mergeBase := m.git.RunGit(m.ctx, []string{
+		"git", "merge-base", "HEAD", wt.PR.BaseBranch,
+	}, wt.Path, []int{0, 1}, true, false)
+
+	if mergeBase == "" {
+		return false
+	}
+
+	// Check if there are commits in base that aren't in HEAD
+	behindCount := m.git.RunGit(m.ctx, []string{
+		"git", "rev-list", "--count", fmt.Sprintf("HEAD..%s", wt.PR.BaseBranch),
+	}, wt.Path, []int{0}, true, false)
+
+	behind, _ := strconv.Atoi(strings.TrimSpace(behindCount))
+	return behind > 0
+}
+
+func (m *Model) showSyncChoice(wt *models.WorktreeInfo) tea.Cmd {
+	// Store the worktree for later use in confirm/cancel handlers
+	savedWt := wt
+
+	m.confirmScreen = NewConfirmScreen(
+		fmt.Sprintf("Branch behind %s\n\nUpdate from base branch?\n(This will merge/rebase latest %s into your branch.\nChoose 'No' for normal sync: pull + push)",
+			wt.PR.BaseBranch, wt.PR.BaseBranch),
+		m.theme,
+	)
+	m.confirmAction = func() tea.Cmd {
+		// User chose YES: update from base
+		return m.updateFromBase(savedWt)
+	}
+	// Store cancel action for normal sync
+	m.confirmCancel = func() tea.Cmd {
+		// User chose NO: do normal sync (pull + push)
+		if savedWt.HasUpstream {
+			remote, branch, ok := m.validatedUpstream(savedWt, "synchronise")
+			if !ok {
+				return nil
+			}
+			return m.beginSync(savedWt, []string{remote, branch}, []string{remote, fmt.Sprintf("HEAD:%s", branch)})
+		}
+		return m.showUpstreamInput(savedWt, func(remote, branch string) tea.Cmd {
+			return m.beginSync(savedWt, []string{remote, branch}, []string{"-u", remote, fmt.Sprintf("HEAD:%s", branch)})
+		})
+	}
+	m.currentScreen = screenConfirm
+	return nil
+}
+
+func (m *Model) updateFromBase(wt *models.WorktreeInfo) tea.Cmd {
+	m.loading = true
+	m.loadingOperation = "sync"
+	m.statusContent = fmt.Sprintf("Updating from %s...", wt.PR.BaseBranch)
+	m.loadingScreen = NewLoadingScreen(fmt.Sprintf("Updating from %s...", wt.PR.BaseBranch), m.theme)
+	m.currentScreen = screenLoading
+
+	// Use gh pr update-branch with --rebase if merge_method is rebase
+	args := []string{"gh", "pr", "update-branch"}
+	mergeMethod := strings.TrimSpace(m.config.MergeMethod)
+	if mergeMethod == "" {
+		mergeMethod = mergeMethodRebase
+	}
+	if mergeMethod == mergeMethodRebase {
+		args = append(args, "--rebase")
+	}
+
+	// Clear cache so status pane refreshes
+	delete(m.detailsCache, wt.Path)
+
+	cmd := m.commandRunner(args[0], args[1:]...)
+	cmd.Dir = wt.Path
+
+	return func() tea.Msg {
+		output, err := cmd.CombinedOutput()
+		return syncResultMsg{
+			stage:  "update-branch",
+			output: strings.TrimSpace(string(output)),
+			err:    err,
+		}
+	}
 }
 
 func (m *Model) showUpstreamInput(wt *models.WorktreeInfo, onSubmit func(remote, branch string) tea.Cmd) tea.Cmd {
@@ -4720,6 +4818,7 @@ func (m *Model) handleScreenKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 					}
 					m.confirmScreen = nil
 					m.confirmAction = nil
+					m.confirmCancel = nil
 					if m.currentScreen == screenConfirm {
 						m.currentScreen = screenNone
 					}
@@ -4729,9 +4828,17 @@ func (m *Model) handleScreenKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 					return m, nil
 				} else {
 					// Action cancelled
+					var cancelCmd tea.Cmd
+					if m.confirmCancel != nil {
+						cancelCmd = m.confirmCancel()
+					}
 					m.confirmScreen = nil
 					m.confirmAction = nil
+					m.confirmCancel = nil
 					m.currentScreen = screenNone
+					if cancelCmd != nil {
+						return m, cancelCmd
+					}
 					return m, nil
 				}
 			default:

@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"regexp"
 	"runtime"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -256,13 +257,7 @@ func (s *Service) RunGit(ctx context.Context, args []string, cwd string, okRetur
 	if err != nil {
 		if exitError, ok := err.(*exec.ExitError); ok {
 			returnCode := exitError.ExitCode()
-			allowed := false
-			for _, code := range okReturncodes {
-				if returnCode == code {
-					allowed = true
-					break
-				}
-			}
+			allowed := slices.Contains(okReturncodes, returnCode)
 			if !allowed {
 				if silent {
 					s.debugf("error: %s (exit %d, silenced)", command, returnCode)
@@ -401,8 +396,8 @@ func (s *Service) GetWorktrees(ctx context.Context) ([]*models.WorktreeInfo, err
 	var wts []wtData
 	var currentWt *wtData
 
-	lines := strings.Split(rawWts, "\n")
-	for _, line := range lines {
+	lines := strings.SplitSeq(rawWts, "\n")
+	for line := range lines {
 		if strings.HasPrefix(line, "worktree ") {
 			if currentWt != nil {
 				wts = append(wts, *currentWt)
@@ -437,7 +432,7 @@ func (s *Service) GetWorktrees(ctx context.Context) ([]*models.WorktreeInfo, err
 		lastActiveTS int64
 	})
 
-	for _, line := range strings.Split(branchRaw, "\n") {
+	for line := range strings.SplitSeq(branchRaw, "\n") {
 		if strings.Contains(line, "|") {
 			parts := strings.Split(line, "|")
 			if len(parts) == 3 {
@@ -737,7 +732,7 @@ func (s *Service) FetchPRForWorktree(ctx context.Context, worktreePath string) *
 		// Run gh pr view in the worktree directory to get PR for current branch
 		prRaw := s.RunGit(ctx, []string{
 			"gh", "pr", "view",
-			"--json", "number,state,title,body,url,headRefName,author",
+			"--json", "number,state,title,body,url,headRefName,baseRefName,author",
 		}, worktreePath, []int{0}, false, true)
 
 		if prRaw == "" {
@@ -755,6 +750,7 @@ func (s *Service) FetchPRForWorktree(ctx context.Context, worktreePath string) *
 		body, _ := pr["body"].(string)
 		url, _ := pr["url"].(string)
 		headRefName, _ := pr["headRefName"].(string)
+		baseRefName, _ := pr["baseRefName"].(string)
 
 		author := ""
 		authorName := ""
@@ -778,6 +774,7 @@ func (s *Service) FetchPRForWorktree(ctx context.Context, worktreePath string) *
 			Body:        body,
 			URL:         url,
 			Branch:      headRefName,
+			BaseBranch:  baseRefName,
 			Author:      author,
 			AuthorName:  authorName,
 			AuthorIsBot: authorIsBot,
@@ -810,6 +807,7 @@ func (s *Service) FetchPRForWorktree(ctx context.Context, worktreePath string) *
 		description, _ := pr["description"].(string)
 		webURL, _ := pr["web_url"].(string)
 		sourceBranch, _ := pr["source_branch"].(string)
+		targetBranch, _ := pr["target_branch"].(string)
 
 		author := ""
 		authorName := ""
@@ -833,6 +831,7 @@ func (s *Service) FetchPRForWorktree(ctx context.Context, worktreePath string) *
 			Body:        description,
 			URL:         webURL,
 			Branch:      sourceBranch,
+			BaseBranch:  targetBranch,
 			Author:      author,
 			AuthorName:  authorName,
 			AuthorIsBot: authorIsBot,

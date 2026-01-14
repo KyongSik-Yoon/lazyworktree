@@ -1615,6 +1615,362 @@ func TestSyncWithUpstreamUsesRebasePull(t *testing.T) {
 	}
 }
 
+// Note: The smart PR sync tests that check isBehindBase() require a real git repository
+// with actual commits and branches. Those are tested via integration tests.
+// Here we test the simpler cases that don't require mocking git internals.
+
+func TestSyncWithNoPRDoesNormalSync(t *testing.T) {
+	cfg := &config.AppConfig{
+		WorktreeDir: t.TempDir(),
+	}
+	m := NewModel(cfg, "")
+
+	wtPath := filepath.Join(cfg.WorktreeDir, "wt1")
+	if err := os.MkdirAll(wtPath, 0o700); err != nil {
+		t.Fatalf("failed to create worktree dir: %v", err)
+	}
+
+	m.filteredWts = []*models.WorktreeInfo{
+		{
+			Path:           wtPath,
+			Branch:         featureBranch,
+			HasUpstream:    true,
+			UpstreamBranch: testUpstreamRef,
+			PR:             nil, // No PR
+		},
+	}
+	m.selectedIndex = 0
+
+	type call struct {
+		name string
+		args []string
+	}
+	var calls []call
+	m.commandRunner = func(name string, args ...string) *exec.Cmd {
+		calls = append(calls, call{name: name, args: append([]string{}, args...)})
+		return exec.Command("printf", "")
+	}
+
+	_, cmd := m.handleBuiltInKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'S'}})
+	if cmd == nil {
+		t.Fatal("expected sync command to be returned")
+	}
+
+	_ = cmd()
+
+	// Should do normal sync without checking if behind
+	if len(calls) != 2 {
+		t.Fatalf("expected 2 commands (pull+push), got %d", len(calls))
+	}
+}
+
+func TestSyncPREmptyBaseBranchDoesNormalSync(t *testing.T) {
+	cfg := &config.AppConfig{
+		WorktreeDir: t.TempDir(),
+	}
+	m := NewModel(cfg, "")
+
+	wtPath := filepath.Join(cfg.WorktreeDir, "wt1")
+	if err := os.MkdirAll(wtPath, 0o700); err != nil {
+		t.Fatalf("failed to create worktree dir: %v", err)
+	}
+
+	m.filteredWts = []*models.WorktreeInfo{
+		{
+			Path:           wtPath,
+			Branch:         featureBranch,
+			HasUpstream:    true,
+			UpstreamBranch: testUpstreamRef,
+			PR: &models.PRInfo{
+				Number:     123,
+				BaseBranch: "", // Empty base branch
+			},
+		},
+	}
+	m.selectedIndex = 0
+
+	type call struct {
+		name string
+		args []string
+	}
+	var calls []call
+	m.commandRunner = func(name string, args ...string) *exec.Cmd {
+		calls = append(calls, call{name: name, args: append([]string{}, args...)})
+		return exec.Command("printf", "")
+	}
+
+	_, cmd := m.handleBuiltInKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'S'}})
+	if cmd == nil {
+		t.Fatal("expected sync command to be returned")
+	}
+
+	_ = cmd()
+
+	// Should do normal sync
+	if len(calls) != 2 {
+		t.Fatalf("expected 2 commands (pull+push), got %d", len(calls))
+	}
+}
+
+func TestUpdateFromBaseWithRebaseFlag(t *testing.T) {
+	cfg := &config.AppConfig{
+		WorktreeDir: t.TempDir(),
+		MergeMethod: mergeMethodRebase,
+	}
+	m := NewModel(cfg, "")
+
+	wtPath := filepath.Join(cfg.WorktreeDir, "wt1")
+	if err := os.MkdirAll(wtPath, 0o700); err != nil {
+		t.Fatalf("failed to create worktree dir: %v", err)
+	}
+
+	wt := &models.WorktreeInfo{
+		Path:   wtPath,
+		Branch: featureBranch,
+		PR: &models.PRInfo{
+			Number:     123,
+			BaseBranch: "main",
+		},
+	}
+
+	var gotName string
+	var gotArgs []string
+	m.commandRunner = func(name string, args ...string) *exec.Cmd {
+		gotName = name
+		gotArgs = append([]string{}, args...)
+		return exec.Command("printf", "")
+	}
+
+	cmd := m.updateFromBase(wt)
+	if cmd == nil {
+		t.Fatal("expected command to be returned")
+	}
+	if m.currentScreen != screenLoading {
+		t.Fatalf("expected screenLoading, got %v", m.currentScreen)
+	}
+
+	_ = cmd()
+
+	if gotName != "gh" {
+		t.Fatalf("expected gh command, got %q", gotName)
+	}
+	if len(gotArgs) < 3 || gotArgs[0] != "pr" || gotArgs[1] != "update-branch" {
+		t.Fatalf("expected gh pr update-branch, got %v", gotArgs)
+	}
+	if len(gotArgs) < 3 || gotArgs[2] != "--rebase" {
+		t.Fatalf("expected --rebase flag when merge_method is rebase, got %v", gotArgs)
+	}
+}
+
+func TestUpdateFromBaseWithoutRebaseFlag(t *testing.T) {
+	cfg := &config.AppConfig{
+		WorktreeDir: t.TempDir(),
+		MergeMethod: "merge",
+	}
+	m := NewModel(cfg, "")
+
+	wtPath := filepath.Join(cfg.WorktreeDir, "wt1")
+	if err := os.MkdirAll(wtPath, 0o700); err != nil {
+		t.Fatalf("failed to create worktree dir: %v", err)
+	}
+
+	wt := &models.WorktreeInfo{
+		Path:   wtPath,
+		Branch: featureBranch,
+		PR: &models.PRInfo{
+			Number:     123,
+			BaseBranch: "main",
+		},
+	}
+
+	var gotName string
+	var gotArgs []string
+	m.commandRunner = func(name string, args ...string) *exec.Cmd {
+		gotName = name
+		gotArgs = append([]string{}, args...)
+		return exec.Command("printf", "")
+	}
+
+	cmd := m.updateFromBase(wt)
+	_ = cmd()
+
+	if gotName != "gh" {
+		t.Fatalf("expected gh command, got %q", gotName)
+	}
+	if len(gotArgs) != 2 || gotArgs[0] != "pr" || gotArgs[1] != "update-branch" {
+		t.Fatalf("expected gh pr update-branch without --rebase, got %v", gotArgs)
+	}
+}
+
+func TestShowSyncChoiceCreatesConfirmScreen(t *testing.T) {
+	cfg := &config.AppConfig{
+		WorktreeDir: t.TempDir(),
+	}
+	m := NewModel(cfg, "")
+
+	wtPath := filepath.Join(cfg.WorktreeDir, "wt1")
+	if err := os.MkdirAll(wtPath, 0o700); err != nil {
+		t.Fatalf("failed to create worktree dir: %v", err)
+	}
+
+	wt := &models.WorktreeInfo{
+		Path:   wtPath,
+		Branch: featureBranch,
+		PR: &models.PRInfo{
+			Number:     123,
+			BaseBranch: "main",
+		},
+	}
+
+	cmd := m.showSyncChoice(wt)
+	if cmd != nil {
+		t.Fatal("expected showSyncChoice to return nil (no immediate command)")
+	}
+
+	if m.currentScreen != screenConfirm {
+		t.Fatalf("expected screenConfirm, got %v", m.currentScreen)
+	}
+	if m.confirmScreen == nil {
+		t.Fatal("expected confirmScreen to be created")
+	}
+	if m.confirmAction == nil {
+		t.Fatal("expected confirmAction to be set")
+	}
+	if m.confirmCancel == nil {
+		t.Fatal("expected confirmCancel to be set")
+	}
+}
+
+func TestConfirmYesCallsUpdateFromBase(t *testing.T) {
+	cfg := &config.AppConfig{
+		WorktreeDir: t.TempDir(),
+		MergeMethod: mergeMethodRebase,
+	}
+	m := NewModel(cfg, "")
+
+	wtPath := filepath.Join(cfg.WorktreeDir, "wt1")
+	if err := os.MkdirAll(wtPath, 0o700); err != nil {
+		t.Fatalf("failed to create worktree dir: %v", err)
+	}
+
+	wt := &models.WorktreeInfo{
+		Path:   wtPath,
+		Branch: featureBranch,
+		PR: &models.PRInfo{
+			Number:     123,
+			BaseBranch: "main",
+		},
+	}
+
+	// Set up confirm screen
+	_ = m.showSyncChoice(wt)
+
+	var gotName string
+	var gotArgs []string
+	m.commandRunner = func(name string, args ...string) *exec.Cmd {
+		gotName = name
+		gotArgs = append([]string{}, args...)
+		return exec.Command("printf", "")
+	}
+
+	// Simulate user pressing YES (y key)
+	newModel, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'y'}})
+	m = newModel.(*Model)
+
+	if cmd == nil {
+		t.Fatal("expected command to be returned from confirmAction")
+	}
+	_ = cmd()
+
+	// Verify gh pr update-branch was called with --rebase
+	if gotName != "gh" {
+		t.Fatalf("expected gh command, got %q", gotName)
+	}
+	if len(gotArgs) < 3 || gotArgs[0] != "pr" || gotArgs[1] != "update-branch" || gotArgs[2] != "--rebase" {
+		t.Fatalf("expected gh pr update-branch --rebase, got %v", gotArgs)
+	}
+
+	// Verify confirm screen was cleared
+	if m.confirmScreen != nil {
+		t.Fatal("expected confirmScreen to be cleared")
+	}
+	if m.confirmAction != nil {
+		t.Fatal("expected confirmAction to be cleared")
+	}
+	if m.confirmCancel != nil {
+		t.Fatal("expected confirmCancel to be cleared")
+	}
+}
+
+func TestConfirmNoDoesNormalSync(t *testing.T) {
+	cfg := &config.AppConfig{
+		WorktreeDir: t.TempDir(),
+	}
+	m := NewModel(cfg, "")
+
+	wtPath := filepath.Join(cfg.WorktreeDir, "wt1")
+	if err := os.MkdirAll(wtPath, 0o700); err != nil {
+		t.Fatalf("failed to create worktree dir: %v", err)
+	}
+
+	wt := &models.WorktreeInfo{
+		Path:           wtPath,
+		Branch:         featureBranch,
+		HasUpstream:    true,
+		UpstreamBranch: testUpstreamRef,
+		PR: &models.PRInfo{
+			Number:     123,
+			BaseBranch: "main",
+		},
+	}
+	m.filteredWts = []*models.WorktreeInfo{wt}
+	m.selectedIndex = 0
+
+	// Set up confirm screen
+	_ = m.showSyncChoice(wt)
+
+	type call struct {
+		name string
+		args []string
+	}
+	var calls []call
+	m.commandRunner = func(name string, args ...string) *exec.Cmd {
+		calls = append(calls, call{name: name, args: append([]string{}, args...)})
+		return exec.Command("printf", "")
+	}
+
+	// Simulate user pressing NO (n key)
+	newModel, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}})
+	m = newModel.(*Model)
+
+	if cmd == nil {
+		t.Fatal("expected command to be returned from confirmCancel")
+	}
+	_ = cmd()
+
+	// Verify normal sync (pull+push) was called
+	if len(calls) != 2 {
+		t.Fatalf("expected 2 commands (pull+push), got %d", len(calls))
+	}
+	if calls[0].name != testGitCmd || calls[0].args[0] != testGitPullArg {
+		t.Fatalf("expected git pull command first, got %v %v", calls[0].name, calls[0].args)
+	}
+	if calls[1].name != testGitCmd || calls[1].args[0] != "push" {
+		t.Fatalf("expected git push command second, got %v %v", calls[1].name, calls[1].args)
+	}
+
+	// Verify confirm screen was cleared
+	if m.confirmScreen != nil {
+		t.Fatal("expected confirmScreen to be cleared")
+	}
+	if m.confirmAction != nil {
+		t.Fatal("expected confirmAction to be cleared")
+	}
+	if m.confirmCancel != nil {
+		t.Fatal("expected confirmCancel to be cleared")
+	}
+}
+
 func TestStageUnstagedFile(t *testing.T) {
 	cfg := &config.AppConfig{
 		WorktreeDir: t.TempDir(),
