@@ -25,6 +25,7 @@ const (
 	testRandomName = "main-random123"
 	testDiff       = "diff"
 	testFallback   = "fallback"
+	testShell      = "shell"
 )
 
 func TestFilterPaletteItemsEmptyQueryReturnsAll(t *testing.T) {
@@ -2826,4 +2827,262 @@ func stringInSlice(list []string, value string) bool {
 		}
 	}
 	return false
+}
+
+func TestGetTmuxActiveSessions(t *testing.T) {
+	tests := []struct {
+		name          string
+		mockOutput    string
+		mockErr       bool
+		expectedNames []string
+	}{
+		{
+			name:          "filters wt- sessions and strips prefix",
+			mockOutput:    "wt-feature-branch\nother-session\nwt-bugfix\nwt-another-feature\n",
+			expectedNames: []string{"another-feature", "bugfix", "feature-branch"}, // sorted
+		},
+		{
+			name:          "handles no wt- sessions",
+			mockOutput:    "session1\nsession2\nregular\n",
+			expectedNames: nil,
+		},
+		{
+			name:          "handles empty output",
+			mockOutput:    "",
+			expectedNames: nil,
+		},
+		{
+			name:          "handles only whitespace",
+			mockOutput:    "  \n  \n",
+			expectedNames: nil,
+		},
+		{
+			name:          "handles single wt- session",
+			mockOutput:    "wt-test\n",
+			expectedNames: []string{"test"},
+		},
+		{
+			name:          "handles mixed whitespace",
+			mockOutput:    "  wt-test1  \nother\n  wt-test2\n",
+			expectedNames: []string{"test1", "test2"},
+		},
+		{
+			name:          "command fails (tmux not running)",
+			mockErr:       true,
+			expectedNames: nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := &config.AppConfig{
+				WorktreeDir:   t.TempDir(),
+				SessionPrefix: "wt-",
+			}
+			m := NewModel(cfg, "")
+
+			// Mock commandRunner
+			m.commandRunner = func(name string, args ...string) *exec.Cmd {
+				if tt.mockErr {
+					// Command that will fail
+					return exec.Command("false")
+				}
+				// Command that returns the mock output
+				if runtime.GOOS == osWindows {
+					// #nosec G204 -- test mock data, not user input
+					return exec.Command("cmd", "/c", "echo "+tt.mockOutput)
+				}
+				// #nosec G204 -- test mock data, not user input
+				return exec.Command("printf", "%s", tt.mockOutput)
+			}
+
+			got := m.getTmuxActiveSessions()
+
+			if !reflect.DeepEqual(got, tt.expectedNames) {
+				t.Fatalf("expected %v, got %v", tt.expectedNames, got)
+			}
+		})
+	}
+}
+
+func TestGetTmuxActiveSessionsWithCustomPrefix(t *testing.T) {
+	cfg := &config.AppConfig{
+		WorktreeDir:   t.TempDir(),
+		SessionPrefix: "my-prefix-",
+	}
+	m := NewModel(cfg, "")
+
+	// Mock commandRunner to return sessions with custom prefix
+	m.commandRunner = func(name string, args ...string) *exec.Cmd {
+		mockOutput := "my-prefix-feature\nother-session\nmy-prefix-bugfix\n"
+		if runtime.GOOS == osWindows {
+			return exec.Command("cmd", "/c", "echo "+mockOutput)
+		}
+		return exec.Command("printf", "%s", mockOutput)
+	}
+
+	got := m.getTmuxActiveSessions()
+	expected := []string{"bugfix", "feature"}
+
+	if !reflect.DeepEqual(got, expected) {
+		t.Fatalf("expected %v, got %v", expected, got)
+	}
+}
+
+func TestCustomPaletteItemsIncludesActiveTmuxSessions(t *testing.T) {
+	cfg := &config.AppConfig{
+		WorktreeDir:   t.TempDir(),
+		SessionPrefix: "wt-",
+		CustomCommands: map[string]*config.CustomCommand{
+			testShell: {
+				Tmux: &config.TmuxCommand{
+					SessionName: "custom-shell",
+					Windows:     []config.TmuxWindow{{Name: testShell}},
+				},
+			},
+		},
+	}
+	m := NewModel(cfg, "")
+
+	// Mock commandRunner to return active sessions
+	m.commandRunner = func(name string, args ...string) *exec.Cmd {
+		// Return mock tmux sessions
+		mockOutput := "wt-feature-a\nwt-bugfix-b\nother-session\n"
+		if runtime.GOOS == osWindows {
+			return exec.Command("cmd", "/c", "echo "+mockOutput)
+		}
+		return exec.Command("printf", "%s", mockOutput)
+	}
+
+	items := m.customPaletteItems()
+
+	// Verify Multiplexer section exists
+	hasMultiplexerSection := false
+	for _, item := range items {
+		if item.isSection && item.label == "Multiplexer" {
+			hasMultiplexerSection = true
+			break
+		}
+	}
+	if !hasMultiplexerSection {
+		t.Fatal("expected Multiplexer section in palette items")
+	}
+
+	// Verify active sessions are included
+	foundFeatureA := false
+	foundBugfixB := false
+	foundCustomShell := false
+
+	for _, item := range items {
+		if item.id == "tmux-attach:feature-a" {
+			foundFeatureA = true
+			if item.label != "feature-a" {
+				t.Fatalf("expected label 'feature-a', got %q", item.label)
+			}
+			if item.description != "active tmux session" {
+				t.Fatalf("expected description 'active tmux session', got %q", item.description)
+			}
+		}
+		if item.id == "tmux-attach:bugfix-b" {
+			foundBugfixB = true
+		}
+		if item.id == testShell {
+			foundCustomShell = true
+		}
+	}
+
+	if !foundFeatureA {
+		t.Fatal("expected to find active session 'feature-a'")
+	}
+	if !foundBugfixB {
+		t.Fatal("expected to find active session 'bugfix-b'")
+	}
+	if !foundCustomShell {
+		t.Fatal("expected to find custom tmux command 'shell'")
+	}
+
+	// Verify "Active Tmux Sessions" section exists
+	hasActiveTmuxSection := false
+	for _, item := range items {
+		if item.isSection && item.label == "Active Tmux Sessions" {
+			hasActiveTmuxSection = true
+			break
+		}
+	}
+	if !hasActiveTmuxSection {
+		t.Fatal("expected 'Active Tmux Sessions' section in palette items")
+	}
+
+	// Verify active sessions appear AFTER custom commands (after Multiplexer section)
+	featureAIndex := -1
+	shellIndex := -1
+	multiplexerIndex := -1
+	for i, item := range items {
+		if item.id == "tmux-attach:feature-a" {
+			featureAIndex = i
+		}
+		if item.id == testShell {
+			shellIndex = i
+		}
+		if item.isSection && item.label == "Multiplexer" {
+			multiplexerIndex = i
+		}
+	}
+
+	if shellIndex < 0 || featureAIndex < 0 || multiplexerIndex < 0 {
+		t.Fatalf("expected to find all items, got shell at %d, feature-a at %d, multiplexer at %d", shellIndex, featureAIndex, multiplexerIndex)
+	}
+
+	if featureAIndex <= shellIndex {
+		t.Fatalf("expected active sessions after custom commands, got feature-a at %d, shell at %d", featureAIndex, shellIndex)
+	}
+
+	if featureAIndex <= multiplexerIndex {
+		t.Fatalf("expected active sessions after Multiplexer section, got feature-a at %d, multiplexer at %d", featureAIndex, multiplexerIndex)
+	}
+}
+
+func TestCustomPaletteItemsWithNoActiveSessions(t *testing.T) {
+	cfg := &config.AppConfig{
+		WorktreeDir:   t.TempDir(),
+		SessionPrefix: "wt-",
+		CustomCommands: map[string]*config.CustomCommand{
+			testShell: {
+				Tmux: &config.TmuxCommand{
+					SessionName: "custom-shell",
+					Windows:     []config.TmuxWindow{{Name: testShell}},
+				},
+			},
+		},
+	}
+	m := NewModel(cfg, "")
+
+	// Mock commandRunner to return no wt- sessions
+	m.commandRunner = func(name string, args ...string) *exec.Cmd {
+		mockOutput := "other-session\nregular\n"
+		if runtime.GOOS == osWindows {
+			return exec.Command("cmd", "/c", "echo "+mockOutput)
+		}
+		return exec.Command("printf", "%s", mockOutput)
+	}
+
+	items := m.customPaletteItems()
+
+	// Verify no active session items
+	for _, item := range items {
+		if strings.HasPrefix(item.id, "tmux-attach:") {
+			t.Fatalf("expected no active session items, found %q", item.id)
+		}
+	}
+
+	// Verify custom command still exists
+	foundCustomShell := false
+	for _, item := range items {
+		if item.id == testShell {
+			foundCustomShell = true
+		}
+	}
+	if !foundCustomShell {
+		t.Fatal("expected to find custom tmux command 'shell'")
+	}
 }

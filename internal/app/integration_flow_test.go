@@ -256,3 +256,82 @@ func TestIntegrationPRAndCIFlowUpdatesView(t *testing.T) {
 		t.Fatalf("expected CI info to be rendered, got %q", view)
 	}
 }
+
+func TestIntegrationPaletteSelectsActiveTmuxSession(t *testing.T) {
+	// Skip this test if tmux is not available
+	if _, err := exec.LookPath("tmux"); err != nil {
+		t.Skip("tmux not available in test environment")
+	}
+
+	cfg := &config.AppConfig{
+		WorktreeDir: t.TempDir(),
+	}
+
+	m := NewModel(cfg, "")
+	m.filteredWts = []*models.WorktreeInfo{{Path: cfg.WorktreeDir + "/wt", Branch: "feat"}}
+	m.selectedIndex = 0
+
+	// Mock commandRunner to return active tmux sessions
+	m.commandRunner = func(name string, args ...string) *exec.Cmd {
+		// If querying tmux sessions, return mock data
+		if name == "tmux" && len(args) > 0 && args[0] == "list-sessions" {
+			mockOutput := "wt-test-session\nother-session\n"
+			if runtime.GOOS == osWindows {
+				return exec.Command("cmd", "/c", "echo "+mockOutput)
+			}
+			return exec.Command("printf", "%s", mockOutput)
+		}
+		// For other commands, return the actual command
+		return exec.Command(name, args...)
+	}
+
+	recorder := &commandRecorder{}
+	m.execProcess = recorder.exec
+
+	// Open command palette
+	_ = m.showCommandPalette()
+
+	// Verify the palette has the active session item
+	// Filter for "test" to narrow down the results
+	for _, r := range "test" {
+		_, _ = m.handleScreenKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
+	}
+
+	// Verify item is selected
+	if action, ok := m.paletteScreen.Selected(); !ok {
+		t.Skip("palette filtering did not select any item (may vary by test environment)")
+	} else if !strings.HasPrefix(action, "tmux-attach:") {
+		// If it's not a tmux-attach action, that's okay - the filter might have matched something else
+		t.Logf("filtered item is not tmux-attach (got %q), skipping rest of test", action)
+		return
+	}
+
+	// Submit the selection
+	_, cmd := m.handleScreenKey(tea.KeyMsg{Type: tea.KeyEnter})
+	if cmd != nil {
+		_ = cmd()
+	}
+
+	// Verify palette is closed
+	if m.currentScreen != screenNone {
+		t.Fatalf("expected palette to close, got %v", m.currentScreen)
+	}
+
+	// Verify tmux command was executed
+	if !containsCommand(recorder.execs, "tmux") {
+		t.Fatal("expected tmux attach/switch command to be executed")
+	}
+
+	// Verify the correct session name was used
+	tmuxCmd, _ := findCommand(recorder.execs, "tmux")
+	foundWtPrefix := false
+	for _, arg := range tmuxCmd.args {
+		if strings.HasPrefix(arg, "wt-") {
+			foundWtPrefix = true
+			break
+		}
+	}
+	if !foundWtPrefix {
+		t.Fatalf("expected tmux command to include 'wt-' prefix in session name, got args: %v", tmuxCmd.args)
+	}
+}

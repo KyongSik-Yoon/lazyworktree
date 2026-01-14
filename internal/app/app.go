@@ -2864,6 +2864,24 @@ func (m *Model) showCommandPalette() tea.Cmd {
 	m.paletteScreen = NewCommandPaletteScreen(items, m.windowWidth, m.windowHeight, m.theme)
 	m.paletteSubmit = func(action string) tea.Cmd {
 		m.debugf("palette action: %s", action)
+
+		// Handle tmux active session attachment
+		if strings.HasPrefix(action, "tmux-attach:") {
+			sessionName := strings.TrimPrefix(action, "tmux-attach:")
+			insideTmux := os.Getenv("TMUX") != ""
+			// Use worktree prefix when attaching (sessions are stored with prefix)
+			fullSessionName := m.config.SessionPrefix + sessionName
+			return m.attachTmuxSessionCmd(fullSessionName, insideTmux)
+		}
+
+		// Handle zellij active session attachment
+		if strings.HasPrefix(action, "zellij-attach:") {
+			sessionName := strings.TrimPrefix(action, "zellij-attach:")
+			// Use worktree prefix when attaching (sessions are stored with prefix)
+			fullSessionName := m.config.SessionPrefix + sessionName
+			return m.attachZellijSessionCmd(fullSessionName)
+		}
+
 		if _, ok := m.config.CustomCommands[action]; ok {
 			return m.executeCustomCommand(action)
 		}
@@ -3097,6 +3115,32 @@ func (m *Model) customPaletteItems() []paletteItem {
 	hasTmux := len(tmuxItems) > 0 && tmuxErr == nil
 	hasZellij := len(zellijItems) > 0 && zellijErr == nil
 
+	// Get active tmux sessions
+	var activeTmuxSessions []paletteItem
+	if tmuxErr == nil {
+		sessions := m.getTmuxActiveSessions()
+		for _, sessionName := range sessions {
+			activeTmuxSessions = append(activeTmuxSessions, paletteItem{
+				id:          "tmux-attach:" + sessionName,
+				label:       sessionName,
+				description: "active tmux session",
+			})
+		}
+	}
+
+	// Get active zellij sessions
+	var activeZellijSessions []paletteItem
+	if zellijErr == nil {
+		sessions := m.getZellijActiveSessions()
+		for _, sessionName := range sessions {
+			activeZellijSessions = append(activeZellijSessions, paletteItem{
+				id:          "zellij-attach:" + sessionName,
+				label:       sessionName,
+				description: "active zellij session",
+			})
+		}
+	}
+
 	// Build result with sections
 	var items []paletteItem
 	if len(regularItems) > 0 {
@@ -3104,7 +3148,7 @@ func (m *Model) customPaletteItems() []paletteItem {
 		items = append(items, regularItems...)
 	}
 
-	// Single Multiplexer section for both tmux and zellij
+	// Multiplexer section for custom tmux/zellij commands
 	if hasTmux || hasZellij {
 		items = append(items, paletteItem{label: "Multiplexer", isSection: true})
 		if hasTmux {
@@ -3113,6 +3157,18 @@ func (m *Model) customPaletteItems() []paletteItem {
 		if hasZellij {
 			items = append(items, zellijItems...)
 		}
+	}
+
+	// Active Tmux Sessions section (appears after Multiplexer)
+	if len(activeTmuxSessions) > 0 {
+		items = append(items, paletteItem{label: "Active Tmux Sessions", isSection: true})
+		items = append(items, activeTmuxSessions...)
+	}
+
+	// Active Zellij Sessions section (appears after Active Tmux Sessions)
+	if len(activeZellijSessions) > 0 {
+		items = append(items, paletteItem{label: "Active Zellij Sessions", isSection: true})
+		items = append(items, activeZellijSessions...)
 	}
 
 	return items
@@ -3384,7 +3440,7 @@ func (m *Model) openTmuxSession(tmuxCfg *config.TmuxCommand, wt *models.Worktree
 	insideTmux := os.Getenv("TMUX") != ""
 	sessionName := expandWithEnv(tmuxCfg.SessionName, env)
 	if strings.TrimSpace(sessionName) == "" {
-		sessionName = fmt.Sprintf("wt-%s", filepath.Base(wt.Path))
+		sessionName = fmt.Sprintf("%s%s", m.config.SessionPrefix, filepath.Base(wt.Path))
 	}
 	sessionName = sanitizeTmuxSessionName(sessionName)
 
@@ -3442,7 +3498,7 @@ func (m *Model) openZellijSession(zellijCfg *config.TmuxCommand, wt *models.Work
 	insideZellij := os.Getenv("ZELLIJ") != "" || os.Getenv("ZELLIJ_SESSION_NAME") != ""
 	sessionName := strings.TrimSpace(expandWithEnv(zellijCfg.SessionName, env))
 	if sessionName == "" {
-		sessionName = fmt.Sprintf("wt-%s", filepath.Base(wt.Path))
+		sessionName = fmt.Sprintf("%s%s", m.config.SessionPrefix, filepath.Base(wt.Path))
 	}
 	sessionName = sanitizeZellijSessionName(sessionName)
 
@@ -5096,6 +5152,78 @@ func sanitizeTmuxSessionName(name string) string {
 	}
 	replacer := strings.NewReplacer(":", "-", "/", "-", "\\", "-")
 	return replacer.Replace(name)
+}
+
+// getTmuxActiveSessions queries tmux for all sessions starting with the configured session prefix
+// Returns session names with the prefix stripped, or empty slice if tmux is unavailable.
+func (m *Model) getTmuxActiveSessions() []string {
+	// Check if tmux is available
+	if _, err := exec.LookPath("tmux"); err != nil {
+		return nil
+	}
+
+	// Query tmux for session list
+	// #nosec G204 -- static command with format string
+	cmd := m.commandRunner("tmux", "list-sessions", "-F", "#{session_name}")
+	output, err := cmd.Output()
+	if err != nil {
+		// tmux not running or no sessions
+		return nil
+	}
+
+	// Parse output and filter for worktree session prefix
+	var sessions []string
+	lines := strings.Split(strings.TrimSpace(string(output)), "\n")
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, m.config.SessionPrefix) {
+			// Strip worktree prefix
+			sessionName := strings.TrimPrefix(line, m.config.SessionPrefix)
+			if sessionName != "" {
+				sessions = append(sessions, sessionName)
+			}
+		}
+	}
+
+	// Sort alphabetically for consistent display
+	sort.Strings(sessions)
+	return sessions
+}
+
+// getZellijActiveSessions queries zellij for all sessions starting with the configured session prefix
+// Returns session names with the prefix stripped, or empty slice if zellij is unavailable.
+func (m *Model) getZellijActiveSessions() []string {
+	// Check if zellij is available
+	if _, err := exec.LookPath("zellij"); err != nil {
+		return nil
+	}
+
+	// Query zellij for session list
+	// #nosec G204 -- static command with format string
+	cmd := m.commandRunner("zellij", "list-sessions", "--short")
+	output, err := cmd.Output()
+	if err != nil {
+		// zellij not running or no sessions
+		return nil
+	}
+
+	// Parse output and filter for worktree session prefix
+	var sessions []string
+	lines := strings.Split(strings.TrimSpace(string(output)), "\n")
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, m.config.SessionPrefix) {
+			// Strip worktree prefix
+			sessionName := strings.TrimPrefix(line, m.config.SessionPrefix)
+			if sessionName != "" {
+				sessions = append(sessions, sessionName)
+			}
+		}
+	}
+
+	// Sort alphabetically for consistent display
+	sort.Strings(sessions)
+	return sessions
 }
 
 func sanitizeZellijSessionName(name string) string {

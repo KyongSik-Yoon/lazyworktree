@@ -77,6 +77,7 @@ type AppConfig struct {
 	ShowIcons               bool   // Render Nerd Font icons in file trees and PR views (default: true)
 	IssueBranchNameTemplate string // Template for issue branch names with placeholders: {number}, {title} (default: "issue-{number}-{title}")
 	PRBranchNameTemplate    string // Template for PR branch names with placeholders: {number}, {title} (default: "pr-{number}-{title}")
+	SessionPrefix           string // Prefix for tmux/zellij session names (default: "wt-")
 	CustomCreateMenus       []*CustomCreateMenu
 	ConfigPath              string `yaml:"-"` // Path to the configuration file
 }
@@ -104,6 +105,7 @@ func DefaultConfig() *AppConfig {
 		MergeMethod:             "rebase",
 		IssueBranchNameTemplate: "issue-{number}-{title}",
 		PRBranchNameTemplate:    "pr-{number}-{title}",
+		SessionPrefix:           "wt-",
 		ShowIcons:               true,
 		CustomCommands: map[string]*CustomCommand{
 			"t": {
@@ -253,6 +255,13 @@ func parseConfig(data map[string]any) *AppConfig {
 		mergeMethod = strings.ToLower(strings.TrimSpace(mergeMethod))
 		if mergeMethod == "rebase" || mergeMethod == "merge" {
 			cfg.MergeMethod = mergeMethod
+		}
+	}
+
+	if sessionPrefix, ok := data["session_prefix"].(string); ok {
+		sessionPrefix = strings.TrimSpace(sessionPrefix)
+		if sessionPrefix != "" {
+			cfg.SessionPrefix = sessionPrefix
 		}
 	}
 

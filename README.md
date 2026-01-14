@@ -209,6 +209,8 @@ You may define custom keybindings in your `~/.config/lazyworktree/config.yaml` t
 
 By default, `t` opens a tmux session with a single `shell` window and `Z` opens a zellij session with the same layout fields. You may override these by defining `custom_commands.t` or `custom_commands.Z`. When `attach` is true, lazyworktree attaches to the session immediately; when false, it displays an information modal with instructions for manual attachment.
 
+The command palette automatically lists all active tmux and zellij sessions that start with the configured session prefix (default: `wt-`) under separate "Active Tmux Sessions" and "Active Zellij Sessions" sections that appear after the Multiplexer section. Selecting an active session allows you to quickly switch to it without manually typing session names. You can customise the session prefix by setting `session_prefix` in your configuration file.
+
 ### Configuration Format
 
 Add a `custom_commands` section to your config:
@@ -499,6 +501,7 @@ git_pager_args:
   - Dracula
 trust_mode: "tofu" # Options: "tofu" (default), "never", "always"
 merge_method: "rebase" # Options: "rebase" (default), "merge"
+session_prefix: "wt-" # Prefix for tmux/zellij session names (default: "wt-")
 # Branch name generation for issues and PRs
 issue_branch_name_template: "issue-{number}-{title}" # Placeholders: {number}, {title}, {generated}
 pr_branch_name_template: "pr-{number}-{title}" # Placeholders: {number}, {title}, {generated}
@@ -547,6 +550,7 @@ Notes:
 - `pager` designates the pager for `show_output` commands and the diff viewer (default: `$PAGER`, fallback `less --use-color --wordwrap -qcR -P 'Press q to exit..'`, then `more`, then `cat`). When the pager is `less`, lazyworktree configures `LESS=` and `LESSHISTFILE=-` to disregard user defaults.
 - `editor` sets the editor command for the Status pane `e` key (default: config value, then `$EDITOR`, then `nvim`, then `vi`).
 - `merge_method` controls how the "Absorb worktree" action integrates changes into main: `rebase` (default) rebases the feature branch onto main then fast-forwards; `merge` creates a merge commit.
+- `session_prefix` defines the prefix for tmux and zellij session names (default: `wt-`). The command palette filters active sessions by this prefix. Sessions created by lazyworktree will use this prefix, and the palette will only show sessions matching this prefix. Note: tmux does not permit colons (`:`) in session names, so any colons in the prefix will be automatically converted to hyphens (`-`).
 - `branch_name_script` executes a script to generate branch name suggestions when creating worktrees from changes, issues, or PRs. The script receives the git diff (for changes), issue title+body (for issues), or PR title+body (for PRs) on stdin and should output a title (for PRs/issues) or branch name (for diffs). The output is available via the `{generated}` placeholder in templates. Refer to [AI-powered branch names](#ai-powered-branch-names) below.
 - `issue_branch_name_template` defines the template for issue branch names with placeholders: `{number}`, `{title}` (original title), `{generated}` (AI-generated title, falls back to `{title}`) (default: `"issue-{number}-{title}"`). Examples: `issue-123-fix-bug-in-login`, `issue-123-fix-auth-bug` (using `{generated}`), `fix/123-fix-bug-in-login`.
 - `pr_branch_name_template` defines the template for PR branch names with placeholders: `{number}`, `{title}` (original title), `{generated}` (AI-generated title, falls back to `{title}`) (default: `"pr-{number}-{title}"`). Examples: `pr-123-fix-bug`, `pr-123-feat-session-manager` (using `{generated}`), `123-fix-bug`.
