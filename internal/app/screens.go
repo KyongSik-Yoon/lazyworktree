@@ -2,6 +2,7 @@ package app
 
 import (
 	"fmt"
+	"math/rand/v2"
 	"sort"
 	"strings"
 
@@ -13,6 +14,13 @@ import (
 	"github.com/chmouel/lazyworktree/internal/models"
 	"github.com/chmouel/lazyworktree/internal/theme"
 )
+
+// spinnerFrames is a simple rotating dot animation for the loading screen.
+var spinnerFrames = []string{
+	"● ● ◌",
+	"● ◌ ●",
+	"◌ ● ●",
+}
 
 type screenType int
 
@@ -49,6 +57,21 @@ const (
 	// Placeholder text constants
 	placeholderFilterFiles = "Filter files..."
 )
+
+// loadingTips is a list of helpful tips shown during loading.
+var loadingTips = []string{
+	"Press '?' to view the help guide anytime.",
+	"Use '/' to search in almost any list view.",
+	"Press 'c' to create a worktree from a branch, PR, or issue.",
+	"Use 'D' to delete a worktree (and optionally its branch).",
+	"Press 'g' to open LazyGit in the current worktree.",
+	"Switch between panes using '1', '2', or '3'.",
+	"Zoom into a pane with '='.",
+	"Press ':' or 'Ctrl+P' to open the Command Palette.",
+	"Use 'r' to refresh the worktree list manually.",
+	"Press 's' to cycle sorting modes.",
+	"Use 'o' to open the related PR/MR in your browser.",
+}
 
 // ConfirmScreen displays a modal confirmation prompt with Accept/Cancel buttons.
 type ConfirmScreen struct {
@@ -221,25 +244,13 @@ type ListSelectionScreen struct {
 	onCursorChange func(selectionItem)
 }
 
-// LoadingScreen displays a modal with a pulsing border and braille spinner.
+// LoadingScreen displays a modal with a spinner and a random tip.
 type LoadingScreen struct {
-	message         string
-	borderColorIdx  int
-	spinnerFrameIdx int
-	thm             *theme.Theme
-}
-
-// brailleSpinnerFrames are the frames for the braille dots animation.
-var brailleSpinnerFrames = []string{"⣾", "⣽", "⣻", "⢿", "⡿", "⣟", "⣯", "⣷"}
-
-// loadingBorderColors returns the color cycle for the pulsing border.
-func (s *LoadingScreen) loadingBorderColors() []lipgloss.Color {
-	return []lipgloss.Color{
-		s.thm.Accent,
-		s.thm.SuccessFg,
-		s.thm.WarnFg,
-		s.thm.Accent,
-	}
+	message        string
+	frameIdx       int
+	borderColorIdx int
+	tip            string
+	thm            *theme.Theme
 }
 
 // NewConfirmScreen creates a confirm screen preloaded with a message.
@@ -273,11 +284,13 @@ func NewInfoScreen(message string, thm *theme.Theme) *InfoScreen {
 
 // NewLoadingScreen creates a loading modal with the given message.
 func NewLoadingScreen(message string, thm *theme.Theme) *LoadingScreen {
+	// Pick a random tip (cryptographic randomness not needed for UI tips)
+	tip := loadingTips[rand.IntN(len(loadingTips))] //nolint:gosec
+
 	return &LoadingScreen{
-		message:         message,
-		borderColorIdx:  0,
-		spinnerFrameIdx: 0,
-		thm:             thm,
+		message: message,
+		tip:     tip,
+		thm:     thm,
 	}
 }
 
@@ -743,17 +756,27 @@ func (s *InfoScreen) View() string {
 	return boxStyle.Render(content)
 }
 
-// Tick advances the loading animation (spinner frame and border color).
+// loadingBorderColors returns the color cycle for the pulsing border.
+func (s *LoadingScreen) loadingBorderColors() []lipgloss.Color {
+	return []lipgloss.Color{
+		s.thm.Accent,
+		s.thm.SuccessFg,
+		s.thm.WarnFg,
+		s.thm.Accent,
+	}
+}
+
+// Tick advances the loading animation (spinner frame and border colour).
 func (s *LoadingScreen) Tick() {
-	s.spinnerFrameIdx = (s.spinnerFrameIdx + 1) % len(brailleSpinnerFrames)
+	s.frameIdx = (s.frameIdx + 1) % len(spinnerFrames)
 	colors := s.loadingBorderColors()
 	s.borderColorIdx = (s.borderColorIdx + 1) % len(colors)
 }
 
-// View renders the loading modal with animated border and braille spinner.
+// View renders the loading modal with spinner, message, and a random tip.
 func (s *LoadingScreen) View() string {
-	width := 50
-	height := 7
+	width := 60
+	height := 9
 
 	colors := s.loadingBorderColors()
 	borderColor := colors[s.borderColorIdx%len(colors)]
@@ -765,24 +788,47 @@ func (s *LoadingScreen) View() string {
 		Width(width).
 		Height(height)
 
-	spinnerFrame := brailleSpinnerFrames[s.spinnerFrameIdx%len(brailleSpinnerFrames)]
+	// Spinner animation
+	spinnerFrame := spinnerFrames[s.frameIdx%len(spinnerFrames)]
 	spinnerStyle := lipgloss.NewStyle().
 		Foreground(s.thm.Accent).
 		Bold(true)
 
+	// Message styling
 	messageStyle := lipgloss.NewStyle().
-		Foreground(s.thm.TextFg)
+		Foreground(s.thm.TextFg).
+		Bold(true)
 
-	contentLine := fmt.Sprintf("%s %s",
+	// Separator line
+	separatorStyle := lipgloss.NewStyle().
+		Foreground(s.thm.BorderDim)
+	separator := separatorStyle.Render(strings.Repeat("─", width-6))
+
+	// Tip styling - truncate to fit on one line
+	tipText := s.tip
+	maxTipLen := width - 12 // "Tip: " prefix + padding
+	if len(tipText) > maxTipLen {
+		tipText = tipText[:maxTipLen-3] + "..."
+	}
+	tipStyle := lipgloss.NewStyle().
+		Foreground(s.thm.MutedFg).
+		Italic(true)
+
+	// Layout: spinner, message, separator, tip
+	content := lipgloss.JoinVertical(lipgloss.Center,
 		spinnerStyle.Render(spinnerFrame),
+		"",
 		messageStyle.Render(s.message),
+		"",
+		separator,
+		tipStyle.Render("Tip: "+tipText),
 	)
 
 	centeredContent := lipgloss.NewStyle().
 		Width(width-4).
 		Height(height-2).
 		Align(lipgloss.Center, lipgloss.Center).
-		Render(contentLine)
+		Render(content)
 
 	return boxStyle.Render(centeredContent)
 }

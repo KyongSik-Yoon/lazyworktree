@@ -8,6 +8,7 @@ require (
 	github.com/charmbracelet/lipgloss v1.1.0
 	github.com/charmbracelet/x/exp/teatest v0.0.0-20251215102626-e0db08df7383
 	github.com/epilande/go-devicons v0.0.0-20250505162540-0661cab71a28
+	github.com/fsnotify/fsnotify v1.9.0
 	github.com/muesli/reflow v0.3.0
 	github.com/stretchr/testify v1.11.1
 	golang.org/x/term v0.38.0
@@ -28,7 +29,6 @@ require (
 	github.com/clipperhouse/uax29/v2 v2.3.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/erikgeiser/coninput v0.0.0-20211004153227-1c3628e74d0f // indirect
-	github.com/fsnotify/fsnotify v1.9.0 // indirect
 	github.com/lucasb-eyer/go-colorful v1.3.0 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mattn/go-localereader v0.0.1 // indirect

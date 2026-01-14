@@ -631,3 +631,108 @@ func TestCommandPaletteScreenSelectedReturnsEmptyForSection(t *testing.T) {
 		t.Errorf("expected empty id for section, got %q", id)
 	}
 }
+
+func TestNewLoadingScreen(t *testing.T) {
+	thm := theme.Dracula()
+	screen := NewLoadingScreen("Loading data...", thm)
+
+	if screen.message != "Loading data..." {
+		t.Errorf("expected message 'Loading data...', got %q", screen.message)
+	}
+	if screen.tip == "" {
+		t.Error("expected tip to be set from loadingTips")
+	}
+	if screen.thm != thm {
+		t.Error("expected theme to be set")
+	}
+	if screen.frameIdx != 0 {
+		t.Errorf("expected frameIdx to be 0, got %d", screen.frameIdx)
+	}
+	if screen.borderColorIdx != 0 {
+		t.Errorf("expected borderColorIdx to be 0, got %d", screen.borderColorIdx)
+	}
+}
+
+func TestLoadingScreenTick(t *testing.T) {
+	thm := theme.Dracula()
+	screen := NewLoadingScreen("Loading...", thm)
+
+	// Initial state
+	if screen.frameIdx != 0 || screen.borderColorIdx != 0 {
+		t.Fatal("expected initial indices to be 0")
+	}
+
+	// First tick
+	screen.Tick()
+	if screen.frameIdx != 1 {
+		t.Errorf("expected frameIdx to be 1 after tick, got %d", screen.frameIdx)
+	}
+	if screen.borderColorIdx != 1 {
+		t.Errorf("expected borderColorIdx to be 1 after tick, got %d", screen.borderColorIdx)
+	}
+
+	// Tick until wrap around (spinnerFrames has 3 frames)
+	screen.Tick()
+	screen.Tick()
+	if screen.frameIdx != 0 {
+		t.Errorf("expected frameIdx to wrap to 0, got %d", screen.frameIdx)
+	}
+}
+
+func TestLoadingScreenView(t *testing.T) {
+	thm := theme.Dracula()
+	screen := NewLoadingScreen("Fetching PR data...", thm)
+
+	view := screen.View()
+
+	// Check that the view contains key elements
+	if !strings.Contains(view, "Fetching PR data...") {
+		t.Error("expected view to contain message")
+	}
+	if !strings.Contains(view, "Tip:") {
+		t.Error("expected view to contain tip label")
+	}
+	// Check for spinner characters (one of the frames)
+	hasSpinner := strings.Contains(view, "●") || strings.Contains(view, "◌")
+	if !hasSpinner {
+		t.Error("expected view to contain spinner characters")
+	}
+	// Check for separator line
+	if !strings.Contains(view, "─") {
+		t.Error("expected view to contain separator line")
+	}
+}
+
+func TestLoadingScreenTipTruncation(t *testing.T) {
+	thm := theme.Dracula()
+	// Create a screen and manually set a very long tip
+	screen := &LoadingScreen{
+		message: "Loading...",
+		tip:     "This is an extremely long tip that should definitely be truncated because it exceeds the maximum allowed length for display in the modal",
+		thm:     thm,
+	}
+
+	view := screen.View()
+
+	// The tip should be truncated and end with "..."
+	if !strings.Contains(view, "...") {
+		t.Error("expected long tip to be truncated with ellipsis")
+	}
+}
+
+func TestLoadingScreenBorderColors(t *testing.T) {
+	thm := theme.Dracula()
+	screen := NewLoadingScreen("Loading...", thm)
+
+	colors := screen.loadingBorderColors()
+	if len(colors) != 4 {
+		t.Errorf("expected 4 border colors, got %d", len(colors))
+	}
+	// First and last should be accent (they cycle)
+	if colors[0] != thm.Accent {
+		t.Error("expected first color to be accent")
+	}
+	if colors[3] != thm.Accent {
+		t.Error("expected last color to be accent")
+	}
+}

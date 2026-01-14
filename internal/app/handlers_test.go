@@ -2755,3 +2755,54 @@ func TestHandleOpenIssuesLoadedError(t *testing.T) {
 		t.Error("expected nil command")
 	}
 }
+
+// TestPRDataResetSyncsRowsAndColumns verifies that when prDataLoaded is reset
+// to false (e.g., pressing 'p' to refetch), rows and columns are properly
+// synchronized to prevent index out of range panics.
+func TestPRDataResetSyncsRowsAndColumns(t *testing.T) {
+	cfg := config.DefaultConfig()
+	cfg.WorktreeDir = t.TempDir()
+	m := NewModel(cfg, "")
+	m.worktreeTable.SetWidth(100)
+	m.worktreesLoaded = true
+	m.worktrees = []*models.WorktreeInfo{
+		{Path: filepath.Join(cfg.WorktreeDir, "wt1"), Branch: "feature"},
+	}
+	m.filteredWts = m.worktrees
+
+	// First, load PR data (5 columns)
+	prMsg := prDataLoadedMsg{
+		prMap: map[string]*models.PRInfo{
+			"feature": {Number: 12, State: "OPEN", Title: "Test PR", URL: "https://example.com"},
+		},
+	}
+	m.handlePRDataLoaded(prMsg)
+
+	if !m.prDataLoaded {
+		t.Fatal("expected prDataLoaded to be true after loading PR data")
+	}
+	if len(m.worktreeTable.Columns()) != 5 {
+		t.Fatalf("expected 5 columns after PR data, got %d", len(m.worktreeTable.Columns()))
+	}
+	rows := m.worktreeTable.Rows()
+	if len(rows[0]) != 5 {
+		t.Fatalf("expected 5 values in row after PR data, got %d", len(rows[0]))
+	}
+
+	// Now simulate pressing 'p' to refetch - this should reset to 4 columns
+	m.ciCache = make(map[string]*ciCacheEntry)
+	m.prDataLoaded = false
+	m.updateTable()
+	m.updateTableColumns(m.worktreeTable.Width())
+
+	if m.prDataLoaded {
+		t.Fatal("expected prDataLoaded to be false after reset")
+	}
+	if len(m.worktreeTable.Columns()) != 4 {
+		t.Fatalf("expected 4 columns after reset, got %d", len(m.worktreeTable.Columns()))
+	}
+	rows = m.worktreeTable.Rows()
+	if len(rows[0]) != 4 {
+		t.Fatalf("expected 4 values in row after reset, got %d", len(rows[0]))
+	}
+}

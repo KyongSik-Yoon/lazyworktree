@@ -2619,17 +2619,15 @@ func (m *Model) showRunCommand() tea.Cmd {
 }
 
 func (m *Model) showPruneMerged() tea.Cmd {
-	// Check if repo is connected to GitHub/GitLab
 	if !m.git.IsGitHubOrGitLab(m.ctx) {
-		// Skip PR fetch for repos without GitHub/GitLab remotes,
-		// go straight to git-based merged detection
 		return m.performMergedWorktreeCheck()
 	}
 
-	// Refresh PR data first to ensure we have the latest merge status
 	m.checkMergedAfterPRRefresh = true
 	m.ciCache = make(map[string]*ciCacheEntry)
 	m.prDataLoaded = false
+	m.updateTable()
+	m.updateTableColumns(m.worktreeTable.Width())
 	m.loading = true
 	m.loadingScreen = NewLoadingScreen("Fetching PR data...", m.theme)
 	m.currentScreen = screenLoading
@@ -2637,10 +2635,8 @@ func (m *Model) showPruneMerged() tea.Cmd {
 }
 
 func (m *Model) performMergedWorktreeCheck() tea.Cmd {
-	// Get main branch for git-based merged detection
 	mainBranch := m.git.GetMainBranch(m.ctx)
 
-	// Collect worktree branches for lookup
 	wtBranches := make(map[string]*models.WorktreeInfo)
 	for _, wt := range m.worktrees {
 		if !wt.IsMain {
