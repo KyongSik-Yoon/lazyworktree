@@ -45,34 +45,15 @@ func (m *Model) handleWorktreesLoaded(msg worktreesLoadedMsg) (tea.Model, tea.Cm
 		return m, nil
 	}
 
-	// Preserve PR assignments from old worktrees
-	prAssignments := make(map[string]*models.PRInfo)
-	prFetchErrors := make(map[string]string)
-	prFetchStatuses := make(map[string]string)
-	for _, wt := range m.worktrees {
-		if wt.PR != nil || wt.PRFetchError != "" || wt.PRFetchStatus != "" {
-			prAssignments[wt.Path] = wt.PR
-			prFetchErrors[wt.Path] = wt.PRFetchError
-			prFetchStatuses[wt.Path] = wt.PRFetchStatus
-		}
-	}
-
+	// Preserve PR state across worktree reload to prevent race condition
+	prStateMap := extractPRState(m.worktrees)
 	m.worktrees = msg.worktrees
+	restorePRState(m.worktrees, prStateMap)
 
 	// Populate LastSwitchedTS from access history
 	for _, wt := range m.worktrees {
 		if ts, ok := m.accessHistory[wt.Path]; ok {
 			wt.LastSwitchedTS = ts
-		}
-		// Restore PR assignments
-		if pr, ok := prAssignments[wt.Path]; ok {
-			wt.PR = pr
-		}
-		if errMsg, ok := prFetchErrors[wt.Path]; ok {
-			wt.PRFetchError = errMsg
-		}
-		if status, ok := prFetchStatuses[wt.Path]; ok {
-			wt.PRFetchStatus = status
 		}
 	}
 	m.detailsCache = make(map[string]*detailsCacheEntry)
@@ -138,7 +119,10 @@ func (m *Model) handleCachedWorktrees(msg cachedWorktreesMsg) (tea.Model, tea.Cm
 	if m.worktreesLoaded || len(msg.worktrees) == 0 {
 		return m, nil
 	}
+	// Preserve PR state across worktree reload to prevent race condition
+	prStateMap := extractPRState(m.worktrees)
 	m.worktrees = msg.worktrees
+	restorePRState(m.worktrees, prStateMap)
 	// Populate LastSwitchedTS from access history
 	for _, wt := range m.worktrees {
 		if ts, ok := m.accessHistory[wt.Path]; ok {
@@ -157,7 +141,10 @@ func (m *Model) handleCachedWorktrees(msg cachedWorktreesMsg) (tea.Model, tea.Cm
 func (m *Model) handlePruneResult(msg pruneResultMsg) (tea.Model, tea.Cmd) {
 	m.loading = false
 	if msg.err == nil && msg.worktrees != nil {
+		// Preserve PR state across worktree reload to prevent race condition
+		prStateMap := extractPRState(m.worktrees)
 		m.worktrees = msg.worktrees
+		restorePRState(m.worktrees, prStateMap)
 		m.updateTable()
 		m.saveCache()
 	}
@@ -699,4 +686,39 @@ func (m *Model) handleCherryPickResult(msg cherryPickResultMsg) tea.Cmd {
 		msg.targetWorktree.Branch)
 	m.showInfo(successMessage, m.refreshWorktrees())
 	return nil
+}
+
+// prState holds all PR-related state for a worktree.
+type prState struct {
+	PR            *models.PRInfo
+	PRFetchError  string
+	PRFetchStatus string
+}
+
+// extractPRState creates a map of PR state indexed by worktree path.
+// This preserves all PR-related information before worktree slice is replaced.
+func extractPRState(worktrees []*models.WorktreeInfo) map[string]*prState {
+	stateMap := make(map[string]*prState)
+	for _, wt := range worktrees {
+		if wt.PR != nil || wt.PRFetchError != "" || wt.PRFetchStatus != "" {
+			stateMap[wt.Path] = &prState{
+				PR:            wt.PR,
+				PRFetchError:  wt.PRFetchError,
+				PRFetchStatus: wt.PRFetchStatus,
+			}
+		}
+	}
+	return stateMap
+}
+
+// restorePRState applies previously extracted PR state to worktrees.
+// This ensures all PR-related information persists across worktree reloads.
+func restorePRState(worktrees []*models.WorktreeInfo, stateMap map[string]*prState) {
+	for _, wt := range worktrees {
+		if state, ok := stateMap[wt.Path]; ok {
+			wt.PR = state.PR
+			wt.PRFetchError = state.PRFetchError
+			wt.PRFetchStatus = state.PRFetchStatus
+		}
+	}
 }

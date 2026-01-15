@@ -3738,6 +3738,159 @@ func TestPRFetchErrorsPreservedOnWorktreeRefresh(t *testing.T) {
 	}
 }
 
+// TestPRStatePreservedOnCachedWorktrees verifies that PR state (PR info, errors, status)
+// is preserved when cached worktrees are loaded.
+func TestPRStatePreservedOnCachedWorktrees(t *testing.T) {
+	cfg := config.DefaultConfig()
+	cfg.WorktreeDir = t.TempDir()
+	m := NewModel(cfg, "")
+	m.worktreeTable.SetWidth(100)
+
+	// Create initial worktree with PR data
+	wt1 := &models.WorktreeInfo{
+		Path:          filepath.Join(cfg.WorktreeDir, "wt1"),
+		Branch:        "feature-1",
+		PR:            &models.PRInfo{Number: 42, State: "OPEN", Title: "Test PR"},
+		PRFetchError:  "some error",
+		PRFetchStatus: models.PRFetchStatusError,
+	}
+	m.worktrees = []*models.WorktreeInfo{wt1}
+
+	// Simulate cached worktrees load (fresh worktree objects without PR data)
+	cachedWt1 := &models.WorktreeInfo{
+		Path:   filepath.Join(cfg.WorktreeDir, "wt1"),
+		Branch: "feature-1",
+	}
+	msg := cachedWorktreesMsg{worktrees: []*models.WorktreeInfo{cachedWt1}}
+	m.handleCachedWorktrees(msg)
+
+	// Verify PR state was preserved
+	if m.worktrees[0].PR == nil || m.worktrees[0].PR.Number != 42 {
+		t.Fatal("PR info was lost on cached worktree load")
+	}
+	if m.worktrees[0].PRFetchError != "some error" {
+		t.Fatalf("PRFetchError was lost! expected 'some error', got %q", m.worktrees[0].PRFetchError)
+	}
+	if m.worktrees[0].PRFetchStatus != models.PRFetchStatusError {
+		t.Fatalf("PRFetchStatus was lost! expected 'error', got %q", m.worktrees[0].PRFetchStatus)
+	}
+}
+
+// TestPRStatePreservedOnPruneResult verifies that PR state (PR info, errors, status)
+// is preserved when worktrees are updated after pruning.
+func TestPRStatePreservedOnPruneResult(t *testing.T) {
+	cfg := config.DefaultConfig()
+	cfg.WorktreeDir = t.TempDir()
+	m := NewModel(cfg, "")
+	m.worktreeTable.SetWidth(100)
+
+	// Create initial worktrees with PR data
+	wt1 := &models.WorktreeInfo{
+		Path:          filepath.Join(cfg.WorktreeDir, "wt1"),
+		Branch:        "feature-1",
+		PR:            &models.PRInfo{Number: 123, State: "OPEN", Title: "Feature PR"},
+		PRFetchStatus: models.PRFetchStatusLoaded,
+	}
+	wt2 := &models.WorktreeInfo{
+		Path:          filepath.Join(cfg.WorktreeDir, "wt2"),
+		Branch:        "feature-2",
+		PRFetchError:  "gh CLI not found",
+		PRFetchStatus: models.PRFetchStatusError,
+	}
+	m.worktrees = []*models.WorktreeInfo{wt1, wt2}
+
+	// Simulate prune result (fresh worktree objects without PR data)
+	prunedWt1 := &models.WorktreeInfo{
+		Path:   filepath.Join(cfg.WorktreeDir, "wt1"),
+		Branch: "feature-1",
+	}
+	prunedWt2 := &models.WorktreeInfo{
+		Path:   filepath.Join(cfg.WorktreeDir, "wt2"),
+		Branch: "feature-2",
+	}
+	msg := pruneResultMsg{
+		worktrees: []*models.WorktreeInfo{prunedWt1, prunedWt2},
+		pruned:    0,
+		failed:    0,
+		err:       nil,
+	}
+	m.handlePruneResult(msg)
+
+	// Verify PR state was preserved for both worktrees
+	if m.worktrees[0].PR == nil || m.worktrees[0].PR.Number != 123 {
+		t.Fatal("PR info was lost on prune result for wt1")
+	}
+	if m.worktrees[0].PRFetchStatus != models.PRFetchStatusLoaded {
+		t.Fatalf("PRFetchStatus was lost for wt1! expected 'loaded', got %q", m.worktrees[0].PRFetchStatus)
+	}
+
+	if m.worktrees[1].PRFetchError != "gh CLI not found" {
+		t.Fatalf("PRFetchError was lost for wt2! expected 'gh CLI not found', got %q", m.worktrees[1].PRFetchError)
+	}
+	if m.worktrees[1].PRFetchStatus != models.PRFetchStatusError {
+		t.Fatalf("PRFetchStatus was lost for wt2! expected 'error', got %q", m.worktrees[1].PRFetchStatus)
+	}
+}
+
+// TestPRRefreshClearsPreservedState verifies that when PR data is explicitly refreshed
+// (pressing 'p'), the new PR data properly replaces any previously preserved PR state.
+func TestPRRefreshClearsPreservedState(t *testing.T) {
+	cfg := config.DefaultConfig()
+	cfg.WorktreeDir = t.TempDir()
+	m := NewModel(cfg, "")
+	m.worktreeTable.SetWidth(100)
+	m.worktreesLoaded = true
+
+	// Create worktree with OLD PR data
+	wt1 := &models.WorktreeInfo{
+		Path:          filepath.Join(cfg.WorktreeDir, "wt1"),
+		Branch:        "feature-1",
+		PR:            &models.PRInfo{Number: 99, State: "OPEN", Title: "Old PR"},
+		PRFetchStatus: models.PRFetchStatusLoaded,
+	}
+	m.worktrees = []*models.WorktreeInfo{wt1}
+
+	// Simulate worktree refresh that preserves the OLD PR data
+	refreshedWt1 := &models.WorktreeInfo{
+		Path:   filepath.Join(cfg.WorktreeDir, "wt1"),
+		Branch: "feature-1",
+	}
+	refreshMsg := worktreesLoadedMsg{
+		worktrees: []*models.WorktreeInfo{refreshedWt1},
+		err:       nil,
+	}
+	m.handleWorktreesLoaded(refreshMsg)
+
+	// Verify OLD PR data was preserved after worktree refresh
+	if m.worktrees[0].PR == nil || m.worktrees[0].PR.Number != 99 {
+		t.Fatal("PR data should be preserved after worktree refresh")
+	}
+
+	// Now simulate PR refresh (pressing 'p') with NEW PR data
+	prMsg := prDataLoadedMsg{
+		prMap: map[string]*models.PRInfo{
+			"feature-1": {Number: 123, State: "OPEN", Title: "New PR"},
+		},
+		worktreePRs:    map[string]*models.PRInfo{},
+		worktreeErrors: map[string]string{},
+	}
+	m.handlePRDataLoaded(prMsg)
+
+	// CRITICAL: Verify NEW PR data replaced the OLD preserved data
+	if m.worktrees[0].PR == nil {
+		t.Fatal("PR data should be set after PR refresh")
+	}
+	if m.worktrees[0].PR.Number != 123 {
+		t.Fatalf("PR refresh should replace old data! expected PR#123, got PR#%d", m.worktrees[0].PR.Number)
+	}
+	if m.worktrees[0].PR.Title != "New PR" {
+		t.Fatalf("PR refresh should replace old data! expected 'New PR', got %q", m.worktrees[0].PR.Title)
+	}
+	if m.worktrees[0].PRFetchStatus != models.PRFetchStatusLoaded {
+		t.Fatalf("PRFetchStatus should be 'loaded', got %q", m.worktrees[0].PRFetchStatus)
+	}
+}
+
 // TestPRDataResetSyncsRowsAndColumns verifies that when prDataLoaded is reset
 // to false (e.g., pressing 'p' to refetch), rows and columns are properly
 // synchronized to prevent index out of range panics.
