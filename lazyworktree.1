@@ -529,11 +529,11 @@ Example: With template "fix-{number}-{title}", issue #42 titled "Memory Leak" be
 .
 .TP
 .B pr_branch_name_template
-Template for branch names created from pull/merge requests. Available placeholders: \fB{number}\fR (PR/MR number), \fB{title}\fR (sanitised PR/MR title), and \fB{generated}\fR (AI-generated title from branch_name_script, falls back to {title} if unavailable).
+Template for branch names created from pull/merge requests. Available placeholders: \fB{number}\fR (PR/MR number), \fB{title}\fR (sanitised PR/MR title), \fB{pr_author}\fR (sanitised PR author username), and \fB{generated}\fR (AI-generated title from branch_name_script, falls back to {title} if unavailable).
 .br
 Default: pr-{number}-{title}
 .br
-Example: With template "review-{number}", PR #123 becomes branch "review-123". With template "pr-{number}-{generated}" and AI script configured, the AI-generated title is used instead.
+Example: With template "review-{number}", PR #123 becomes branch "review-123". With template "pr-{number}-{pr_author}-{title}", PR #123 by alice becomes branch "pr-123-alice-fix-bug". With template "pr-{number}-{generated}" and AI script configured, the AI-generated title is used instead.
 .
 .SS Security and Behaviour
 .TP

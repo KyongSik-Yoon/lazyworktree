@@ -131,6 +131,58 @@ func TestGeneratePRWorktreeName(t *testing.T) {
 			t.Errorf("generatePRWorktreeName() with custom prefix = %q, want %q", result, expected)
 		}
 	})
+
+	t.Run("template with pr_author placeholder", func(t *testing.T) {
+		pr := &models.PRInfo{
+			Number: 456,
+			Title:  "Fix bug",
+			Author: "alice",
+		}
+		result := generatePRWorktreeName(pr, "pr-{pr_author}-{number}-{title}", "")
+		expected := "pr-alice-456-fix-bug"
+		if result != expected {
+			t.Errorf("generatePRWorktreeName() with pr_author = %q, want %q", result, expected)
+		}
+	})
+
+	t.Run("template with pr_author containing special chars", func(t *testing.T) {
+		pr := &models.PRInfo{
+			Number: 789,
+			Title:  "Update docs",
+			Author: "user@bot",
+		}
+		result := generatePRWorktreeName(pr, "pr-{pr_author}-{number}-{title}", "")
+		expected := "pr-user-bot-789-update-docs"
+		if result != expected {
+			t.Errorf("generatePRWorktreeName() with special chars in author = %q, want %q", result, expected)
+		}
+	})
+
+	t.Run("template with empty pr_author", func(t *testing.T) {
+		pr := &models.PRInfo{
+			Number: 100,
+			Title:  "Feature",
+			Author: "",
+		}
+		result := generatePRWorktreeName(pr, "pr-{pr_author}-{number}-{title}", "")
+		expected := "pr--100-feature"
+		if result != expected {
+			t.Errorf("generatePRWorktreeName() with empty author = %q, want %q", result, expected)
+		}
+	})
+
+	t.Run("template with pr_author at start", func(t *testing.T) {
+		pr := &models.PRInfo{
+			Number: 123,
+			Title:  "New feature",
+			Author: "bob",
+		}
+		result := generatePRWorktreeName(pr, "{pr_author}-{number}-{title}", "")
+		expected := "bob-123-new-feature"
+		if result != expected {
+			t.Errorf("generatePRWorktreeName() with author at start = %q, want %q", result, expected)
+		}
+	})
 }
 
 func TestGenerateIssueWorktreeName(t *testing.T) {

@@ -674,14 +674,16 @@ When creating worktrees from PRs or issues, the following placeholders are avail
 - `{number}` - The PR/issue number
 - `{title}` - The original sanitized PR/issue title (always available)
 - `{generated}` - The AI-generated title (falls back to `{title}` if script not configured or returns empty)
+- `{pr_author}` - The PR author's username (PRs only, sanitized)
 
 **Examples:**
 
-| Template | Result (PR #2: "Add AI session management") | AI generates: `feat-ai-session-manager` |
-|----------|---------------------------------------------|----------------------------------------|
+| Template | Result (PR #2 by @alice: "Add AI session management") | AI generates: `feat-ai-session-manager` |
+|----------|-------------------------------------------------------|----------------------------------------|
 | `pr-{number}-{title}` | `pr-2-add-ai-session-management` | Not used |
 | `pr-{number}-{generated}` | `pr-2-feat-ai-session-manager` | Used |
-| `pr-{number}-{generated}-{title}` | `pr-2-feat-ai-session-manager-add-ai-session-management` | Both used |
+| `pr-{number}-{pr_author}-{title}` | `pr-2-alice-add-ai-session-management` | Not used |
+| `pr-{number}-{pr_author}-{generated}` | `pr-2-alice-feat-ai-session-manager` | Used |
 
 If the AI script fails or returns empty output, `{generated}` automatically falls back to the sanitized original title.
 

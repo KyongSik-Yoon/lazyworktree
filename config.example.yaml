@@ -113,9 +113,11 @@ issue_branch_name_template: "issue-{number}-{title}"
 #   {number} - The PR number
 #   {title}  - The sanitised PR title (original)
 #   {generated} - The AI-generated title (falls back to {title} if not available)
+#   {pr_author} - The PR author's username (sanitised)
 # Examples:
 #   pr_branch_name_template: "pr-{number}-{title}"              # pr-123-fix-login-bug (original title)
 #   pr_branch_name_template: "pr-{number}-{generated}"          # pr-123-feat-session-manager (AI title)
+#   pr_branch_name_template: "pr-{number}-{pr_author}-{title}"  # pr-123-alice-fix-login-bug (with author)
 #   pr_branch_name_template: "pr-{number}-{generated}-{title}"  # pr-123-feat-session-manager-fix-login-bug (both)
 pr_branch_name_template: "pr-{number}-{title}"
 
