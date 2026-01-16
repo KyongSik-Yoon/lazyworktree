@@ -120,6 +120,32 @@ directly or downloaded.
 
 See [./shell/README.md](./shell/README.md) for more detailed instructions.
 
+## CLI Usage
+
+LazyWorktree supports command-line operations for creating and deleting worktrees without launching the TUI:
+
+### Creating Worktrees
+
+**Create from a branch:**
+
+```bash
+lazyworktree wt-create -from-branch feature/new-feature [-with-change] [-silent]
+```
+
+**Create from a PR:**
+
+```bash
+lazyworktree wt-create -from-pr 123 [-silent]
+```
+
+### Deleting Worktrees
+
+```bash
+lazyworktree wt-delete [-no-branch] [-silent]
+```
+
+Deletes the worktree and associated branch (only if worktree name matches branch name). Use `-no-branch` to skip branch deletion.
+
 ## Key Bindings
 
 | Key | Action |

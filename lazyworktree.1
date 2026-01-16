@@ -5,6 +5,13 @@ lazyworktree \- A TUI tool to manage git worktrees
 .SH SYNOPSIS
 .B lazyworktree
 [\fIOPTIONS\fR]
+.br
+.B lazyworktree wt\-create
+\-\-from\-branch \fIBRANCH\fR | \-\-from\-pr \fINUMBER\fR
+[\-\-with\-change] [\-\-silent]
+.br
+.B lazyworktree wt\-delete
+[\-\-no\-branch] [\-\-silent]
 .
 .SH DESCRIPTION
 lazyworktree is a BubbleTea-based Terminal User Interface (TUI) designed for efficient Git worktree management. It enables you to visualise the repository's status, oversee branches, and navigate between worktrees with ease.
@@ -93,6 +100,105 @@ Supported keys: \fBtheme\fR, \fBworktree_dir\fR, \fBsort_mode\fR, \fBauto_fetch_
 Examples: \fB--config=lw.theme=nord\fR, \fB--config=lw.auto_fetch_prs=true\fR
 .br
 This has the highest precedence and overrides all other configuration sources.
+.
+.SH SUBCOMMANDS
+.SS wt\-create
+Create a new worktree without launching the TUI.
+.
+.PP
+.B Options:
+.TP
+.B \-\-from\-branch \fIBRANCH\fR
+Create worktree from the specified branch. Prompts for worktree name (default: sanitised branch name).
+.
+.TP
+.B \-\-from\-pr \fINUMBER\fR
+Create worktree from PR number. Fetches the specified PR and creates a worktree with a sanitised branch name (e.g., pr-123-add-feature).
+.
+.TP
+.B \-\-with\-change
+Carry over uncommitted changes to the new worktree (only with \-\-from\-branch). Stashes changes from current worktree, creates new worktree, and applies the stash.
+.
+.TP
+.B \-\-silent
+Suppress all progress messages to stderr. Only the worktree path is written to stdout. Useful for scripting and automation.
+.
+.SS wt\-delete
+Delete a worktree without launching the TUI.
+.
+.PP
+Auto-detects the current worktree from the working directory. If not in a worktree, shows a selection list. Automatically deletes the associated branch if the worktree directory name matches the branch name.
+.
+.PP
+.B Options:
+.TP
+.B \-\-no\-branch
+Skip branch deletion entirely (even if worktree name matches branch name).
+.
+.TP
+.B \-\-silent
+Suppress all progress messages to stderr. Useful for scripting and automation.
+.
+.SH EXAMPLES
+.SS CLI Operations
+Create a worktree from a branch:
+.br
+.B lazyworktree wt\-create \-\-from\-branch feature/new\-feature
+.
+.PP
+Create a worktree from a branch with uncommitted changes:
+.br
+.B lazyworktree wt\-create \-\-from\-branch feature/new\-feature \-\-with\-change
+.
+.PP
+Create a worktree from a PR:
+.br
+.B lazyworktree wt\-create \-\-from\-pr 123
+.
+.PP
+Delete a worktree (and branch if name matches):
+.br
+.B lazyworktree wt\-delete
+.
+.PP
+Delete a worktree without deleting the branch:
+.br
+.B lazyworktree wt\-delete \-\-no\-branch
+.
+.PP
+Create a worktree silently (for scripting):
+.br
+.B lazyworktree wt\-create \-\-from\-branch feature/new\-feature \-\-silent
+.
+.SS TUI Launch
+Launch the TUI (default):
+.br
+.B lazyworktree
+.
+.PP
+Launch with custom worktree directory:
+.br
+.B lazyworktree \-\-worktree\-dir ~/worktrees
+.
+.PP
+Override theme via CLI:
+.br
+.B lazyworktree \-\-config lw.theme=nord
+.
+.SS Shell Completion
+Generate zsh completion:
+.br
+.B lazyworktree \-\-completion zsh > ~/.zsh/completions/_lazyworktree
+.
+.PP
+Generate bash completion:
+.br
+.B lazyworktree \-\-completion bash > /etc/bash_completion.d/lazyworktree
+.
+.PP
+Generate fish completion:
+.br
+.B lazyworktree \-\-completion fish > ~/.config/fish/completions/lazyworktree.fish
 .
 .SH KEY BINDINGS
 .SS General Navigation

@@ -6,12 +6,12 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"regexp"
 	"sort"
 	"strings"
 	"time"
 
 	"github.com/chmouel/lazyworktree/internal/models"
+	"github.com/chmouel/lazyworktree/internal/utils"
 )
 
 // runBranchNameScript executes the configured branch_name_script with the content as stdin.
@@ -184,52 +184,7 @@ func minInt(a, b int) int {
 // The name is sanitized to be a valid git branch name and truncated to 100 characters.
 // generatedTitle is the AI-generated title (optional). If empty, {generated} falls back to {title}.
 func generatePRWorktreeName(pr *models.PRInfo, template, generatedTitle string) string {
-	// Sanitize the original title
-	title := strings.ToLower(pr.Title)
-
-	// Replace spaces and special characters with hyphens
-	re := regexp.MustCompile(`[^a-z0-9]+`)
-	title = re.ReplaceAllString(title, "-")
-
-	// Remove leading/trailing hyphens and consecutive hyphens
-	title = strings.Trim(title, "-")
-	re2 := regexp.MustCompile(`-+`)
-	title = re2.ReplaceAllString(title, "-")
-
-	// Sanitize the generated title (same process)
-	generated := title // fallback to original title
-	if generatedTitle != "" {
-		generated = strings.ToLower(generatedTitle)
-		generated = re.ReplaceAllString(generated, "-")
-		generated = strings.Trim(generated, "-")
-		generated = re2.ReplaceAllString(generated, "-")
-	}
-
-	// Sanitize the author username
-	author := strings.ToLower(pr.Author)
-	author = re.ReplaceAllString(author, "-")
-	author = strings.Trim(author, "-")
-	author = re2.ReplaceAllString(author, "-")
-
-	// Replace placeholders in template
-	name := template
-	name = strings.ReplaceAll(name, "{number}", fmt.Sprintf("%d", pr.Number))
-	name = strings.ReplaceAll(name, "{title}", title)
-	name = strings.ReplaceAll(name, "{generated}", generated)
-	name = strings.ReplaceAll(name, "{pr_author}", author)
-
-	// Remove trailing hyphens that might result from empty title
-	// This handles cases like "{prefix}{number}-{title}" when title is empty
-	name = strings.TrimRight(name, "-")
-
-	// Truncate to 100 characters
-	if len(name) > 100 {
-		name = name[:100]
-		// Make sure we don't end with a hyphen after truncation
-		name = strings.TrimRight(name, "-")
-	}
-
-	return name
+	return utils.GeneratePRWorktreeName(pr, template, generatedTitle)
 }
 
 // generateIssueWorktreeName creates a worktree name from an issue using a template.
@@ -237,52 +192,7 @@ func generatePRWorktreeName(pr *models.PRInfo, template, generatedTitle string) 
 // The name is sanitized to be a valid git branch name and truncated to 100 characters.
 // generatedTitle is the AI-generated title (optional). If empty, {generated} falls back to {title}.
 func generateIssueWorktreeName(issue *models.IssueInfo, template, generatedTitle string) string {
-	// Sanitize the original title
-	title := strings.ToLower(issue.Title)
-
-	// Replace spaces and special characters with hyphens
-	re := regexp.MustCompile(`[^a-z0-9]+`)
-	title = re.ReplaceAllString(title, "-")
-
-	// Remove leading/trailing hyphens and consecutive hyphens
-	title = strings.Trim(title, "-")
-	re2 := regexp.MustCompile(`-+`)
-	title = re2.ReplaceAllString(title, "-")
-
-	// Sanitize the generated title (same process)
-	generated := title // fallback to original title
-	if generatedTitle != "" {
-		generated = strings.ToLower(generatedTitle)
-		generated = re.ReplaceAllString(generated, "-")
-		generated = strings.Trim(generated, "-")
-		generated = re2.ReplaceAllString(generated, "-")
-	}
-
-	// Sanitize the author username
-	author := strings.ToLower(issue.Author)
-	author = re.ReplaceAllString(author, "-")
-	author = strings.Trim(author, "-")
-	author = re2.ReplaceAllString(author, "-")
-
-	// Replace placeholders in template
-	name := template
-	name = strings.ReplaceAll(name, "{number}", fmt.Sprintf("%d", issue.Number))
-	name = strings.ReplaceAll(name, "{title}", title)
-	name = strings.ReplaceAll(name, "{generated}", generated)
-	name = strings.ReplaceAll(name, "{author}", author)
-
-	// Remove trailing hyphens that might result from empty title
-	// This handles cases like "{prefix}{number}-{title}" when title is empty
-	name = strings.TrimRight(name, "-")
-
-	// Truncate to 100 characters
-	if len(name) > 100 {
-		name = name[:100]
-		// Make sure we don't end with a hyphen
-		name = strings.TrimRight(name, "-")
-	}
-
-	return name
+	return utils.GenerateIssueWorktreeName(issue, template, generatedTitle)
 }
 
 func maxInt(a, b int) int {

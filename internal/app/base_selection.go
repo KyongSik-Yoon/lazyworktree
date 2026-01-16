@@ -7,7 +7,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -15,6 +14,7 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/chmouel/lazyworktree/internal/config"
+	"github.com/chmouel/lazyworktree/internal/utils"
 )
 
 const (
@@ -349,15 +349,9 @@ func (m *Model) baseRefExists(ref string) bool {
 }
 
 func sanitizeBranchNameFromTitle(title, fallback string) string {
-	sanitized := strings.ToLower(strings.TrimSpace(title))
-	sanitized = regexp.MustCompile(`[^a-z0-9]+`).ReplaceAllString(sanitized, "-")
-	sanitized = strings.Trim(sanitized, "-")
-	sanitized = regexp.MustCompile(`-+`).ReplaceAllString(sanitized, "-")
-	if len(sanitized) > 50 {
-		sanitized = strings.TrimRight(sanitized[:50], "-")
-	}
+	sanitized := utils.SanitizeBranchName(title, 50)
 	if sanitized == "" {
-		sanitized = strings.TrimSpace(fallback)
+		sanitized = utils.SanitizeBranchName(fallback, 50)
 	}
 	if sanitized == "" {
 		sanitized = "commit"

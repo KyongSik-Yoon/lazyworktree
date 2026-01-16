@@ -59,6 +59,19 @@ func main() {
 	flag.StringVar(&completionShell, "completion", "", "Generate shell completion script (bash, zsh, fish)")
 	flag.StringVar(&configFile, "config-file", "", "Path to configuration file")
 	flag.Var(&configOverrideList, "config", "Override config values (repeatable): --config=lw.key=value")
+
+	// Custom usage message to include subcommands
+	flag.Usage = func() {
+		fmt.Fprintf(os.Stderr, "Usage: %s [OPTIONS] [SUBCOMMAND]\n\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "A TUI tool to manage git worktrees\n\n")
+		fmt.Fprintf(os.Stderr, "Subcommands:\n")
+		fmt.Fprintf(os.Stderr, "  wt-create    Create a new worktree\n")
+		fmt.Fprintf(os.Stderr, "  wt-delete    Delete a worktree\n\n")
+		fmt.Fprintf(os.Stderr, "Options:\n")
+		flag.PrintDefaults()
+		fmt.Fprintf(os.Stderr, "\nRun '%s SUBCOMMAND --help' for more information on a subcommand.\n", os.Args[0])
+	}
+
 	flag.Parse()
 
 	if showVersion {
@@ -92,7 +105,22 @@ func main() {
 		return
 	}
 
-	initialFilter := strings.Join(flag.Args(), " ")
+	// Get subcommand (first positional argument)
+	args := flag.Args()
+	if len(args) > 0 {
+		subcommand := args[0]
+		switch subcommand {
+		case "wt-create":
+			handleWtCreate(args[1:], worktreeDir, configFile, configOverrideList)
+			return
+		case "wt-delete":
+			handleWtDelete(args[1:], worktreeDir, configFile, configOverrideList)
+			return
+		}
+		// If not a recognized subcommand, treat as initial filter for TUI
+	}
+
+	initialFilter := strings.Join(args, " ")
 
 	// Set up debug logging before loading config, so debug output is captured
 	if debugLog != "" {
@@ -239,6 +267,28 @@ func expandPath(path string) (string, error) {
 		path = filepath.Join(home, path[1:])
 	}
 	return os.ExpandEnv(path), nil
+}
+
+// applyWorktreeDirConfig applies the worktree directory configuration.
+// This ensures the same path expansion logic is used in both TUI and CLI modes.
+func applyWorktreeDirConfig(cfg *config.AppConfig, worktreeDirFlag string) error {
+	switch {
+	case worktreeDirFlag != "":
+		expanded, err := expandPath(worktreeDirFlag)
+		if err != nil {
+			return fmt.Errorf("error expanding worktree-dir: %w", err)
+		}
+		cfg.WorktreeDir = expanded
+	case cfg.WorktreeDir != "":
+		expanded, err := expandPath(cfg.WorktreeDir)
+		if err == nil {
+			cfg.WorktreeDir = expanded
+		}
+	default:
+		home, _ := os.UserHomeDir()
+		cfg.WorktreeDir = filepath.Join(home, ".local", "share", "worktrees")
+	}
+	return nil
 }
 
 func printSyntaxThemes() {

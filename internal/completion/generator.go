@@ -10,6 +10,7 @@ import (
 type Data struct {
 	ProgramName string
 	Flags       []FlagInfo
+	Subcommands []SubcommandInfo
 }
 
 // Generate produces a shell completion script for the specified shell type.
@@ -19,6 +20,7 @@ func Generate(shell string) (string, error) {
 	data := Data{
 		ProgramName: "lazyworktree",
 		Flags:       GetFlags(),
+		Subcommands: GetSubcommands(),
 	}
 
 	switch shell {
