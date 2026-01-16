@@ -6428,7 +6428,6 @@ func (m *Model) renderFooter(layout layoutDims) string {
 		hints = []string{
 			m.renderKeyHint("1-3", "Pane"),
 			m.renderKeyHint("f", "Filter"),
-			m.renderKeyHint("/", "Search"),
 			m.renderKeyHint("s", sortName),
 			m.renderKeyHint("d", "Diff"),
 			m.renderKeyHint("D", "Delete"),

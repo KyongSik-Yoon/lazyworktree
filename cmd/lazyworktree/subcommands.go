@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"flag"
 	"fmt"
 	"os"
 
@@ -13,25 +12,14 @@ import (
 )
 
 // handleWtCreate handles the wt-create subcommand.
-func handleWtCreate(args []string, worktreeDirFlag, configFileFlag string, configOverrides configOverrides) {
-	fs := flag.NewFlagSet("wt-create", flag.ExitOnError)
-	fromBranch := fs.String("from-branch", "", "Create worktree from branch")
-	fromPR := fs.Int("from-pr", 0, "Create worktree from PR number")
-	withChange := fs.Bool("with-change", false, "Carry over uncommitted changes to the new worktree (only with --from-branch)")
-	silent := fs.Bool("silent", false, "Suppress progress messages")
-
-	if err := fs.Parse(args); err != nil {
-		fmt.Fprintf(os.Stderr, "Error parsing flags: %v\n", err)
-		os.Exit(1)
-	}
-
-	// Validate mutual exclusivity
-	if *fromBranch != "" && *fromPR > 0 {
+func handleWtCreate(cmd *WtCreateCmd, worktreeDirFlag, configFileFlag string, configOverrides []string) {
+	// Validate mutual exclusivity (Kong's xor should handle this, but we check for clarity)
+	if cmd.FromBranch != "" && cmd.FromPR > 0 {
 		fmt.Fprintf(os.Stderr, "Error: --from-branch and --from-pr are mutually exclusive\n")
 		os.Exit(1)
 	}
 
-	if *fromBranch == "" && *fromPR == 0 {
+	if cmd.FromBranch == "" && cmd.FromPR == 0 {
 		fmt.Fprintf(os.Stderr, "Error: must specify either --from-branch or --from-pr\n")
 		fmt.Fprintf(os.Stderr, "Usage:\n")
 		fmt.Fprintf(os.Stderr, "  lazyworktree wt-create --from-branch <branch-name> [--with-change]\n")
@@ -40,7 +28,7 @@ func handleWtCreate(args []string, worktreeDirFlag, configFileFlag string, confi
 	}
 
 	// Validate --with-change is only used with --from-branch
-	if *withChange && *fromPR > 0 {
+	if cmd.WithChange && cmd.FromPR > 0 {
 		fmt.Fprintf(os.Stderr, "Error: --with-change can only be used with --from-branch\n")
 		os.Exit(1)
 	}
@@ -57,10 +45,10 @@ func handleWtCreate(args []string, worktreeDirFlag, configFileFlag string, confi
 
 	// Execute appropriate operation
 	var opErr error
-	if *fromBranch != "" {
-		opErr = cli.CreateFromBranch(ctx, gitSvc, cfg, *fromBranch, *withChange, *silent)
-	} else if *fromPR > 0 {
-		opErr = cli.CreateFromPR(ctx, gitSvc, cfg, *fromPR, *silent)
+	if cmd.FromBranch != "" {
+		opErr = cli.CreateFromBranch(ctx, gitSvc, cfg, cmd.FromBranch, cmd.WithChange, cmd.Silent)
+	} else if cmd.FromPR > 0 {
+		opErr = cli.CreateFromPR(ctx, gitSvc, cfg, cmd.FromPR, cmd.Silent)
 	}
 
 	if opErr != nil {
@@ -73,22 +61,7 @@ func handleWtCreate(args []string, worktreeDirFlag, configFileFlag string, confi
 }
 
 // handleWtDelete handles the wt-delete subcommand.
-func handleWtDelete(args []string, worktreeDirFlag, configFileFlag string, configOverrides configOverrides) {
-	fs := flag.NewFlagSet("wt-delete", flag.ExitOnError)
-	noBranch := fs.Bool("no-branch", false, "Skip branch deletion")
-	silent := fs.Bool("silent", false, "Suppress progress messages")
-
-	if err := fs.Parse(args); err != nil {
-		fmt.Fprintf(os.Stderr, "Error parsing flags: %v\n", err)
-		os.Exit(1)
-	}
-
-	// Get optional positional argument (worktree path/name)
-	var worktreePath string
-	if len(fs.Args()) > 0 {
-		worktreePath = fs.Args()[0]
-	}
-
+func handleWtDelete(cmd *WtDeleteCmd, worktreeDirFlag, configFileFlag string, configOverrides []string) {
 	ctx := context.Background()
 
 	cfg, err := loadCLIConfig(configFileFlag, worktreeDirFlag, configOverrides)
@@ -100,8 +73,8 @@ func handleWtDelete(args []string, worktreeDirFlag, configFileFlag string, confi
 	gitSvc := newCLIGitService(cfg)
 
 	// Execute delete operation
-	deleteBranch := !*noBranch
-	if err := cli.DeleteWorktree(ctx, gitSvc, cfg, worktreePath, deleteBranch, *silent); err != nil {
+	deleteBranch := !cmd.NoBranch
+	if err := cli.DeleteWorktree(ctx, gitSvc, cfg, cmd.WorktreePath, deleteBranch, cmd.Silent); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		_ = log.Close()
 		os.Exit(1)
@@ -110,7 +83,7 @@ func handleWtDelete(args []string, worktreeDirFlag, configFileFlag string, confi
 	_ = log.Close()
 }
 
-func loadCLIConfig(configFileFlag, worktreeDirFlag string, configOverrides configOverrides) (*config.AppConfig, error) {
+func loadCLIConfig(configFileFlag, worktreeDirFlag string, configOverrides []string) (*config.AppConfig, error) {
 	cfg, err := config.LoadConfig(configFileFlag)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error loading config: %v\n", err)

@@ -2,7 +2,6 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -10,13 +9,15 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/alecthomas/kong"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/chmouel/lazyworktree/internal/app"
-	"github.com/chmouel/lazyworktree/internal/completion"
 	"github.com/chmouel/lazyworktree/internal/config"
 	"github.com/chmouel/lazyworktree/internal/log"
 	"github.com/chmouel/lazyworktree/internal/theme"
 	"github.com/chmouel/lazyworktree/internal/utils"
+	kongcompletion "github.com/jotaen/kong-completion"
+	"github.com/posener/complete"
 )
 
 var (
@@ -26,103 +27,191 @@ var (
 	builtBy = "unknown"
 )
 
-// configOverrides is a custom flag type for repeatable --config flags.
-type configOverrides []string
+// CLI represents the main command-line interface structure.
+type CLI struct {
+	WorktreeDir      string   `help:"Override the default worktree root directory" short:"w"`
+	DebugLog         string   `help:"Path to debug log file"`
+	OutputSelection  string   `help:"Write selected worktree path to a file"`
+	Theme            string   `help:"Override the UI theme" short:"t" predictor:"theme"`
+	SearchAutoSelect bool     `help:"Start with filter focused"`
+	Version          bool     `help:"Print version information" short:"v"`
+	ShowSyntaxThemes bool     `help:"List available delta syntax themes"`
+	ConfigFile       string   `help:"Path to configuration file"`
+	Config           []string `help:"Override config values (repeatable): --config=lw.key=value" short:"C" predictor:"config" completion-shell-default:"false"`
 
-func (c *configOverrides) String() string {
-	return strings.Join(*c, ",")
+	WtCreate   *WtCreateCmd              `cmd:"" help:"Create a new worktree"`
+	WtDelete   *WtDeleteCmd              `cmd:"" help:"Delete a worktree"`
+	Completion kongcompletion.Completion `cmd:"" help:"Generate or run shell completions"`
 }
 
-func (c *configOverrides) Set(value string) error {
-	*c = append(*c, value)
-	return nil
+// WtCreateCmd represents the wt-create subcommand.
+type WtCreateCmd struct {
+	FromBranch string `help:"Create worktree from branch" xor:"source"`
+	FromPR     int    `help:"Create worktree from PR number" xor:"source"`
+	WithChange bool   `help:"Carry over uncommitted changes to the new worktree (only with --from-branch)"`
+	Silent     bool   `help:"Suppress progress messages"`
+}
+
+// WtDeleteCmd represents the wt-delete subcommand.
+type WtDeleteCmd struct {
+	NoBranch     bool   `help:"Skip branch deletion"`
+	Silent       bool   `help:"Suppress progress messages"`
+	WorktreePath string `arg:"" optional:"" help:"Worktree path/name"`
 }
 
 func main() {
-	var worktreeDir string
-	var debugLog string
-	var outputSelection string
-	var themeName string
-	var searchAutoSelect bool
-	var showVersion bool
-	var showSyntaxThemes bool
-	var completionShell string
-	var configFile string
-	var configOverrideList configOverrides
-
-	flag.StringVar(&worktreeDir, "worktree-dir", "", "Override the default worktree root directory")
-	flag.StringVar(&debugLog, "debug-log", "", "Path to debug log file")
-	flag.StringVar(&outputSelection, "output-selection", "", "Write selected worktree path to a file")
-	flag.StringVar(&themeName, "theme", "", themeHelpText())
-	flag.BoolVar(&searchAutoSelect, "search-auto-select", false, "Start with filter focused")
-	flag.BoolVar(&showVersion, "version", false, "Print version information")
-	flag.BoolVar(&showSyntaxThemes, "show-syntax-themes", false, "List available delta syntax themes")
-	flag.StringVar(&completionShell, "completion", "", "Generate shell completion script (bash, zsh, fish)")
-	flag.StringVar(&configFile, "config-file", "", "Path to configuration file")
-	flag.Var(&configOverrideList, "config", "Override config values (repeatable): --config=lw.key=value")
-
-	// Custom usage message to include subcommands
-	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, "Usage: %s [OPTIONS] [SUBCOMMAND]\n\n", os.Args[0])
-		fmt.Fprintf(os.Stderr, "A TUI tool to manage git worktrees\n\n")
-		fmt.Fprintf(os.Stderr, "Subcommands:\n")
-		fmt.Fprintf(os.Stderr, "  wt-create    Create a new worktree\n")
-		fmt.Fprintf(os.Stderr, "  wt-delete    Delete a worktree\n\n")
-		fmt.Fprintf(os.Stderr, "Options:\n")
-		flag.PrintDefaults()
-		fmt.Fprintf(os.Stderr, "\nRun '%s SUBCOMMAND --help' for more information on a subcommand.\n", os.Args[0])
+	// Handle special flags that exit early before Kong parsing
+	// This is needed because Kong requires a subcommand when subcommands are defined
+	args := os.Args[1:]
+	for _, arg := range args {
+		if arg == "--version" || arg == "-v" {
+			printVersion()
+			return
+		}
+		if arg == "--show-syntax-themes" {
+			printSyntaxThemes()
+			return
+		}
 	}
 
-	flag.Parse()
+	cli := &CLI{}
+	parser, err := kong.New(cli,
+		kong.Name("lazyworktree"),
+		kong.Description("A TUI tool to manage git worktrees"),
+		kong.UsageOnError(),
+	)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error creating parser: %v\n", err)
+		os.Exit(1)
+	}
 
-	if showVersion {
+	// Set up kong-completion with custom predictors
+	// This must happen before parsing so tab completion can be intercepted
+	kongcompletion.Register(parser,
+		kongcompletion.WithPredictor("theme", complete.PredictSet(theme.AvailableThemes()...)),
+		kongcompletion.WithPredictor("config", configPredictor()),
+	)
+
+	// Check if a subcommand is provided in args
+	hasSubcommand := false
+	for _, arg := range args {
+		if arg == "wt-create" || arg == "wt-delete" || arg == "completion" {
+			hasSubcommand = true
+			break
+		}
+	}
+
+	// Extract potential filter args (non-flag, non-subcommand args) before Kong parsing
+	// This is a simple heuristic: args that don't start with '-' and aren't subcommands
+	var filterArgs []string
+	skipNext := false
+	for i, arg := range args {
+		if skipNext {
+			skipNext = false
+			continue
+		}
+		// Skip flags
+		if strings.HasPrefix(arg, "-") {
+			// Check if this flag takes a value (has = in it)
+			if strings.Contains(arg, "=") {
+				// Flag with =value, already handled
+				continue
+			}
+			// Check if next arg is a value (doesn't start with -)
+			if i+1 < len(args) && !strings.HasPrefix(args[i+1], "-") {
+				// Next arg might be a flag value, skip it
+				skipNext = true
+			}
+			continue
+		}
+		// Check if it's a subcommand
+		if arg == "wt-create" || arg == "wt-delete" || arg == "completion" {
+			// Skip subcommand and let Kong handle it
+			break
+		}
+		// This is a potential filter arg
+		filterArgs = append(filterArgs, arg)
+	}
+
+	ctx, err := parser.Parse(args)
+	var cmd string
+	if err != nil {
+		// If no subcommand was provided and we get a "missing command" error,
+		// treat it as valid and proceed to TUI mode
+		errStr := err.Error()
+		if !hasSubcommand && strings.Contains(errStr, "expected one of") {
+			// This is the "missing command" error - it's OK, we'll launch TUI
+			// The flags should still be parsed in the cli struct
+			// ctx will be nil, so we skip subcommand handling
+			cmd = ""
+		} else {
+			// Some other error occurred, show it and exit
+			fmt.Fprintf(os.Stderr, "%v\n", err)
+			os.Exit(1)
+		}
+	} else {
+		// No error, get the command from context
+		cmd = ctx.Command()
+		// If completion command was selected, run it immediately and exit
+		if cmd == "completion" || cmd == "completion <shell>" {
+			if err := ctx.Run(); err != nil {
+				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+				os.Exit(1)
+			}
+			// ctx.Run() should have called ctx.Exit(0), but ensure we exit
+			os.Exit(0)
+		}
+	}
+
+	// Handle special flags that exit early (in case they weren't caught above)
+	if cli.Version {
 		printVersion()
 		return
 	}
-	if showSyntaxThemes {
+	if cli.ShowSyntaxThemes {
 		printSyntaxThemes()
 		return
 	}
-	if completionShell != "" {
-		if err := printCompletion(completionShell); err != nil {
-			fmt.Fprintf(os.Stderr, "Error generating completion: %v\n", err)
-			os.Exit(1)
-		}
-		return
-	}
 
-	// Get subcommand (first positional argument)
-	args := flag.Args()
-	if len(args) > 0 {
-		subcommand := args[0]
-		switch subcommand {
+	// Handle subcommands
+	if cmd != "" {
+		switch cmd {
 		case "wt-create":
-			handleWtCreate(args[1:], worktreeDir, configFile, configOverrideList)
+			handleWtCreate(cli.WtCreate, cli.WorktreeDir, cli.ConfigFile, cli.Config)
 			return
 		case "wt-delete":
-			handleWtDelete(args[1:], worktreeDir, configFile, configOverrideList)
+			handleWtDelete(cli.WtDelete, cli.WorktreeDir, cli.ConfigFile, cli.Config)
+			return
+		case "completion":
+			// This should have been handled above, but just in case
+			if ctx != nil {
+				if err := ctx.Run(); err != nil {
+					fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+					os.Exit(1)
+				}
+			}
 			return
 		}
-		// If not a recognized subcommand, treat as initial filter for TUI
 	}
 
-	initialFilter := strings.Join(args, " ")
+	// If no subcommand, use extracted filter args as initial filter for TUI
+	initialFilter := strings.Join(filterArgs, " ")
 
 	// Set up debug logging before loading config, so debug output is captured
-	if debugLog != "" {
-		expanded, err := utils.ExpandPath(debugLog)
+	if cli.DebugLog != "" {
+		expanded, err := utils.ExpandPath(cli.DebugLog)
 		if err == nil {
 			if err := log.SetFile(expanded); err != nil {
 				fmt.Fprintf(os.Stderr, "Error opening debug log file %q: %v\n", expanded, err)
 			}
 		} else {
-			if err := log.SetFile(debugLog); err != nil {
-				fmt.Fprintf(os.Stderr, "Error opening debug log file %q: %v\n", debugLog, err)
+			if err := log.SetFile(cli.DebugLog); err != nil {
+				fmt.Fprintf(os.Stderr, "Error opening debug log file %q: %v\n", cli.DebugLog, err)
 			}
 		}
 	}
 
-	cfg, err := config.LoadConfig(configFile)
+	cfg, err := config.LoadConfig(cli.ConfigFile)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error loading config: %v\n", err)
 		cfg = config.DefaultConfig()
@@ -130,7 +219,7 @@ func main() {
 
 	// If debug log wasn't set via flag, check if it's in the config
 	// If it is, enable logging. If not, disable logging and discard buffer.
-	if debugLog == "" {
+	if cli.DebugLog == "" {
 		if cfg.DebugLog != "" {
 			expanded, err := utils.ExpandPath(cfg.DebugLog)
 			path := cfg.DebugLog
@@ -146,33 +235,33 @@ func main() {
 		}
 	}
 
-	if err := applyThemeConfig(cfg, themeName); err != nil {
+	if err := applyThemeConfig(cfg, cli.Theme); err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 		_ = log.Close()
 		os.Exit(1)
 	}
-	if searchAutoSelect {
+	if cli.SearchAutoSelect {
 		cfg.SearchAutoSelect = true
 	}
 
-	if err := applyWorktreeDirConfig(cfg, worktreeDir); err != nil {
+	if err := applyWorktreeDirConfig(cfg, cli.WorktreeDir); err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 		_ = log.Close()
 		os.Exit(1)
 	}
 
-	if debugLog != "" {
-		expanded, err := utils.ExpandPath(debugLog)
+	if cli.DebugLog != "" {
+		expanded, err := utils.ExpandPath(cli.DebugLog)
 		if err == nil {
 			cfg.DebugLog = expanded
 		} else {
-			cfg.DebugLog = debugLog
+			cfg.DebugLog = cli.DebugLog
 		}
 	}
 
 	// Apply CLI config overrides (highest precedence)
-	if len(configOverrideList) > 0 {
-		if err := cfg.ApplyCLIOverrides(configOverrideList); err != nil {
+	if len(cli.Config) > 0 {
+		if err := cfg.ApplyCLIOverrides(cli.Config); err != nil {
 			fmt.Fprintf(os.Stderr, "Error applying config overrides: %v\n", err)
 			_ = log.Close()
 			os.Exit(1)
@@ -191,8 +280,8 @@ func main() {
 	}
 
 	selectedPath := model.GetSelectedPath()
-	if outputSelection != "" {
-		expanded, err := utils.ExpandPath(outputSelection)
+	if cli.OutputSelection != "" {
+		expanded, err := utils.ExpandPath(cli.OutputSelection)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error expanding output-selection: %v\n", err)
 			_ = log.Close()
@@ -255,19 +344,77 @@ func printSyntaxThemes() {
 	}
 }
 
-func themeHelpText() string {
-	names := theme.AvailableThemes()
-	sort.Strings(names)
-	return fmt.Sprintf("Override the UI theme (supported: %s)", strings.Join(names, ", "))
+// configPredictor returns a predictor function for --config flag completion.
+// It suggests config keys in the format "lw.key=value" and appropriate values for each key.
+func configPredictor() complete.Predictor {
+	return complete.PredictFunc(func(args complete.Args) []string {
+		last := args.Last
+
+		// If empty, suggest starting with "lw."
+		if last == "" {
+			return []string{"lw."}
+		}
+
+		// If it doesn't start with "lw.", suggest "lw."
+		if !strings.HasPrefix(last, "lw.") {
+			return []string{"lw."}
+		}
+
+		// Check if there's an "=" sign
+		parts := strings.SplitN(last, "=", 2)
+		if len(parts) == 1 {
+			// No "=" yet, suggest config keys with full "lw.key=" format
+			keyPrefix := strings.TrimPrefix(parts[0], "lw.")
+			return suggestConfigKeys(keyPrefix)
+		}
+
+		// There's an "=", suggest values for the key
+		key := strings.TrimPrefix(parts[0], "lw.")
+		return suggestConfigValues(key)
+	})
 }
 
-func printCompletion(shell string) error {
-	script, err := completion.Generate(shell)
-	if err != nil {
-		return err
+// suggestConfigKeys returns config key suggestions matching the prefix.
+// Returns suggestions in the format "lw.key=" for completion.
+func suggestConfigKeys(prefix string) []string {
+	allKeys := []string{
+		"theme", "worktree_dir", "sort_mode", "auto_fetch_prs", "auto_refresh",
+		"refresh_interval", "search_auto_select", "fuzzy_finder_input", "show_icons",
+		"max_untracked_diffs", "max_diff_chars", "max_name_length", "git_pager",
+		"git_pager_args", "git_pager_interactive", "pager", "editor", "trust_mode",
+		"debug_log", "init_commands", "terminate_commands", "merge_method",
+		"issue_branch_name_template", "pr_branch_name_template", "branch_name_script",
+		"session_prefix", "palette_mru", "palette_mru_limit",
 	}
-	fmt.Println(script)
-	return nil
+
+	var matches []string
+	for _, key := range allKeys {
+		if prefix == "" || strings.HasPrefix(key, prefix) {
+			// Return full format "lw.key=" for completion
+			matches = append(matches, "lw."+key+"=")
+		}
+	}
+	return matches
+}
+
+// suggestConfigValues returns value suggestions for a given config key.
+func suggestConfigValues(key string) []string {
+	switch key {
+	case "theme":
+		return theme.AvailableThemes()
+	case "sort_mode":
+		return []string{"switched", "active", "path"}
+	case "merge_method":
+		return []string{"rebase", "merge"}
+	case "trust_mode":
+		return []string{"tofu", "never", "always"}
+	case "auto_fetch_prs", "auto_refresh", "search_auto_select", "fuzzy_finder_input",
+		"show_icons", "git_pager_interactive", "palette_mru":
+		return []string{"true", "false"}
+	default:
+		// For other keys, return empty to let shell handle file/path completion
+		return nil
+	}
 }
 
 // printVersion prints version information.

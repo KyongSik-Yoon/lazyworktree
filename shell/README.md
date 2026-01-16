@@ -61,13 +61,15 @@ Generate completion scripts for bash, zsh, or fish:
 
 ```bash
 # Bash
-eval "$(lazyworktree --completion bash)"
+eval "$(lazyworktree completion bash --code)"
 
 # Zsh
-eval "$(lazyworktree --completion zsh)"
+eval "$(lazyworktree completion zsh --code)"
 
 # Fish
-lazyworktree --completion fish > ~/.config/fish/completions/lazyworktree.fish
+lazyworktree completion fish --code > ~/.config/fish/completions/lazyworktree.fish
 ```
+
+Or simply run `lazyworktree completion` to see instructions for your shell.
 
 Package manager installations (deb, rpm, AUR) include completions automatically.
