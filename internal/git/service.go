@@ -1312,8 +1312,8 @@ func (s *Service) RenameWorktree(ctx context.Context, oldPath, newPath, oldBranc
 }
 
 // CreateWorktreeFromPR creates a worktree from a PR's remote branch.
-// It creates a detached worktree first, then uses gh/glab CLI to checkout the PR
-// inside that worktree, which properly sets up fork remotes and tracking.
+// It fetches the PR head commit, creates a worktree at that commit with a proper branch,
+// then uses gh/glab CLI to set up fork remotes and tracking.
 func (s *Service) CreateWorktreeFromPR(ctx context.Context, prNumber int, remoteBranch, localBranch, targetPath string) bool {
 	host := s.DetectHost(ctx)
 
@@ -1326,29 +1326,67 @@ func (s *Service) CreateWorktreeFromPR(ctx context.Context, prNumber int, remote
 		return s.RunCommandChecked(ctx, []string{"git", "worktree", "add", "-b", localBranch, targetPath, remoteRef}, "", fmt.Sprintf("Failed to create worktree from PR branch %s", remoteBranch))
 	}
 
-	// Get HEAD commit to create a detached worktree
-	headCommit := s.RunGit(ctx, []string{"git", "rev-parse", "HEAD"}, "", []int{0}, true, true)
-	if headCommit == "" {
-		s.notify("Failed to get HEAD commit", "error")
-		return false
-	}
+	var headCommit string
+	var fetchRef string
 
-	// Create a detached worktree first
-	if !s.RunCommandChecked(ctx, []string{"git", "worktree", "add", "--detach", targetPath, headCommit}, "", fmt.Sprintf("Failed to create worktree at %s", targetPath)) {
-		return false
-	}
-
-	// Now run gh/glab pr checkout inside the new worktree directory
-	// This will properly set up fork remotes and branch tracking
 	switch host {
 	case gitHostGithub:
-		if !s.RunCommandChecked(ctx, []string{"gh", "pr", "checkout", fmt.Sprintf("%d", prNumber), "-b", localBranch, "--force"}, targetPath, fmt.Sprintf("Failed to checkout PR #%d", prNumber)) {
+		// Get PR head commit SHA from GitHub
+		headCommit = strings.TrimSpace(s.RunGit(ctx, []string{
+			"gh", "pr", "view", fmt.Sprintf("%d", prNumber),
+			"--json", "headRefOid", "-q", ".headRefOid",
+		}, "", []int{0}, true, true))
+		if headCommit == "" {
+			s.notify(fmt.Sprintf("Failed to get PR #%d head commit", prNumber), "error")
+			return false
+		}
+		fetchRef = fmt.Sprintf("pull/%d/head", prNumber)
+
+	case gitHostGitLab:
+		// Get MR head commit SHA from GitLab
+		mrRaw := s.RunGit(ctx, []string{
+			"glab", "mr", "view", fmt.Sprintf("%d", prNumber),
+			"--output", "json",
+		}, "", []int{0}, true, true)
+		if mrRaw == "" {
+			s.notify(fmt.Sprintf("Failed to get MR #%d info", prNumber), "error")
+			return false
+		}
+		var mr map[string]any
+		if err := json.Unmarshal([]byte(mrRaw), &mr); err != nil {
+			s.notify(fmt.Sprintf("Failed to parse MR #%d data: %v", prNumber, err), "error")
+			return false
+		}
+		sha, ok := mr["sha"].(string)
+		if !ok || sha == "" {
+			s.notify(fmt.Sprintf("Failed to get MR #%d head commit", prNumber), "error")
+			return false
+		}
+		headCommit = sha
+		fetchRef = fmt.Sprintf("merge-requests/%d/head", prNumber)
+	}
+
+	// Fetch the PR/MR ref to ensure the commit is available locally
+	if !s.RunCommandChecked(ctx, []string{"git", "fetch", "origin", fetchRef}, "", fmt.Sprintf("Failed to fetch PR/MR #%d", prNumber)) {
+		return false
+	}
+
+	// Create worktree at the PR head commit with a proper branch
+	if !s.RunCommandChecked(ctx, []string{"git", "worktree", "add", "-b", localBranch, targetPath, headCommit}, "", fmt.Sprintf("Failed to create worktree at %s", targetPath)) {
+		return false
+	}
+
+	// Run gh/glab checkout to set up fork remotes and tracking
+	// Since we're already at the correct commit, this mostly sets up tracking
+	switch host {
+	case gitHostGithub:
+		if !s.RunCommandChecked(ctx, []string{"gh", "pr", "checkout", fmt.Sprintf("%d", prNumber), "-b", localBranch, "--force"}, targetPath, fmt.Sprintf("Failed to setup PR #%d tracking", prNumber)) {
 			// Clean up the worktree on failure
 			s.RunGit(ctx, []string{"git", "worktree", "remove", "--force", targetPath}, "", []int{0, 128}, true, true)
 			return false
 		}
 	case gitHostGitLab:
-		if !s.RunCommandChecked(ctx, []string{"glab", "mr", "checkout", fmt.Sprintf("%d", prNumber), "-b", localBranch, "--force"}, targetPath, fmt.Sprintf("Failed to checkout MR #%d", prNumber)) {
+		if !s.RunCommandChecked(ctx, []string{"glab", "mr", "checkout", fmt.Sprintf("%d", prNumber), "-b", localBranch}, targetPath, fmt.Sprintf("Failed to setup MR #%d tracking", prNumber)) {
 			// Clean up the worktree on failure
 			s.RunGit(ctx, []string{"git", "worktree", "remove", "--force", targetPath}, "", []int{0, 128}, true, true)
 			return false
