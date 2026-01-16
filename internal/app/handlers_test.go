@@ -3652,8 +3652,6 @@ func TestPRAssignmentsPreservedOnWorktreeRefresh(t *testing.T) {
 		err:       nil,
 	}
 	m.handleWorktreesLoaded(refreshMsg)
-
-	// CRITICAL: Verify PR assignments are PRESERVED after refresh
 	if m.worktrees[0].PR == nil || m.worktrees[0].PR.Number != 123 {
 		t.Fatal("PR assignment was lost on worktree refresh! wt1 should still have PR #123")
 	}
@@ -3728,8 +3726,6 @@ func TestPRFetchErrorsPreservedOnWorktreeRefresh(t *testing.T) {
 		err:       nil,
 	}
 	m.handleWorktreesLoaded(refreshMsg)
-
-	// CRITICAL: Verify error state is PRESERVED after refresh
 	if m.worktrees[0].PRFetchError != "gh CLI not found in PATH" {
 		t.Fatalf("PRFetchError was lost on refresh! expected error message, got %q", m.worktrees[0].PRFetchError)
 	}
@@ -3875,8 +3871,6 @@ func TestPRRefreshClearsPreservedState(t *testing.T) {
 		worktreeErrors: map[string]string{},
 	}
 	m.handlePRDataLoaded(prMsg)
-
-	// CRITICAL: Verify NEW PR data replaced the OLD preserved data
 	if m.worktrees[0].PR == nil {
 		t.Fatal("PR data should be set after PR refresh")
 	}

@@ -763,8 +763,6 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Failed to generate, keep current value
 			return m, nil
 		}
-
-		// CRITICAL: Sanitize AI-generated name to remove invalid characters like '/'
 		// This prevents creating nested directories in worktree path
 		sanitizedName := sanitizeBranchNameFromTitle(msg.name, m.createFromCurrentRandomName)
 
@@ -1486,8 +1484,6 @@ func (m *Model) fetchPRData() tea.Cmd {
 		if err != nil {
 			return prDataLoadedMsg{prMap: nil, err: err}
 		}
-
-		// DEBUG: Log what we got from FetchPRMap
 		log.Printf("FetchPRMap returned %d PRs", len(prMap))
 		for branch, pr := range prMap {
 			log.Printf("  prMap[%q] = PR#%d", branch, pr.Number)
@@ -1498,7 +1494,6 @@ func (m *Model) fetchPRData() tea.Cmd {
 		worktreePRs := make(map[string]*models.PRInfo)
 		worktreeErrors := make(map[string]string)
 		for _, wt := range m.worktrees {
-			// DEBUG: Log branch name and match attempt
 			log.Printf("Checking worktree: Branch=%q Path=%q", wt.Branch, wt.Path)
 			if pr, ok := prMap[wt.Branch]; ok {
 				log.Printf("  Found in prMap: PR#%d", pr.Number)

@@ -198,8 +198,6 @@ func (m *Model) handlePRDataLoaded(msg prDataLoadedMsg) (tea.Model, tea.Cmd) {
 			// Clear previous status
 			wt.PRFetchError = ""
 			wt.PRFetchStatus = models.PRFetchStatusNoPR
-
-			// DEBUG: Log assignment attempts
 			log.Printf("Processing worktree: Branch=%q Path=%q", wt.Branch, wt.Path)
 
 			// First try matching by local branch name from the prMap
@@ -210,7 +208,6 @@ func (m *Model) handlePRDataLoaded(msg prDataLoadedMsg) (tea.Model, tea.Cmd) {
 					log.Printf("  Assigned from prMap: PR#%d", pr.Number)
 					continue
 				} else {
-					// DEBUG: Show why match failed
 					log.Printf("  Branch %q not found in prMap. Available keys:", wt.Branch)
 					for key := range msg.prMap {
 						log.Printf("    %q (match=%v, len=%d vs %d)",
@@ -218,7 +215,7 @@ func (m *Model) handlePRDataLoaded(msg prDataLoadedMsg) (tea.Model, tea.Cmd) {
 
 						// Check for invisible characters
 						if key != wt.Branch && strings.TrimSpace(key) == strings.TrimSpace(wt.Branch) {
-							log.Printf("    ^ WHITESPACE DIFFERENCE DETECTED")
+							log.Printf("    whitespace difference detected")
 						}
 					}
 				}
@@ -244,8 +241,6 @@ func (m *Model) handlePRDataLoaded(msg prDataLoadedMsg) (tea.Model, tea.Cmd) {
 					log.Printf("  No PR found in either map, no error")
 				}
 			}
-
-			// DEBUG: Final status
 			if wt.PR != nil {
 				log.Printf("  Final: wt.PR = #%d, status = %s", wt.PR.Number, wt.PRFetchStatus)
 			} else {
