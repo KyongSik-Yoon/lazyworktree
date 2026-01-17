@@ -245,6 +245,46 @@ func filterInputSuggestions(suggestions []string, query string) []string {
 	return filtered
 }
 
+// formatStatusDisplay formats a git status code for display.
+func formatStatusDisplay(status string) string {
+	if len(status) < 2 {
+		return status
+	}
+
+	x := status[0] // Staged status
+	y := status[1] // Unstaged status
+
+	// Special case for untracked files
+	if status == " ?" {
+		return "?"
+	}
+
+	// Build display string
+	var display [2]rune
+
+	// First character: show staged status as S for modifications, or original for add/delete
+	// #nosec G602 -- array size is 2, index is 0 and 1, always within bounds after len check
+	switch x {
+	case 'M':
+		display[0] = 'S' // Staged modification
+	case '.', ' ':
+		display[0] = ' ' // No staged changes
+	default:
+		display[0] = rune(x) // A, D, R, C, etc.
+	}
+
+	// Second character: show unstaged status
+	// #nosec G602 -- array size is 2, index is 0 and 1, always within bounds after len check
+	switch y {
+	case '.', ' ':
+		display[1] = ' ' // No unstaged changes
+	default:
+		display[1] = rune(y) // M, A, D, R, C, etc.
+	}
+
+	return string(display[:])
+}
+
 // formatRelativeTime formats a time as a human-readable relative string.
 func formatRelativeTime(t time.Time) string {
 	d := time.Since(t)
