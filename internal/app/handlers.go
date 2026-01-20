@@ -162,6 +162,7 @@ func (m *Model) handleGotoTop() (tea.Model, tea.Cmd) {
 	switch m.focusedPane {
 	case 0:
 		m.worktreeTable.GotoTop()
+		m.updateWorktreeArrows()
 		return m, m.debouncedUpdateDetailsView()
 	case 1:
 		if len(m.statusTreeFlat) > 0 {
@@ -178,6 +179,7 @@ func (m *Model) handleGotoBottom() (tea.Model, tea.Cmd) {
 	switch m.focusedPane {
 	case 0:
 		m.worktreeTable.GotoBottom()
+		m.updateWorktreeArrows()
 		return m, m.debouncedUpdateDetailsView()
 	case 1:
 		if len(m.statusTreeFlat) > 0 {
@@ -578,6 +580,7 @@ func (m *Model) handleNavigationDown(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch m.focusedPane {
 	case 0:
 		m.worktreeTable, cmd = m.worktreeTable.Update(keyMsg)
+		m.updateWorktreeArrows()
 		cmds = append(cmds, cmd)
 		cmds = append(cmds, m.debouncedUpdateDetailsView())
 	case 1:
@@ -603,6 +606,7 @@ func (m *Model) handleNavigationUp(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch m.focusedPane {
 	case 0:
 		m.worktreeTable, cmd = m.worktreeTable.Update(msg)
+		m.updateWorktreeArrows()
 		cmds = append(cmds, cmd)
 		cmds = append(cmds, m.debouncedUpdateDetailsView())
 	case 1:
@@ -732,6 +736,7 @@ func (m *Model) selectFilteredWorktree(path string) {
 	for i, wt := range m.filteredWts {
 		if wt.Path == path {
 			m.worktreeTable.SetCursor(i)
+			m.updateWorktreeArrows()
 			m.selectedIndex = i
 			return
 		}
@@ -885,6 +890,7 @@ func (m *Model) handleMouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 				for i := 0; i < len(m.filteredWts); i++ {
 					if i == relativeY {
 						m.worktreeTable.SetCursor(i)
+						m.updateWorktreeArrows()
 						cmds = append(cmds, m.debouncedUpdateDetailsView())
 						break
 					}
@@ -903,6 +909,7 @@ func (m *Model) handleMouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 		case 0:
 			// Scroll worktree table up
 			m.worktreeTable, _ = m.worktreeTable.Update(tea.KeyMsg{Type: tea.KeyUp})
+			m.updateWorktreeArrows()
 			cmds = append(cmds, m.debouncedUpdateDetailsView())
 		case 1:
 			// Navigate up through tree items
@@ -920,6 +927,7 @@ func (m *Model) handleMouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 		case 0:
 			// Scroll worktree table down
 			m.worktreeTable, _ = m.worktreeTable.Update(tea.KeyMsg{Type: tea.KeyDown})
+			m.updateWorktreeArrows()
 			cmds = append(cmds, m.debouncedUpdateDetailsView())
 		case 1:
 			// Navigate down through tree items

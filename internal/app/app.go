@@ -485,10 +485,7 @@ func NewModel(cfg *config.AppConfig, initialFilter string) *Model {
 		Bold(true).
 		Foreground(thm.Cyan).
 		Background(thm.AccentDim) // Add subtle background to header
-	s.Selected = s.Selected.
-		Foreground(thm.AccentFg). // Text color that contrasts with Accent background
-		Background(thm.Accent).   // Use Accent instead of AccentDim for better visibility
-		Bold(true)
+	s.Selected = s.Selected.Bold(true) // Arrow indicator shows selection, no background
 	// Don't set Foreground on Cell - let Selected style's foreground take effect
 	t.SetStyles(s)
 
@@ -1244,6 +1241,28 @@ func (m *Model) updateTable() {
 		m.selectedIndex = cursor
 		m.worktreeTable.SetCursor(cursor)
 	}
+	m.updateWorktreeArrows()
+}
+
+// updateWorktreeArrows updates the arrow indicator on the selected row.
+func (m *Model) updateWorktreeArrows() {
+	rows := m.worktreeTable.Rows()
+	cursor := m.worktreeTable.Cursor()
+	for i, row := range rows {
+		if len(row) > 0 && row[0] != "" {
+			runes := []rune(row[0])
+			if len(runes) > 0 {
+				// Replace first rune with arrow or space
+				if i == cursor {
+					runes[0] = '›'
+				} else {
+					runes[0] = ' '
+				}
+				rows[i][0] = string(runes)
+			}
+		}
+	}
+	m.worktreeTable.SetRows(rows)
 }
 
 func (m *Model) updateDetailsView() tea.Cmd {
@@ -4663,11 +4682,7 @@ func (m *Model) UpdateTheme(themeName string) {
 		Bold(true).
 		Foreground(thm.Cyan).
 		Background(thm.AccentDim)
-	s.Selected = s.Selected.
-		Foreground(thm.AccentFg).
-		Background(thm.Accent).
-		Bold(true)
-	// Don't set Foreground on Cell - let Selected style's foreground take effect
+	s.Selected = s.Selected.Bold(true) // Arrow indicator shows selection, no background
 
 	m.worktreeTable.SetStyles(s)
 	m.logTable.SetStyles(s)
