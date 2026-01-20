@@ -1,6 +1,6 @@
 # LazyWorktree - Effortless Git worktree management for the terminal
 
-<img align="right" width="180" height="180" alt="lw-logo" src="https://github.com/user-attachments/assets/77b63679-40b8-494c-a62d-19ccc39ac38e" />
+<img width="1865" height="1242" alt="Screenshot 2026-01-20 at 22 01 33" src="https://github.com/user-attachments/assets/5db9d86c-799b-4dc3-bf36-68303bedc7c6" />
 
 LazyWorktree is a terminal user interface for managing Git worktrees. It
 provides a structured, keyboard-driven workflow for creating, inspecting, and
