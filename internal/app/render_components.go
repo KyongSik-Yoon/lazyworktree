@@ -149,7 +149,7 @@ func (m *Model) renderPaneTitle(index int, title string, focused bool, width int
 	numStyle := lipgloss.NewStyle().Foreground(m.theme.MutedFg)
 	titleStyle := lipgloss.NewStyle().Foreground(m.theme.MutedFg)
 	if focused {
-		numStyle = numStyle.Foreground(m.theme.Pink).Bold(true)
+		numStyle = numStyle.Foreground(m.theme.Accent).Bold(true)
 		titleStyle = titleStyle.Foreground(m.theme.TextFg).Bold(true)
 	}
 	num := numStyle.Render(fmt.Sprintf("[%d]", index))

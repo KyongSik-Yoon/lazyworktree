@@ -165,7 +165,7 @@ func (m *Model) buildInfoContent(wt *models.WorktreeInfo) string {
 	}
 	if wt.PR != nil {
 		// Match Python: white number, colored state (green=OPEN, magenta=MERGED, red=else)
-		prLabelStyle := lipgloss.NewStyle().Foreground(m.theme.Pink).Bold(true) // Pink for PR prominence
+		prLabelStyle := lipgloss.NewStyle().Foreground(m.theme.Accent).Bold(true) // Accent for PR prominence
 		prPrefix := "PR:"
 		if m.config.ShowIcons {
 			prPrefix = iconWithSpace(iconPR) + prPrefix
@@ -175,7 +175,7 @@ func (m *Model) buildInfoContent(wt *models.WorktreeInfo) string {
 		stateColor := m.theme.SuccessFg // default to success for OPEN
 		switch wt.PR.State {
 		case "MERGED":
-			stateColor = m.theme.Pink
+			stateColor = m.theme.Accent
 		case "CLOSED":
 			stateColor = m.theme.ErrorFg
 		}

@@ -2656,7 +2656,7 @@ func (s *WelcomeScreen) View() string {
 		Align(lipgloss.Center, lipgloss.Center)
 
 	titleStyle := lipgloss.NewStyle().
-		Foreground(s.thm.Pink).
+		Foreground(s.thm.Accent).
 		Bold(true).
 		MarginBottom(1).
 		Underline(true)

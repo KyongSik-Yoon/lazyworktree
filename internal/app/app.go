@@ -478,6 +478,7 @@ func NewModel(cfg *config.AppConfig, initialFilter string) *Model {
 	)
 
 	s := table.DefaultStyles()
+	s.Selected = s.Selected.Foreground(thm.Accent)
 	s.Header = s.Header.
 		BorderStyle(lipgloss.NormalBorder()).
 		BorderForeground(thm.BorderDim).
@@ -4675,6 +4676,7 @@ func (m *Model) UpdateTheme(themeName string) {
 
 	// Update table styles
 	s := table.DefaultStyles()
+	s.Selected = s.Selected.Foreground(thm.TextFg).Background(thm.Accent)
 	s.Header = s.Header.
 		BorderStyle(lipgloss.NormalBorder()).
 		BorderForeground(thm.BorderDim).
@@ -5133,11 +5135,14 @@ func (m *Model) applyLogFilter(reset bool) {
 		}
 		msg := formatCommitMessage(entry.message)
 		if entry.isUnpushed {
-			msg = lipgloss.NewStyle().Foreground(m.theme.WarnFg).Render("⬆ " + msg)
-		} else if entry.isUnmerged {
 			msg = lipgloss.NewStyle().Foreground(m.theme.Accent).Render(msg)
 		}
-		rows = append(rows, table.Row{sha, entry.authorInitials, msg})
+		initials := authorInitials(entry.authorInitials)
+		if entry.isUnpushed || entry.isUnmerged {
+			initials = "⬆ "
+		}
+
+		rows = append(rows, table.Row{sha, initials, msg})
 	}
 	m.logTable.SetRows(rows)
 
