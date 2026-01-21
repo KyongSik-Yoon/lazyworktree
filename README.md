@@ -1,6 +1,6 @@
 # LazyWorktree - Easy Git worktree management for the terminal
 
-<img width="1865" height="1242" alt="screen" src="https://github.com/user-attachments/assets/d4f2ff92-ed90-460a-8ebf-dc14a40040d1" />
+<img align="right" width="180" height="180" alt="lw-logo" src="https://github.com/user-attachments/assets/77b63679-40b8-494c-a62d-19ccc39ac38e" />
 
 LazyWorktree is a terminal user interface for managing Git worktrees. It
 provides a structured, keyboard-driven workflow for creating, inspecting, and
@@ -13,7 +13,7 @@ Built with [BubbleTea](https://github.com/charmbracelet/bubbletea), it focuses o
 
 ## Screenshot
 
-<img width="3797" height="2110" alt="image" src="https://github.com/user-attachments/assets/cf5ba9c2-1f38-4865-8503-49ad0d8d5462" />
+<img width="1865" height="1242" alt="screen" src="https://github.com/user-attachments/assets/d4f2ff92-ed90-460a-8ebf-dc14a40040d1" />
 
 _See other [Screenshots below](#screenshots)_
 
