@@ -12,14 +12,14 @@ import (
 func (m *Model) renderHeader(layout layoutDims) string {
 	// Create a "toolbar" style header with visual flair
 	headerStyle := lipgloss.NewStyle().
-		Background(m.theme.Accent).
-		Foreground(m.theme.AccentFg).
+		Background(m.theme.AccentFg).
+		Foreground(m.theme.TextFg).
 		Bold(true).
 		Width(layout.width).
-		Padding(0, 2)
+		Padding(0, 2).Align(lipgloss.Center)
 
 	// Add decorative icon to title
-	title := "🌲 Lazyworktree"
+	title := "Lazyworktree"
 	repoKey := strings.TrimSpace(m.repoKey)
 	content := title
 	if repoKey != "" && repoKey != "unknown" && !strings.HasPrefix(repoKey, "local-") {
@@ -136,11 +136,11 @@ func (m *Model) renderFooter(layout layoutDims) string {
 func (m *Model) renderKeyHint(key, label string) string {
 	// Enhanced key hints with pill/badge styling
 	keyStyle := lipgloss.NewStyle().
-		Foreground(m.theme.AccentFg).
-		Background(m.theme.Accent).
+		Foreground(m.theme.TextFg).
+		Background(m.theme.AccentFg).
 		Bold(true).
 		Padding(0, 1) // Add padding for pill effect
-	labelStyle := lipgloss.NewStyle().Foreground(m.theme.MutedFg)
+	labelStyle := lipgloss.NewStyle().Foreground(m.theme.Accent)
 	return fmt.Sprintf("%s %s", keyStyle.Render(key), labelStyle.Render(label))
 }
 
