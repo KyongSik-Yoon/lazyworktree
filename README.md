@@ -477,6 +477,7 @@ lazyworktree includes built-in themes:
 | **rose-pine** | Midnight (#191724) | Rosé Pine dark and moody |
 | **ayu-mirage** | Mirage (#212733) | Ayu Mirage modern look |
 | **everforest-dark** | Dark (#2D353B) | Everforest nature dark |
+| **kanagawa** | Wave (#1F1F28) | Kanagawa Wave inspired by Japanese art |
 
 To select a theme, configure it in your configuration file:
 

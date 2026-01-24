@@ -46,6 +46,7 @@ func TestSyntaxThemeForUITheme(t *testing.T) {
 	}{
 		{name: "default dracula", inputTheme: "dracula", want: "Dracula"},
 		{name: "dracula-light", inputTheme: "dracula-light", want: "\"Monokai Extended Light\""},
+		{name: "kanagawa", inputTheme: "kanagawa", want: "Dracula"},
 		{name: "narna", inputTheme: "narna", want: "\"OneHalfDark\""},
 		{name: "clean-light", inputTheme: "clean-light", want: "GitHub"},
 		{name: "solarized-dark", inputTheme: "solarized-dark", want: "\"Solarized (dark)\""},
@@ -78,6 +79,7 @@ func TestNormalizeThemeName(t *testing.T) {
 		want  string
 	}{
 		{name: "lowercase", input: "dracula", want: "dracula"},
+		{name: "kanagawa", input: "kanagawa", want: "kanagawa"},
 		{name: "uppercase", input: "NARNA", want: "narna"},
 		{name: "trimmed whitespace", input: "  clean-light  ", want: "clean-light"},
 		{name: "unknown theme", input: "invalid", want: ""},

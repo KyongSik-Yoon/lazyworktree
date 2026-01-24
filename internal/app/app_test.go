@@ -2283,8 +2283,8 @@ func TestUpdateTheme(t *testing.T) {
 	m := NewModel(cfg, "")
 	m.setWindowSize(120, 40)
 
-	// Verify initial theme (Dracula accent is #C68FE6)
-	if string(m.theme.Accent) != "#C68FE6" {
+	// Verify initial theme (Dracula accent is #BD93F9)
+	if string(m.theme.Accent) != "#BD93F9" {
 		t.Fatalf("expected initial dracula accent, got %v", m.theme.Accent)
 	}
 

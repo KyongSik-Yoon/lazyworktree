@@ -17,7 +17,7 @@ func TestGetThemeWithCustoms_BuiltInTheme(t *testing.T) {
 	}
 
 	// Verify it's actually Dracula theme
-	if thm.Accent != lipgloss.Color("#C68FE6") {
+	if thm.Accent != lipgloss.Color("#BD93F9") {
 		t.Errorf("expected Dracula accent, got %s", thm.Accent)
 	}
 }
@@ -147,7 +147,7 @@ func TestGetThemeWithCustoms_UnknownTheme(t *testing.T) {
 	}
 
 	// Should fallback to Dracula
-	if thm.Accent != lipgloss.Color("#C68FE6") {
+	if thm.Accent != lipgloss.Color("#BD93F9") {
 		t.Errorf("expected Dracula fallback, got %s", thm.Accent)
 	}
 }
@@ -161,7 +161,7 @@ func TestGetThemeWithCustoms_EmptyName(t *testing.T) {
 	}
 
 	// Should fallback to Dracula
-	if thm.Accent != lipgloss.Color("#C68FE6") {
+	if thm.Accent != lipgloss.Color("#BD93F9") {
 		t.Errorf("expected Dracula fallback, got %s", thm.Accent)
 	}
 }

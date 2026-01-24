@@ -1081,6 +1081,8 @@ func DefaultDeltaArgsForTheme(themeName string) []string {
 		return []string{"--syntax-theme", "Dracula"}
 	case theme.EverforestDarkName:
 		return []string{"--syntax-theme", "Dracula"}
+	case theme.KanagawaName:
+		return []string{"--syntax-theme", "Dracula"}
 	default:
 		return []string{"--syntax-theme", "Dracula"}
 	}
@@ -1090,7 +1092,7 @@ func DefaultDeltaArgsForTheme(themeName string) []string {
 func NormalizeThemeName(name string) string {
 	name = strings.ToLower(strings.TrimSpace(name))
 	switch name {
-	case "dracula", "dracula-light", "narna", "clean-light", "catppuccin-latte", "rose-pine-dawn", "one-light", "everforest-light", "solarized-dark", "solarized-light", "gruvbox-dark", "gruvbox-light", "nord", "monokai", "catppuccin-mocha", "modern", "tokyo-night", "one-dark", "rose-pine", "ayu-mirage", "everforest-dark":
+	case "dracula", "dracula-light", "narna", "clean-light", "catppuccin-latte", "rose-pine-dawn", "one-light", "everforest-light", "solarized-dark", "solarized-light", "gruvbox-dark", "gruvbox-light", "nord", "monokai", "catppuccin-mocha", "modern", "tokyo-night", "one-dark", "rose-pine", "ayu-mirage", "everforest-dark", "kanagawa":
 		return name
 	}
 	return ""

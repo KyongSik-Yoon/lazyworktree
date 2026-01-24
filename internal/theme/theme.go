@@ -62,12 +62,13 @@ const (
 	OneDarkName         = "one-dark"
 	RosePineName        = "rose-pine"
 	AyuMirageName       = "ayu-mirage"
+	KanagawaName        = "kanagawa"
 )
 
 // Dracula returns the Dracula theme (dark background, vibrant colors).
 func Dracula() *Theme {
 	return &Theme{
-		Accent:    lipgloss.Color("#C68FE6"), // Purple (primary accent)
+		Accent:    lipgloss.Color("#BD93F9"), // Purple (primary accent)
 		AccentFg:  lipgloss.Color("#44475A"), // Dark text on accent
 		AccentDim: lipgloss.Color("#44475A"), // Current Line / Selection
 		Border:    lipgloss.Color("#44475A"), // Use selection color for subtle borders
@@ -302,6 +303,23 @@ func Modern() *Theme {
 	}
 }
 
+// Kanagawa returns the Kanagawa theme (Wave).
+func Kanagawa() *Theme {
+	return &Theme{
+		Accent:    lipgloss.Color("#7E9CD8"), // Crystal Blue
+		AccentFg:  lipgloss.Color("#16161D"), // Summit Black
+		AccentDim: lipgloss.Color("#2D4F67"), // Wave Blue 2
+		Border:    lipgloss.Color("#727169"), // Fuji Gray
+		BorderDim: lipgloss.Color("#223249"), // Wave Blue 1
+		MutedFg:   lipgloss.Color("#727169"), // Fuji Gray
+		TextFg:    lipgloss.Color("#DCD7BA"), // Fuji White
+		SuccessFg: lipgloss.Color("#76946A"), // Autumn Green
+		WarnFg:    lipgloss.Color("#C0A36E"), // Ronin Yellow
+		ErrorFg:   lipgloss.Color("#C34043"), // Samurai Red
+		Cyan:      lipgloss.Color("#7AA89F"), // Wave Aqua 1
+	}
+}
+
 // SolarizedDark returns the Solarized dark theme.
 func SolarizedDark() *Theme {
 	return &Theme{
@@ -311,7 +329,7 @@ func SolarizedDark() *Theme {
 		Border:    lipgloss.Color("#586E75"),
 		BorderDim: lipgloss.Color("#073642"),
 		MutedFg:   lipgloss.Color("#586E75"),
-		TextFg:    lipgloss.Color("#EEE8D5"),
+		TextFg:    lipgloss.Color("#93A1A1"), // base1
 		SuccessFg: lipgloss.Color("#859900"),
 		WarnFg:    lipgloss.Color("#B58900"),
 		ErrorFg:   lipgloss.Color("#DC322F"),
@@ -328,7 +346,7 @@ func SolarizedLight() *Theme {
 		Border:    lipgloss.Color("#93A1A1"),
 		BorderDim: lipgloss.Color("#E4DDC7"),
 		MutedFg:   lipgloss.Color("#93A1A1"),
-		TextFg:    lipgloss.Color("#073642"),
+		TextFg:    lipgloss.Color("#586E75"), // base01
 		SuccessFg: lipgloss.Color("#859900"),
 		WarnFg:    lipgloss.Color("#B58900"),
 		ErrorFg:   lipgloss.Color("#DC322F"),
@@ -464,6 +482,8 @@ func GetTheme(name string) *Theme {
 		return RosePine()
 	case AyuMirageName:
 		return AyuMirage()
+	case KanagawaName:
+		return Kanagawa()
 	default:
 		return Dracula()
 	}
@@ -503,6 +523,7 @@ func AvailableThemes() []string {
 		OneDarkName,
 		RosePineName,
 		AyuMirageName,
+		KanagawaName,
 	}
 }
 
