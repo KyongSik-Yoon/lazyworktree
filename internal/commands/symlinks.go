@@ -13,7 +13,7 @@ import (
 // LinkTopSymlinks creates symlinks for untracked/ignored files and editor configs from main to target worktree.
 // This is a built-in automation command that:
 // - Symlinks all untracked and ignored files from the root of the main worktree (excluding subdirectories)
-// - Symlinks common editor configurations (.vscode, .idea, .cursor, .claude)
+// - Symlinks non-empty editor configurations (.vscode, .idea, .cursor, .claude/settings.local.json)
 // - Ensures a tmp/ directory exists in the new worktree
 // - Automatically runs direnv allow if a .envrc file is present
 // statusFunc is used to get git status for detecting untracked/ignored files.
@@ -43,10 +43,38 @@ func LinkTopSymlinks(ctx context.Context, mainPath, worktreePath string, statusF
 		}
 	}
 
-	for _, name := range []string{".vscode", ".idea", ".cursor", ".claude"} {
+	for _, name := range []string{".vscode", ".idea", ".cursor"} {
+		src := filepath.Join(mainPath, name)
+
+		// Check if directory exists
+		info, err := os.Stat(src)
+		if err != nil {
+			continue // Directory doesn't exist, skip
+		}
+
+		// Skip if it's not a directory
+		if !info.IsDir() {
+			continue
+		}
+
+		// Skip empty directories
+		isEmpty, err := isEmptyDir(src)
+		if err != nil {
+			continue // Can't read directory, skip
+		}
+		if isEmpty {
+			continue
+		}
+
+		// Directory exists and is not empty, symlink it
 		if err := symlinkPath(mainPath, worktreePath, name); err != nil {
 			return fmt.Errorf("failed to symlink %s: %w", name, err)
 		}
+	}
+
+	// Special handling for .claude: create directory and symlink settings file
+	if err := createClaudeDirectory(mainPath, worktreePath); err != nil {
+		return fmt.Errorf("failed to setup .claude directory: %w", err)
 	}
 
 	if err := os.MkdirAll(filepath.Join(worktreePath, "tmp"), 0o750); err != nil {
@@ -83,4 +111,34 @@ func symlinkPath(mainPath, worktreePath, rel string) error {
 		return fmt.Errorf("failed to create symlink %s -> %s: %w", dst, src, err)
 	}
 	return nil
+}
+
+func createClaudeDirectory(mainPath, worktreePath string) error {
+	// Check if settings.local.json exists in main worktree
+	settingsPath := filepath.Join(mainPath, ".claude", "settings.local.json")
+	if _, err := os.Stat(settingsPath); err != nil {
+		// settings.local.json doesn't exist, skip creating .claude directory
+		return nil
+	}
+
+	// Create .claude directory in new worktree (not a symlink)
+	claudeDir := filepath.Join(worktreePath, ".claude")
+	if err := os.MkdirAll(claudeDir, 0o750); err != nil {
+		return fmt.Errorf("failed to create .claude directory: %w", err)
+	}
+
+	// Symlink only settings.local.json
+	if err := symlinkPath(mainPath, worktreePath, ".claude/settings.local.json"); err != nil {
+		return fmt.Errorf("failed to symlink settings.local.json: %w", err)
+	}
+
+	return nil
+}
+
+func isEmptyDir(path string) (bool, error) {
+	entries, err := os.ReadDir(path)
+	if err != nil {
+		return false, err
+	}
+	return len(entries) == 0, nil
 }

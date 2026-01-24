@@ -200,7 +200,7 @@ trust_mode: "tofu"
 #
 # Special built-in command:
 #   link_topsymlinks    - Symlinks untracked/ignored files from main worktree root,
-#                         editor configs (.vscode, .idea, .cursor, .claude),
+#                         non-empty editor configs (.vscode, .idea, .cursor, .claude),
 #                         creates tmp/ directory, runs direnv allow if .envrc exists
 #
 # Security: Commands from .wt files require trust confirmation (see trust_mode setting)

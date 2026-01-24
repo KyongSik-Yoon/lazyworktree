@@ -740,7 +740,7 @@ Configure via `trust_mode` in `config.yaml`:
 
 * `link_topsymlinks`: A built-in automation command (not a shell command) that executes without TOFU prompts once the `.wt` file is trusted. It performs the following:
   * Symlinks all untracked and ignored files from the root of the main worktree to the new worktree (excluding subdirectories).
-  * Symlinks common editor configurations (`.vscode`, `.idea`, `.cursor`, `.claude`).
+  * Symlinks non-empty editor configurations (`.vscode`, `.idea`, `.cursor`, `.claude/settings.local.json`) if it exists.
   * Ensures a `tmp/` directory exists in the new worktree.
   * Automatically runs `direnv allow` if a `.envrc` file is present.
 

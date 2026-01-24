@@ -745,7 +745,7 @@ List of commands to execute when creating a worktree. These execute before any r
 .br
 Available environment variables: WORKTREE_BRANCH, MAIN_WORKTREE_PATH, WORKTREE_PATH, WORKTREE_NAME.
 .br
-Special built-in command: \fBlink_topsymlinks\fR (not a shell command) symlinks untracked/ignored files from main worktree root, editor configs (.vscode, .idea, .cursor, .claude), ensures tmp/ directory exists, and runs direnv allow if .envrc is present.
+Special built-in command: \fBlink_topsymlinks\fR (not a shell command) symlinks untracked/ignored files from main worktree root, non-empty editor configs (.vscode, .idea, .cursor, .claude/settings.local.json) if it exists, ensures tmp/ directory exists, and runs direnv allow if .envrc is present.
 .
 .TP
 .B terminate_commands
