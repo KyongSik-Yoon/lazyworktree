@@ -170,7 +170,7 @@ func TestAIBranchNameSanitization(t *testing.T) {
 			}
 
 			// Setup input screen
-			m.inputScreen = NewInputScreen("test", "placeholder", "initial", m.theme, m.config.ShowIcons)
+			m.inputScreen = NewInputScreen("test", "placeholder", "initial", m.theme, m.config.IconsEnabled())
 			m.inputScreen.SetCheckbox("Include changes", true)
 
 			// Handle the AI name generation
@@ -2058,7 +2058,7 @@ func TestRenderScreenVariants(t *testing.T) {
 		t.Fatal("expected diff screen to render")
 	}
 
-	m.inputScreen = NewInputScreen("Prompt", "Placeholder", "value", m.theme, m.config.ShowIcons)
+	m.inputScreen = NewInputScreen("Prompt", "Placeholder", "value", m.theme, m.config.IconsEnabled())
 	m.currentScreen = screenInput
 	if out = m.renderScreen(); out == "" {
 		t.Fatal("expected input screen to render")
@@ -2089,7 +2089,7 @@ func TestFetchRemotesCompleteTriggersRefresh(t *testing.T) {
 	cfg := &config.AppConfig{WorktreeDir: t.TempDir()}
 	m := NewModel(cfg, "")
 	m.loading = true
-	m.loadingScreen = NewLoadingScreen("Fetching remotes...", m.theme, m.config.ShowIcons)
+	m.loadingScreen = NewLoadingScreen("Fetching remotes...", m.theme, m.config.IconsEnabled())
 
 	_, cmd := m.Update(fetchRemotesCompleteMsg{})
 	// loading stays true while refreshing worktrees
@@ -2298,7 +2298,7 @@ func TestUpdateTheme(t *testing.T) {
 func TestShowThemeSelection(t *testing.T) {
 	cfg := &config.AppConfig{
 		WorktreeDir: t.TempDir(),
-		ShowIcons:   true,
+		IconSet:     "nerd-font-v3",
 	}
 	m := NewModel(cfg, "")
 	m.setWindowSize(120, 40)
@@ -2316,7 +2316,7 @@ func TestShowThemeSelection(t *testing.T) {
 		t.Fatal("listScreen should be initialized")
 	}
 
-	expectedTitle := labelWithIcon(UIIconThemeSelect, "Select Theme", m.config.ShowIcons)
+	expectedTitle := labelWithIcon(UIIconThemeSelect, "Select Theme", m.config.IconsEnabled())
 	if m.listScreen.title != expectedTitle {
 		t.Fatalf("expected title %q, got %q", expectedTitle, m.listScreen.title)
 	}

@@ -317,7 +317,7 @@ sort_mode: switched  # Options: "path", "active" (commit date), "switched" (last
 auto_fetch_prs: false
 auto_refresh: true
 refresh_interval: 10  # Seconds
-show_icons: true
+icon_set: nerd-font-v3
 search_auto_select: false
 fuzzy_finder_input: false
 palette_mru: true         # Enable MRU (Most Recently Used) sorting for command palette
@@ -414,8 +414,7 @@ git config --local --get-regexp "^lw\."
 * `auto_fetch_prs`: fetch PR data on startup.
 * `auto_refresh`: background refresh of git metadata (default: true).
 * `refresh_interval`: refresh frequency in seconds (default: 10).
-* `show_icons`: display icons across file trees, PR/issue views, CI checks, and UI indicators (default: true).
-* `icon_set`: choose icon set ("nerd-font-v3", "emoji", "text").
+* `icon_set`: choose icon set ("nerd-font-v3", "emoji", "text", "none"). Use `none` or an empty value to suppress icons.
 * `max_untracked_diffs`, `max_diff_chars`: limits for diff display (0 disables).
 * `max_name_length`: maximum display length for worktree names (default: 95, 0 disables truncation).
 

@@ -440,6 +440,8 @@ func NewModel(cfg *config.AppConfig, initialFilter string) *Model {
 
 	// Initialize icon provider based on config
 	switch cfg.IconSet {
+	case "none":
+		SetIconProvider(&TextProvider{})
 	case "emoji":
 		SetIconProvider(&EmojiProvider{})
 	case "text":
@@ -933,7 +935,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.windowWidth,
 			m.windowHeight,
 			m.theme,
-			m.config.ShowIcons,
+			m.config.IconsEnabled(),
 		)
 		m.currentScreen = screenCommitFiles
 		return m, nil
@@ -988,24 +990,26 @@ func (m *Model) inputLabel() string {
 }
 
 func (m *Model) searchLabel() string {
+	showIcons := m.config.IconsEnabled()
 	switch m.searchTarget {
 	case searchTargetStatus:
-		return labelWithIcon(UIIconSearch, "Search Files", m.config.ShowIcons)
+		return labelWithIcon(UIIconSearch, "Search Files", showIcons)
 	case searchTargetLog:
-		return labelWithIcon(UIIconSearch, "Search Commits", m.config.ShowIcons)
+		return labelWithIcon(UIIconSearch, "Search Commits", showIcons)
 	default:
-		return labelWithIcon(UIIconSearch, "Search Worktrees", m.config.ShowIcons)
+		return labelWithIcon(UIIconSearch, "Search Worktrees", showIcons)
 	}
 }
 
 func (m *Model) filterLabel() string {
+	showIcons := m.config.IconsEnabled()
 	switch m.filterTarget {
 	case filterTargetStatus:
-		return labelWithIcon(UIIconFilter, "Filter Files", m.config.ShowIcons)
+		return labelWithIcon(UIIconFilter, "Filter Files", showIcons)
 	case filterTargetLog:
-		return labelWithIcon(UIIconFilter, "Filter Commits", m.config.ShowIcons)
+		return labelWithIcon(UIIconFilter, "Filter Commits", showIcons)
 	default:
-		return labelWithIcon(UIIconFilter, "Filter Worktrees", m.config.ShowIcons)
+		return labelWithIcon(UIIconFilter, "Filter Worktrees", showIcons)
 	}
 }
 
@@ -1161,6 +1165,7 @@ func (m *Model) updateTable() {
 	}
 
 	// Update table rows
+	showIcons := m.config.IconsEnabled()
 	rows := make([]table.Row, 0, len(m.filteredWts))
 	for _, wt := range m.filteredWts {
 		name := filepath.Base(wt.Path)
@@ -1169,7 +1174,11 @@ func (m *Model) updateTable() {
 			worktreeIcon = UIIconWorktreeMain
 			name = mainWorktreeName
 		}
-		name = iconPrefix(worktreeIcon, m.config.ShowIcons) + name
+		if showIcons {
+			name = iconPrefix(worktreeIcon, showIcons) + name
+		} else {
+			name = " " + name
+		}
 
 		// Truncate to configured max length with ellipsis if needed
 		if m.config.MaxNameLength > 0 {
@@ -1179,8 +1188,8 @@ func (m *Model) updateTable() {
 			}
 		}
 
-		status := statusIndicator(!wt.Dirty, m.config.ShowIcons)
-		if m.config.ShowIcons {
+		status := statusIndicator(!wt.Dirty, showIcons)
+		if showIcons {
 			status = iconWithSpace(status)
 		}
 
@@ -1190,17 +1199,17 @@ func (m *Model) updateTable() {
 		case !wt.HasUpstream:
 			abStr = "-"
 		case wt.Ahead == 0 && wt.Behind == 0:
-			abStr = syncIndicator(m.config.ShowIcons)
-			if m.config.ShowIcons {
+			abStr = syncIndicator(showIcons)
+			if showIcons {
 				abStr = iconWithSpace(abStr)
 			}
 		default:
 			var parts []string
 			if wt.Behind > 0 {
-				parts = append(parts, fmt.Sprintf("%s%d", behindIndicator(m.config.ShowIcons), wt.Behind))
+				parts = append(parts, fmt.Sprintf("%s%d", behindIndicator(showIcons), wt.Behind))
 			}
 			if wt.Ahead > 0 {
-				parts = append(parts, fmt.Sprintf("%s%d", aheadIndicator(m.config.ShowIcons), wt.Ahead))
+				parts = append(parts, fmt.Sprintf("%s%d", aheadIndicator(showIcons), wt.Ahead))
 			}
 			abStr = strings.Join(parts, "")
 		}
@@ -1217,10 +1226,10 @@ func (m *Model) updateTable() {
 			prStr := "-"
 			if wt.PR != nil {
 				prIcon := ""
-				if m.config.ShowIcons {
+				if showIcons {
 					prIcon = iconWithSpace(getIconPR())
 				}
-				stateSymbol := prStateIndicator(wt.PR.State, m.config.ShowIcons)
+				stateSymbol := prStateIndicator(wt.PR.State, showIcons)
 				// Right-align PR numbers for consistent column width
 				prStr = fmt.Sprintf("%s#%-5d%s", prIcon, wt.PR.Number, stateSymbol)
 			}
@@ -2005,7 +2014,7 @@ func (m *Model) showRunCommand() tea.Cmd {
 		"e.g., make test, npm install, etc.",
 		"",
 		m.theme,
-		m.config.ShowIcons,
+		m.config.IconsEnabled(),
 	)
 	// Enable bash-style history navigation with up/down arrows
 	// Always set history, even if empty - it will populate as commands are added
@@ -2295,7 +2304,7 @@ func (m *Model) showCommandPalette() tea.Cmd {
 			m.updateTableColumns(m.worktreeTable.Width())
 			m.loading = true
 			m.statusContent = "Fetching PR data..."
-			m.loadingScreen = NewLoadingScreen("Fetching PR data...", m.theme, m.config.ShowIcons)
+			m.loadingScreen = NewLoadingScreen("Fetching PR data...", m.theme, m.config.IconsEnabled())
 			m.currentScreen = screenLoading
 			return m.fetchPRData()
 		case "pr":
@@ -2403,7 +2412,7 @@ func (m *Model) showThemeSelection() tea.Cmd {
 	for _, t := range themes {
 		items = append(items, selectionItem{id: t, label: t})
 	}
-	m.listScreen = NewListSelectionScreen(items, labelWithIcon(UIIconThemeSelect, "Select Theme", m.config.ShowIcons), "Filter themes...", "", m.windowWidth, m.windowHeight, m.originalTheme, m.theme)
+	m.listScreen = NewListSelectionScreen(items, labelWithIcon(UIIconThemeSelect, "Select Theme", m.config.IconsEnabled()), "Filter themes...", "", m.windowWidth, m.windowHeight, m.originalTheme, m.theme)
 	m.listScreen.onCursorChange = func(item selectionItem) {
 		m.UpdateTheme(item.id)
 	}
@@ -3260,7 +3269,7 @@ func (m *Model) handleScreenKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch m.currentScreen {
 	case screenHelp:
 		if m.helpScreen == nil {
-			m.helpScreen = NewHelpScreen(m.windowWidth, m.windowHeight, m.config.CustomCommands, m.theme, m.config.ShowIcons)
+			m.helpScreen = NewHelpScreen(m.windowWidth, m.windowHeight, m.config.CustomCommands, m.theme, m.config.IconsEnabled())
 		}
 		keyStr := msg.String()
 		if keyStr == keyQ || isEscKey(keyStr) {
@@ -5137,8 +5146,9 @@ func (m *Model) applyLogFilter(reset bool) {
 		msg := formatCommitMessage(entry.message)
 		initials := authorInitials(entry.authorInitials)
 		if entry.isUnpushed || entry.isUnmerged {
-			initials = aheadIndicator(m.config.ShowIcons)
-			if m.config.ShowIcons {
+			showIcons := m.config.IconsEnabled()
+			initials = aheadIndicator(showIcons)
+			if showIcons {
 				initials = iconWithSpace(initials)
 			}
 		}

@@ -385,13 +385,13 @@ func TestGetCIStatusIcon(t *testing.T) {
 	}{
 		{name: "draft takes precedence", ciStatus: "success", isDraft: true, expected: "D"},
 		{name: "draft over failure", ciStatus: "failure", isDraft: true, expected: "D"},
-		{name: "success icon", ciStatus: "success", isDraft: false, expected: "✓"},
-		{name: "failure icon", ciStatus: "failure", isDraft: false, expected: "✗"},
-		{name: "pending icon", ciStatus: "pending", isDraft: false, expected: "~"},
+		{name: "success icon", ciStatus: "success", isDraft: false, expected: "S"},
+		{name: "failure icon", ciStatus: "failure", isDraft: false, expected: "F"},
+		{name: "pending icon", ciStatus: "pending", isDraft: false, expected: "P"},
 		{name: "skipped icon", ciStatus: "skipped", isDraft: false, expected: "-"},
-		{name: "cancelled icon", ciStatus: "cancelled", isDraft: false, expected: "⊘"},
-		{name: "none icon", ciStatus: "none", isDraft: false, expected: "◯"},
-		{name: "unknown defaults to none", ciStatus: "unknown", isDraft: false, expected: "◯"},
+		{name: "cancelled icon", ciStatus: "cancelled", isDraft: false, expected: "C"},
+		{name: "none icon", ciStatus: "none", isDraft: false, expected: "?"},
+		{name: "unknown defaults to none", ciStatus: "unknown", isDraft: false, expected: "?"},
 	}
 
 	for _, tt := range tests {

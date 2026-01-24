@@ -1211,8 +1211,7 @@ Example: lazyworktree --config=lw.theme=nord --config=lw.auto_fetch_prs=true
 Custom themes: define custom_themes in the configuration file. Without a base theme, all 11 colour fields are required.
 
 **{{HELP_ICON_CONFIGURATION}}Icon Configuration**
-- icon_set: Choose icon set ("nerd-font-v3", "emoji", "text"). Default: "nerd-font-v3". Applies to file icons, UI indicators, and help headings. The text set uses plain labels.
-- show_icons: Toggle icons across file trees, PR/issue views, CI checks, and UI indicators (true/false).
+- icon_set: Choose icon set ("nerd-font-v3", "emoji", "text", "none"). Default: "nerd-font-v3". Applies to file icons, UI indicators, and help headings. The text set uses plain labels. Set to "none" or an empty value to suppress icons.
 
 {{HELP_TIP}}Tip: PR data is not fetched by default for speed.
        Press 'p' to fetch PR information on demand.`
@@ -1888,17 +1887,17 @@ func getCIStatusIcon(ciStatus string, isDraft, showIcons bool) string {
 	}
 	switch ciStatus {
 	case "success":
-		return "✓"
+		return "S"
 	case "failure":
-		return "✗"
+		return "F"
 	case "skipped":
 		return "-"
 	case "cancelled":
-		return "⊘"
+		return "C"
 	case "pending":
-		return "~"
+		return "P"
 	default:
-		return "◯"
+		return "?"
 	}
 }
 

@@ -146,6 +146,7 @@ func (m *Model) renderKeyHint(key, label string) string {
 
 // renderPaneTitle renders a pane title with focus indicators.
 func (m *Model) renderPaneTitle(index int, title string, focused bool, width int) string {
+	showIcons := m.config.IconsEnabled()
 	numStyle := lipgloss.NewStyle().Foreground(m.theme.MutedFg)
 	titleStyle := lipgloss.NewStyle().Foreground(m.theme.MutedFg)
 	if focused {
@@ -153,7 +154,7 @@ func (m *Model) renderPaneTitle(index int, title string, focused bool, width int
 		titleStyle = titleStyle.Foreground(m.theme.TextFg).Bold(true)
 	}
 	num := numStyle.Render(fmt.Sprintf("[%d]", index))
-	if m.config.ShowIcons {
+	if showIcons {
 		num = numStyle.Render(fmt.Sprintf("(%d)", index))
 	}
 	name := titleStyle.Render(title)
@@ -168,7 +169,7 @@ func (m *Model) renderPaneTitle(index int, title string, focused bool, width int
 			Bold(true).
 			Padding(0, 1)
 		filterIndicator = fmt.Sprintf(" %s%s  %s %s",
-			iconPrefix(UIIconFilter, m.config.ShowIcons),
+			iconPrefix(UIIconFilter, showIcons),
 			filteredStyle.Render("Filtered"),
 			keyStyle.Render("Esc"),
 			lipgloss.NewStyle().Foreground(m.theme.MutedFg).Render("Clear"))
@@ -183,7 +184,7 @@ func (m *Model) renderPaneTitle(index int, title string, focused bool, width int
 			Bold(true).
 			Padding(0, 1)
 		zoomIndicator = fmt.Sprintf(" %s%s  %s %s",
-			iconPrefix(UIIconZoom, m.config.ShowIcons),
+			iconPrefix(UIIconZoom, showIcons),
 			zoomedStyle.Render("Zoomed"),
 			keyStyle.Render("="),
 			lipgloss.NewStyle().Foreground(m.theme.MutedFg).Render("Unzoom"))

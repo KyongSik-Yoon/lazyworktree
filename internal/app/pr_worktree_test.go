@@ -19,7 +19,7 @@ func TestCreateFromPRResultMsgSuccess(t *testing.T) {
 	m.setWindowSize(120, 40)
 	m.loading = true
 	m.currentScreen = screenLoading
-	m.loadingScreen = NewLoadingScreen("Creating worktree...", m.theme, m.config.ShowIcons)
+	m.loadingScreen = NewLoadingScreen("Creating worktree...", m.theme, m.config.IconsEnabled())
 
 	targetPath := filepath.Join(cfg.WorktreeDir, "pr-123")
 	msg := createFromPRResultMsg{
@@ -63,7 +63,7 @@ func TestCreateFromPRResultMsgError(t *testing.T) {
 	m.setWindowSize(120, 40)
 	m.loading = true
 	m.currentScreen = screenLoading
-	m.loadingScreen = NewLoadingScreen("Creating worktree...", m.theme, m.config.ShowIcons)
+	m.loadingScreen = NewLoadingScreen("Creating worktree...", m.theme, m.config.IconsEnabled())
 	m.pendingSelectWorktreePath = "/some/path"
 
 	msg := createFromPRResultMsg{

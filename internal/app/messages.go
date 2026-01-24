@@ -100,7 +100,7 @@ func (m *Model) handleWorktreesLoaded(msg worktreesLoadedMsg) (tea.Model, tea.Cm
 	cmds := []tea.Cmd{}
 	if m.config.AutoFetchPRs && !m.prDataLoaded {
 		m.loading = true
-		m.loadingScreen = NewLoadingScreen("Fetching PR data...", m.theme, m.config.ShowIcons)
+		m.loadingScreen = NewLoadingScreen("Fetching PR data...", m.theme, m.config.IconsEnabled())
 		m.currentScreen = screenLoading
 		cmds = append(cmds, m.fetchPRData())
 	} else if cmd := m.updateDetailsView(); cmd != nil {
@@ -299,7 +299,7 @@ func (m *Model) handleOpenPRsLoaded(msg openPRsLoadedMsg) tea.Cmd {
 	}
 
 	// Show PR selection screen
-	m.prSelectionScreen = NewPRSelectionScreen(msg.prs, m.windowWidth, m.windowHeight, m.theme, m.config.ShowIcons)
+	m.prSelectionScreen = NewPRSelectionScreen(msg.prs, m.windowWidth, m.windowHeight, m.theme, m.config.IconsEnabled())
 	m.prSelectionSubmit = func(pr *models.PRInfo) tea.Cmd {
 		// Get AI-generated title (if configured)
 		generatedTitle := ""
@@ -350,7 +350,7 @@ func (m *Model) handleOpenPRsLoaded(msg openPRsLoadedMsg) tea.Cmd {
 					"Worktree name",
 					suggested,
 					m.theme,
-					m.config.ShowIcons,
+					m.config.IconsEnabled(),
 				)
 				m.inputSubmit = func(value string, checked bool) (tea.Cmd, bool) {
 					newBranch := strings.TrimSpace(value)
@@ -380,7 +380,7 @@ func (m *Model) handleOpenPRsLoaded(msg openPRsLoadedMsg) tea.Cmd {
 					// Create worktree from PR branch (can take time, so do it async with a loading pulse)
 					m.loading = true
 					m.statusContent = fmt.Sprintf("Creating worktree from PR/MR #%d...", pr.Number)
-					m.loadingScreen = NewLoadingScreen(m.statusContent, m.theme, m.config.ShowIcons)
+					m.loadingScreen = NewLoadingScreen(m.statusContent, m.theme, m.config.IconsEnabled())
 					m.currentScreen = screenLoading
 					m.pendingSelectWorktreePath = targetPath
 					return func() tea.Msg {
@@ -413,7 +413,7 @@ func (m *Model) handleOpenPRsLoaded(msg openPRsLoadedMsg) tea.Cmd {
 			"Worktree name",
 			suggested,
 			m.theme,
-			m.config.ShowIcons,
+			m.config.IconsEnabled(),
 		)
 		m.inputSubmit = func(value string, checked bool) (tea.Cmd, bool) {
 			newBranch := strings.TrimSpace(value)
@@ -443,7 +443,7 @@ func (m *Model) handleOpenPRsLoaded(msg openPRsLoadedMsg) tea.Cmd {
 			// Create worktree from PR branch (can take time, so do it async with a loading pulse)
 			m.loading = true
 			m.statusContent = fmt.Sprintf("Creating worktree from PR/MR #%d...", pr.Number)
-			m.loadingScreen = NewLoadingScreen(m.statusContent, m.theme, m.config.ShowIcons)
+			m.loadingScreen = NewLoadingScreen(m.statusContent, m.theme, m.config.IconsEnabled())
 			m.currentScreen = screenLoading
 			m.pendingSelectWorktreePath = targetPath
 			return func() tea.Msg {
@@ -479,7 +479,7 @@ func (m *Model) handleOpenIssuesLoaded(msg openIssuesLoadedMsg) tea.Cmd {
 	}
 
 	// Show issue selection screen
-	m.issueSelectionScreen = NewIssueSelectionScreen(msg.issues, m.windowWidth, m.windowHeight, m.theme, m.config.ShowIcons)
+	m.issueSelectionScreen = NewIssueSelectionScreen(msg.issues, m.windowWidth, m.windowHeight, m.theme, m.config.IconsEnabled())
 	m.issueSelectionSubmit = func(issue *models.IssueInfo) tea.Cmd {
 		// Show base branch selection
 		defaultBase := m.git.GetMainBranch(m.ctx)
@@ -548,7 +548,7 @@ func (m *Model) handleOpenIssuesLoaded(msg openIssuesLoadedMsg) tea.Cmd {
 					"Worktree name",
 					suggested,
 					m.theme,
-					m.config.ShowIcons,
+					m.config.IconsEnabled(),
 				)
 				m.inputSubmit = func(value string, checked bool) (tea.Cmd, bool) {
 					newBranch := strings.TrimSpace(value)
@@ -572,7 +572,7 @@ func (m *Model) handleOpenIssuesLoaded(msg openIssuesLoadedMsg) tea.Cmd {
 					// Create worktree from base branch (can take time, so do it async with a loading pulse)
 					m.loading = true
 					m.statusContent = fmt.Sprintf("Creating worktree from issue #%d...", issue.Number)
-					m.loadingScreen = NewLoadingScreen(m.statusContent, m.theme, m.config.ShowIcons)
+					m.loadingScreen = NewLoadingScreen(m.statusContent, m.theme, m.config.IconsEnabled())
 					m.currentScreen = screenLoading
 					m.pendingSelectWorktreePath = targetPath
 					return func() tea.Msg {

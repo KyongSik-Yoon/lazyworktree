@@ -597,14 +597,14 @@ func aheadIndicator(showIcons bool) string {
 	if showIcons {
 		return uiIcon(UIIconAhead)
 	}
-	return "A"
+	return "↑"
 }
 
 func behindIndicator(showIcons bool) string {
 	if showIcons {
 		return uiIcon(UIIconBehind)
 	}
-	return "B"
+	return "↓"
 }
 
 func arrowUp(showIcons bool) string {

@@ -97,7 +97,7 @@ Override config values from the command line (repeatable).
 .br
 Format: \fB--config=lw.key=value\fR
 .br
-Supported keys: \fBtheme\fR, \fBworktree_dir\fR, \fBsort_mode\fR, \fBauto_fetch_prs\fR, \fBauto_refresh\fR, \fBsearch_auto_select\fR, \fBfuzzy_finder_input\fR, \fBshow_icons\fR, \fBpalette_mru\fR, \fBpalette_mru_limit\fR, \fBgit_pager\fR, \fBgit_pager_args\fR, \fBgit_pager_interactive\fR, \fBpager\fR, \fBeditor\fR, \fBmax_untracked_diffs\fR, \fBmax_diff_chars\fR, \fBrefresh_interval_seconds\fR, \fBtrust_mode\fR, \fBmerge_method\fR, \fBbranch_name_script\fR, \fBissue_branch_name_template\fR, \fBpr_branch_name_template\fR, \fBsession_prefix\fR, \fBinit_commands\fR, \fBterminate_commands\fR.
+Supported keys: \fBtheme\fR, \fBworktree_dir\fR, \fBsort_mode\fR, \fBauto_fetch_prs\fR, \fBauto_refresh\fR, \fBsearch_auto_select\fR, \fBfuzzy_finder_input\fR, \fBicon_set\fR, \fBpalette_mru\fR, \fBpalette_mru_limit\fR, \fBgit_pager\fR, \fBgit_pager_args\fR, \fBgit_pager_interactive\fR, \fBpager\fR, \fBeditor\fR, \fBmax_untracked_diffs\fR, \fBmax_diff_chars\fR, \fBrefresh_interval_seconds\fR, \fBtrust_mode\fR, \fBmerge_method\fR, \fBbranch_name_script\fR, \fBissue_branch_name_template\fR, \fBpr_branch_name_template\fR, \fBsession_prefix\fR, \fBinit_commands\fR, \fBterminate_commands\fR.
 .br
 Examples: \fB--config=lw.theme=nord\fR, \fB--config=lw.auto_fetch_prs=true\fR
 .br
@@ -608,18 +608,12 @@ Custom themes can be defined in the configuration file (see \fBcustom_themes\fR 
 Can also be set with \fB--theme\fR.
 .
 .TP
-.B show_icons
-Toggle icons in file trees, PR views, CI checks, and UI indicators.
-.br
-Default: true
-.
-.TP
 .B icon_set
-Choose icon set. Options: "nerd-font-v3", "emoji", "text".
+Choose icon set. Options: "nerd-font-v3", "emoji", "text", "none".
 .br
 Applies to file icons, UI indicators, and help headings.
 .br
-The text set uses plain labels.
+The text set uses plain labels. Use "none" or an empty value to suppress icons.
 .br
 Default: "nerd-font-v3"
 .
@@ -899,7 +893,7 @@ A practical configuration demonstrating common settings:
 .nf
 # UI and behaviour
 theme: nord
-show_icons: true
+icon_set: nerd-font-v3
 sort_mode: switched
 fuzzy_finder_input: true
 auto_refresh: true

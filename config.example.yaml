@@ -30,8 +30,9 @@ fuzzy_finder_input: false
 #          "ayu-mirage", "everforest-dark", or any custom theme defined below
 theme: dracula
 
-# Toggle Nerd Font v3 icons in file trees, PR views, and CI checks
-show_icons: true
+# Icon set for file trees, PR views, and UI indicators
+# Options: "nerd-font-v3", "emoji", "text", "none" (empty disables icons)
+icon_set: nerd-font-v3
 
 # Start with the filter focused and automatically select the first match when you press Enter
 search_auto_select: false

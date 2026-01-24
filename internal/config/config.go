@@ -94,8 +94,7 @@ type AppConfig struct {
 	Theme                   string // Theme name: see AvailableThemes in internal/theme
 	MergeMethod             string // Merge method for absorb: "rebase" or "merge" (default: "rebase")
 	FuzzyFinderInput        bool   // Enable fuzzy finder for input suggestions (default: false)
-	ShowIcons               bool   // Render Nerd Font icons in file trees and PR views (default: true)
-	IconSet                 string // Icon set: "nerd-font-v3", "emoji", "text" (default: "nerd-font-v3")
+	IconSet                 string // Icon set: "nerd-font-v3", "emoji", "text", "none" (default: "nerd-font-v3")
 	IssueBranchNameTemplate string // Template for issue branch names with placeholders: {number}, {title} (default: "issue-{number}-{title}")
 	PRBranchNameTemplate    string // Template for PR branch names with placeholders: {number}, {title} (default: "pr-{number}-{title}")
 	SessionPrefix           string // Prefix for tmux/zellij session names (default: "wt-")
@@ -135,7 +134,6 @@ func DefaultConfig() *AppConfig {
 		SessionPrefix:           "wt-",
 		PaletteMRU:              true,
 		PaletteMRULimit:         5,
-		ShowIcons:               true,
 		IconSet:                 "nerd-font-v3",
 		CustomThemes:            make(map[string]*CustomTheme),
 		CustomCommands: map[string]*CustomCommand{
@@ -166,7 +164,13 @@ func DefaultConfig() *AppConfig {
 	}
 }
 
-var iconSetOptions = []string{"nerd-font-v3", "emoji", "text"}
+var iconSetOptions = []string{"nerd-font-v3", "emoji", "text", "none"}
+
+// IconsEnabled reports whether icon rendering should be enabled for the current icon set.
+func (c *AppConfig) IconsEnabled() bool {
+	iconSet := strings.ToLower(strings.TrimSpace(c.IconSet))
+	return iconSet != "" && iconSet != "none"
+}
 
 func iconSetOptionsString() string {
 	return strings.Join(iconSetOptions, ", ")
@@ -226,15 +230,18 @@ func parseConfig(data map[string]any) (*AppConfig, error) {
 	cfg.RefreshIntervalSeconds = coerceInt(data["refresh_interval"], cfg.RefreshIntervalSeconds)
 	cfg.SearchAutoSelect = coerceBool(data["search_auto_select"], false)
 	cfg.FuzzyFinderInput = coerceBool(data["fuzzy_finder_input"], false)
-	cfg.ShowIcons = coerceBool(data["show_icons"], cfg.ShowIcons)
 
 	if iconSet, ok := data["icon_set"].(string); ok {
 		iconSet = strings.ToLower(strings.TrimSpace(iconSet))
-		switch iconSet {
-		case "nerd-font-v3", "emoji", "text":
-			cfg.IconSet = iconSet
-		default:
-			return nil, fmt.Errorf("invalid icon_set %q (available: %s)", iconSet, iconSetOptionsString())
+		if iconSet == "" {
+			cfg.IconSet = "none"
+		} else {
+			switch iconSet {
+			case "nerd-font-v3", "emoji", "text", "none":
+				cfg.IconSet = iconSet
+			default:
+				return nil, fmt.Errorf("invalid icon_set %q (available: %s)", iconSet, iconSetOptionsString())
+			}
 		}
 	}
 
@@ -810,9 +817,6 @@ func (cfg *AppConfig) ApplyCLIOverrides(overrides []string) error {
 	}
 	if _, ok := overrideData["fuzzy_finder_input"]; ok {
 		cfg.FuzzyFinderInput = overrideCfg.FuzzyFinderInput
-	}
-	if _, ok := overrideData["show_icons"]; ok {
-		cfg.ShowIcons = overrideCfg.ShowIcons
 	}
 	if _, ok := overrideData["icon_set"]; ok {
 		cfg.IconSet = overrideCfg.IconSet

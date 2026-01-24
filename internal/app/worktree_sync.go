@@ -79,7 +79,7 @@ func (m *Model) beginPush(wt *models.WorktreeInfo, args []string) tea.Cmd {
 	m.loading = true
 	m.loadingOperation = "push"
 	m.statusContent = "Pushing to upstream..."
-	m.loadingScreen = NewLoadingScreen("Pushing to upstream...", m.theme, m.config.ShowIcons)
+	m.loadingScreen = NewLoadingScreen("Pushing to upstream...", m.theme, m.config.IconsEnabled())
 	m.currentScreen = screenLoading
 	return m.runPush(wt, args)
 }
@@ -89,7 +89,7 @@ func (m *Model) beginSync(wt *models.WorktreeInfo, pullArgs, pushArgs []string) 
 	m.loading = true
 	m.loadingOperation = "sync"
 	m.statusContent = "Synchronising with upstream..."
-	m.loadingScreen = NewLoadingScreen("Synchronising with upstream...", m.theme, m.config.ShowIcons)
+	m.loadingScreen = NewLoadingScreen("Synchronising with upstream...", m.theme, m.config.IconsEnabled())
 	m.currentScreen = screenLoading
 	return m.runSync(wt, pullArgs, pushArgs)
 }
@@ -155,7 +155,7 @@ func (m *Model) updateFromBase(wt *models.WorktreeInfo) tea.Cmd {
 	m.loading = true
 	m.loadingOperation = "sync"
 	m.statusContent = fmt.Sprintf("Updating from %s...", wt.PR.BaseBranch)
-	m.loadingScreen = NewLoadingScreen(fmt.Sprintf("Updating from %s...", wt.PR.BaseBranch), m.theme, m.config.ShowIcons)
+	m.loadingScreen = NewLoadingScreen(fmt.Sprintf("Updating from %s...", wt.PR.BaseBranch), m.theme, m.config.IconsEnabled())
 	m.currentScreen = screenLoading
 
 	// Use gh pr update-branch with --rebase if merge_method is rebase
@@ -188,7 +188,7 @@ func (m *Model) updateFromBase(wt *models.WorktreeInfo) tea.Cmd {
 func (m *Model) showUpstreamInput(wt *models.WorktreeInfo, onSubmit func(remote, branch string) tea.Cmd) tea.Cmd {
 	defaultUpstream := fmt.Sprintf("origin/%s", wt.Branch)
 	prompt := fmt.Sprintf("Set upstream for '%s' (remote/branch)", wt.Branch)
-	m.inputScreen = NewInputScreen(prompt, defaultUpstream, defaultUpstream, m.theme, m.config.ShowIcons)
+	m.inputScreen = NewInputScreen(prompt, defaultUpstream, defaultUpstream, m.theme, m.config.IconsEnabled())
 	m.inputSubmit = func(value string, checked bool) (tea.Cmd, bool) {
 		remote, branch, ok := parseUpstreamRef(value)
 		if !ok {

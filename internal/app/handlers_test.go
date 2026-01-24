@@ -413,7 +413,7 @@ func TestHandlePRDataLoadedOmitsIconWhenDisabled(t *testing.T) {
 	SetIconProvider(&NerdFontV3Provider{})
 	cfg := config.DefaultConfig()
 	cfg.WorktreeDir = t.TempDir()
-	cfg.ShowIcons = false
+	cfg.IconSet = "none"
 	m := NewModel(cfg, "")
 	m.worktreeTable.SetWidth(100)
 	m.worktreesLoaded = true
@@ -532,7 +532,7 @@ func TestHandleCIStatusLoadedOmitsIconWhenDisabled(t *testing.T) {
 	SetIconProvider(&NerdFontV3Provider{})
 	cfg := config.DefaultConfig()
 	cfg.WorktreeDir = t.TempDir()
-	cfg.ShowIcons = false
+	cfg.IconSet = "none"
 	m := NewModel(cfg, "")
 	m.filteredWts = []*models.WorktreeInfo{
 		{
@@ -1753,7 +1753,7 @@ func TestRenderStatusFilesIconsDisabled(t *testing.T) {
 	SetIconProvider(&NerdFontV3Provider{})
 	cfg := config.DefaultConfig()
 	cfg.WorktreeDir = t.TempDir()
-	cfg.ShowIcons = false
+	cfg.IconSet = "none"
 	m := NewModel(cfg, "")
 	m.focusedPane = 1
 	m.statusViewport = viewport.New(40, 10)

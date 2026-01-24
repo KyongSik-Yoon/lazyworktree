@@ -162,10 +162,10 @@ func (m *Model) buildInfoContent(wt *models.WorktreeInfo) string {
 		behindStyle := lipgloss.NewStyle().Foreground(m.theme.ErrorFg)
 		parts := make([]string, 0, 2)
 		if wt.Ahead > 0 {
-			parts = append(parts, aheadStyle.Render(fmt.Sprintf("%s%d", aheadIndicator(m.config.ShowIcons), wt.Ahead)))
+			parts = append(parts, aheadStyle.Render(fmt.Sprintf("%s%d", aheadIndicator(m.config.IconsEnabled()), wt.Ahead)))
 		}
 		if wt.Behind > 0 {
-			parts = append(parts, behindStyle.Render(fmt.Sprintf("%s%d", behindIndicator(m.config.ShowIcons), wt.Behind)))
+			parts = append(parts, behindStyle.Render(fmt.Sprintf("%s%d", behindIndicator(m.config.IconsEnabled()), wt.Behind)))
 		}
 		infoLines = append(infoLines, fmt.Sprintf("%s %s", labelStyle.Render("Divergence:"), strings.Join(parts, " ")))
 	}
@@ -173,7 +173,7 @@ func (m *Model) buildInfoContent(wt *models.WorktreeInfo) string {
 		// Match Python: white number, colored state (green=OPEN, magenta=MERGED, red=else)
 		prLabelStyle := lipgloss.NewStyle().Foreground(m.theme.Accent).Bold(true) // Accent for PR prominence
 		prPrefix := "PR:"
-		if m.config.ShowIcons {
+		if m.config.IconsEnabled() {
 			prPrefix = iconWithSpace(getIconPR()) + prPrefix
 		}
 		prLabel := prLabelStyle.Render(prPrefix)
@@ -202,7 +202,7 @@ func (m *Model) buildInfoContent(wt *models.WorktreeInfo) string {
 				authorText = wt.PR.Author
 			}
 			if wt.PR.AuthorIsBot {
-				authorText = iconPrefix(UIIconBot, m.config.ShowIcons) + authorText
+				authorText = iconPrefix(UIIconBot, m.config.IconsEnabled()) + authorText
 			}
 			infoLines = append(infoLines, fmt.Sprintf("     by %s", grayStyle.Render(authorText)))
 		}
@@ -236,7 +236,7 @@ func (m *Model) buildInfoContent(wt *models.WorktreeInfo) string {
 				default:
 					style = grayStyle
 				}
-				symbol := getCIStatusIcon(check.Conclusion, false, m.config.ShowIcons)
+				symbol := getCIStatusIcon(check.Conclusion, false, m.config.IconsEnabled())
 				infoLines = append(infoLines, fmt.Sprintf("  %s %s", style.Render(symbol), check.Name))
 			}
 		}
@@ -321,6 +321,7 @@ func (m *Model) renderStatusFiles() string {
 		Bold(true)
 
 	viewportWidth := m.statusViewport.Width
+	showIcons := m.config.IconsEnabled()
 
 	lines := make([]string, 0, len(m.statusTreeFlat))
 	for i, node := range m.statusTreeFlat {
@@ -330,9 +331,9 @@ func (m *Model) renderStatusFiles() string {
 		var fileIcon string
 		if node.IsDir() {
 			// Directory line: "  ▼ dirname" or "  ▶ dirname"
-			expandIcon := disclosureIndicator(m.statusCollapsedDirs[node.Path], m.config.ShowIcons)
+			expandIcon := disclosureIndicator(m.statusCollapsedDirs[node.Path], showIcons)
 			dirIcon := ""
-			if m.config.ShowIcons {
+			if showIcons {
 				dirIcon = iconWithSpace(deviconForName(node.Name(), true))
 			}
 			lineContent = fmt.Sprintf("%s%s %s%s", indent, expandIcon, dirIcon, node.Path)
@@ -340,7 +341,7 @@ func (m *Model) renderStatusFiles() string {
 			// File line: "    M  filename" or "    S  filename" for staged
 			status := node.File.Status
 			displayStatus := formatStatusDisplay(status)
-			if m.config.ShowIcons {
+			if showIcons {
 				fileIcon = iconWithSpace(deviconForName(node.Name(), false))
 			}
 			lineContent = fmt.Sprintf("%s  %s %s%s", indent, displayStatus, fileIcon, node.Name())

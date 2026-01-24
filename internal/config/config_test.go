@@ -23,7 +23,6 @@ func TestDefaultConfig(t *testing.T) {
 	assert.Equal(t, "delta", cfg.GitPager)
 	assert.Equal(t, "tofu", cfg.TrustMode)
 	assert.Equal(t, "rebase", cfg.MergeMethod)
-	assert.True(t, cfg.ShowIcons)
 	assert.Equal(t, "nerd-font-v3", cfg.IconSet)
 	assert.Empty(t, cfg.WorktreeDir)
 	assert.Empty(t, cfg.InitCommands)
@@ -504,21 +503,30 @@ func TestParseConfig(t *testing.T) {
 			},
 		},
 		{
-			name: "show_icons false",
-			data: map[string]interface{}{
-				"show_icons": false,
-			},
-			validate: func(t *testing.T, cfg *AppConfig) {
-				assert.False(t, cfg.ShowIcons)
-			},
-		},
-		{
 			name: "icon_set nerd-font-v3",
 			data: map[string]interface{}{
 				"icon_set": "nerd-font-v3",
 			},
 			validate: func(t *testing.T, cfg *AppConfig) {
 				assert.Equal(t, "nerd-font-v3", cfg.IconSet)
+			},
+		},
+		{
+			name: "icon_set none",
+			data: map[string]interface{}{
+				"icon_set": "none",
+			},
+			validate: func(t *testing.T, cfg *AppConfig) {
+				assert.Equal(t, "none", cfg.IconSet)
+			},
+		},
+		{
+			name: "icon_set empty disables icons",
+			data: map[string]interface{}{
+				"icon_set": "",
+			},
+			validate: func(t *testing.T, cfg *AppConfig) {
+				assert.Equal(t, "none", cfg.IconSet)
 			},
 		},
 		{
@@ -545,7 +553,7 @@ func TestParseConfig(t *testing.T) {
 				"icon_set": "invalid",
 			},
 			expectError: true,
-			errContains: "available: nerd-font-v3, emoji, text",
+			errContains: "available: nerd-font-v3, emoji, text, none",
 		},
 		{
 			name: "max_untracked_diffs",
