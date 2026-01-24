@@ -388,6 +388,8 @@ func TestGetCIStatusIcon(t *testing.T) {
 		{name: "success icon", ciStatus: "success", isDraft: false, expected: "✓"},
 		{name: "failure icon", ciStatus: "failure", isDraft: false, expected: "✗"},
 		{name: "pending icon", ciStatus: "pending", isDraft: false, expected: "~"},
+		{name: "skipped icon", ciStatus: "skipped", isDraft: false, expected: "-"},
+		{name: "cancelled icon", ciStatus: "cancelled", isDraft: false, expected: "⊘"},
 		{name: "none icon", ciStatus: "none", isDraft: false, expected: "◯"},
 		{name: "unknown defaults to none", ciStatus: "unknown", isDraft: false, expected: "◯"},
 	}
@@ -686,7 +688,7 @@ func TestCommandPaletteScreenSelectedReturnsEmptyForSection(t *testing.T) {
 
 func TestNewLoadingScreen(t *testing.T) {
 	thm := theme.Dracula()
-	screen := NewLoadingScreen("Loading data...", thm)
+	screen := NewLoadingScreen("Loading data...", thm, true)
 
 	if screen.message != "Loading data..." {
 		t.Errorf("expected message 'Loading data...', got %q", screen.message)
@@ -707,7 +709,7 @@ func TestNewLoadingScreen(t *testing.T) {
 
 func TestLoadingScreenTick(t *testing.T) {
 	thm := theme.Dracula()
-	screen := NewLoadingScreen("Loading...", thm)
+	screen := NewLoadingScreen("Loading...", thm, true)
 
 	// Initial state
 	if screen.frameIdx != 0 || screen.borderColorIdx != 0 {
@@ -733,7 +735,7 @@ func TestLoadingScreenTick(t *testing.T) {
 
 func TestLoadingScreenView(t *testing.T) {
 	thm := theme.Dracula()
-	screen := NewLoadingScreen("Fetching PR data...", thm)
+	screen := NewLoadingScreen("Fetching PR data...", thm, true)
 
 	view := screen.View()
 
@@ -759,9 +761,10 @@ func TestLoadingScreenTipTruncation(t *testing.T) {
 	thm := theme.Dracula()
 	// Create a screen and manually set a very long tip
 	screen := &LoadingScreen{
-		message: "Loading...",
-		tip:     "This is an extremely long tip that should definitely be truncated because it exceeds the maximum allowed length for display in the modal",
-		thm:     thm,
+		message:   "Loading...",
+		tip:       "This is an extremely long tip that should definitely be truncated because it exceeds the maximum allowed length for display in the modal",
+		thm:       thm,
+		showIcons: true,
 	}
 
 	view := screen.View()
@@ -774,7 +777,7 @@ func TestLoadingScreenTipTruncation(t *testing.T) {
 
 func TestLoadingScreenBorderColors(t *testing.T) {
 	thm := theme.Dracula()
-	screen := NewLoadingScreen("Loading...", thm)
+	screen := NewLoadingScreen("Loading...", thm, true)
 
 	colors := screen.loadingBorderColors()
 	if len(colors) != 4 {

@@ -412,9 +412,11 @@ func TestCoerceInt(t *testing.T) {
 
 func TestParseConfig(t *testing.T) {
 	tests := []struct {
-		name     string
-		data     map[string]interface{}
-		validate func(*testing.T, *AppConfig)
+		name        string
+		data        map[string]interface{}
+		validate    func(*testing.T, *AppConfig)
+		expectError bool
+		errContains string
 	}{
 		{
 			name: "empty config uses defaults",
@@ -529,13 +531,21 @@ func TestParseConfig(t *testing.T) {
 			},
 		},
 		{
-			name: "icon_set invalid defaults to default",
+			name: "icon_set text",
+			data: map[string]interface{}{
+				"icon_set": "text",
+			},
+			validate: func(t *testing.T, cfg *AppConfig) {
+				assert.Equal(t, "text", cfg.IconSet)
+			},
+		},
+		{
+			name: "icon_set invalid returns error",
 			data: map[string]interface{}{
 				"icon_set": "invalid",
 			},
-			validate: func(t *testing.T, cfg *AppConfig) {
-				assert.Equal(t, "nerd-font-v3", cfg.IconSet)
-			},
+			expectError: true,
+			errContains: "available: nerd-font-v3, emoji, text",
 		},
 		{
 			name: "max_untracked_diffs",
@@ -1064,7 +1074,15 @@ func TestParseConfig(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cfg := parseConfig(tt.data)
+			cfg, err := parseConfig(tt.data)
+			if tt.expectError {
+				require.Error(t, err)
+				if tt.errContains != "" {
+					assert.Contains(t, err.Error(), tt.errContains)
+				}
+				return
+			}
+			require.NoError(t, err)
 			assert.NotNil(t, cfg)
 			tt.validate(t, cfg)
 		})
@@ -1667,7 +1685,8 @@ func TestParseConfig_CustomCommands(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cfg := parseConfig(tt.input)
+			cfg, err := parseConfig(tt.input)
+			require.NoError(t, err)
 			tt.validate(t, cfg)
 		})
 	}
@@ -1677,7 +1696,8 @@ func TestParseConfigPager(t *testing.T) {
 	input := map[string]interface{}{
 		"pager": "less -R",
 	}
-	cfg := parseConfig(input)
+	cfg, err := parseConfig(input)
+	require.NoError(t, err)
 	assert.Equal(t, "less -R", cfg.Pager)
 }
 
@@ -1859,7 +1879,8 @@ func TestMaxNameLengthConfig(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cfg := parseConfig(tt.data)
+			cfg, err := parseConfig(tt.data)
+			require.NoError(t, err)
 			assert.Equal(t, tt.expected, cfg.MaxNameLength, "MaxNameLength mismatch")
 		})
 	}

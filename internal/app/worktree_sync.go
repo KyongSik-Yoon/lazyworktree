@@ -79,7 +79,7 @@ func (m *Model) beginPush(wt *models.WorktreeInfo, args []string) tea.Cmd {
 	m.loading = true
 	m.loadingOperation = "push"
 	m.statusContent = "Pushing to upstream..."
-	m.loadingScreen = NewLoadingScreen("Pushing to upstream...", m.theme)
+	m.loadingScreen = NewLoadingScreen("Pushing to upstream...", m.theme, m.config.ShowIcons)
 	m.currentScreen = screenLoading
 	return m.runPush(wt, args)
 }
@@ -89,7 +89,7 @@ func (m *Model) beginSync(wt *models.WorktreeInfo, pullArgs, pushArgs []string) 
 	m.loading = true
 	m.loadingOperation = "sync"
 	m.statusContent = "Synchronising with upstream..."
-	m.loadingScreen = NewLoadingScreen("Synchronising with upstream...", m.theme)
+	m.loadingScreen = NewLoadingScreen("Synchronising with upstream...", m.theme, m.config.ShowIcons)
 	m.currentScreen = screenLoading
 	return m.runSync(wt, pullArgs, pushArgs)
 }
@@ -155,7 +155,7 @@ func (m *Model) updateFromBase(wt *models.WorktreeInfo) tea.Cmd {
 	m.loading = true
 	m.loadingOperation = "sync"
 	m.statusContent = fmt.Sprintf("Updating from %s...", wt.PR.BaseBranch)
-	m.loadingScreen = NewLoadingScreen(fmt.Sprintf("Updating from %s...", wt.PR.BaseBranch), m.theme)
+	m.loadingScreen = NewLoadingScreen(fmt.Sprintf("Updating from %s...", wt.PR.BaseBranch), m.theme, m.config.ShowIcons)
 	m.currentScreen = screenLoading
 
 	// Use gh pr update-branch with --rebase if merge_method is rebase

@@ -35,20 +35,23 @@ func TestDeviconForNameFile(t *testing.T) {
 	}
 }
 
-func TestNerdFontV2ProviderFileIcons(t *testing.T) {
-	provider := &NerdFontV2Provider{}
-	assert.Equal(t, "﵂", provider.GetFileIcon("main.vue", false))
-	assert.Equal(t, "", provider.GetFileIcon("src", true))
-}
-
 func TestNerdFontV3ProviderFileIcons(t *testing.T) {
 	provider := &NerdFontV3Provider{}
 	assert.Equal(t, "", provider.GetFileIcon("main.vue", false))
 }
 
+func TestTextProviderFileIcons(t *testing.T) {
+	provider := &TextProvider{}
+	assert.Empty(t, provider.GetFileIcon("main.vue", false))
+	assert.Equal(t, "/", provider.GetFileIcon("src", true))
+}
+
 func TestUIIconUsesProvider(t *testing.T) {
 	SetIconProvider(&EmojiProvider{})
 	assert.Equal(t, "🔍", uiIcon(UIIconSearch))
+
+	SetIconProvider(&TextProvider{})
+	assert.Equal(t, "/", uiIcon(UIIconSearch))
 
 	SetIconProvider(&NerdFontV3Provider{})
 	assert.Equal(t, nerdFontUIIconSearch, uiIcon(UIIconSearch))
@@ -67,7 +70,7 @@ func TestStatusAndSyncIndicators(t *testing.T) {
 	SetIconProvider(&EmojiProvider{})
 	t.Cleanup(func() { SetIconProvider(&NerdFontV3Provider{}) })
 	assert.Equal(t, "✅", statusIndicator(true, true))
-	assert.Equal(t, "✎", statusIndicator(false, true))
+	assert.Equal(t, "✏️", statusIndicator(false, true))
 	assert.Equal(t, "C", statusIndicator(true, false))
 	assert.Equal(t, "D", statusIndicator(false, false))
 	assert.Equal(t, "✅", syncIndicator(true))

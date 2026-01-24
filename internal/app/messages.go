@@ -100,7 +100,7 @@ func (m *Model) handleWorktreesLoaded(msg worktreesLoadedMsg) (tea.Model, tea.Cm
 	cmds := []tea.Cmd{}
 	if m.config.AutoFetchPRs && !m.prDataLoaded {
 		m.loading = true
-		m.loadingScreen = NewLoadingScreen("Fetching PR data...", m.theme)
+		m.loadingScreen = NewLoadingScreen("Fetching PR data...", m.theme, m.config.ShowIcons)
 		m.currentScreen = screenLoading
 		cmds = append(cmds, m.fetchPRData())
 	} else if cmd := m.updateDetailsView(); cmd != nil {
@@ -380,7 +380,7 @@ func (m *Model) handleOpenPRsLoaded(msg openPRsLoadedMsg) tea.Cmd {
 					// Create worktree from PR branch (can take time, so do it async with a loading pulse)
 					m.loading = true
 					m.statusContent = fmt.Sprintf("Creating worktree from PR/MR #%d...", pr.Number)
-					m.loadingScreen = NewLoadingScreen(m.statusContent, m.theme)
+					m.loadingScreen = NewLoadingScreen(m.statusContent, m.theme, m.config.ShowIcons)
 					m.currentScreen = screenLoading
 					m.pendingSelectWorktreePath = targetPath
 					return func() tea.Msg {
@@ -443,7 +443,7 @@ func (m *Model) handleOpenPRsLoaded(msg openPRsLoadedMsg) tea.Cmd {
 			// Create worktree from PR branch (can take time, so do it async with a loading pulse)
 			m.loading = true
 			m.statusContent = fmt.Sprintf("Creating worktree from PR/MR #%d...", pr.Number)
-			m.loadingScreen = NewLoadingScreen(m.statusContent, m.theme)
+			m.loadingScreen = NewLoadingScreen(m.statusContent, m.theme, m.config.ShowIcons)
 			m.currentScreen = screenLoading
 			m.pendingSelectWorktreePath = targetPath
 			return func() tea.Msg {
@@ -572,7 +572,7 @@ func (m *Model) handleOpenIssuesLoaded(msg openIssuesLoadedMsg) tea.Cmd {
 					// Create worktree from base branch (can take time, so do it async with a loading pulse)
 					m.loading = true
 					m.statusContent = fmt.Sprintf("Creating worktree from issue #%d...", issue.Number)
-					m.loadingScreen = NewLoadingScreen(m.statusContent, m.theme)
+					m.loadingScreen = NewLoadingScreen(m.statusContent, m.theme, m.config.ShowIcons)
 					m.currentScreen = screenLoading
 					m.pendingSelectWorktreePath = targetPath
 					return func() tea.Msg {

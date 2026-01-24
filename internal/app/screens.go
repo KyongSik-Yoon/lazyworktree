@@ -15,13 +15,6 @@ import (
 	"github.com/chmouel/lazyworktree/internal/theme"
 )
 
-// spinnerFrames is a simple rotating dot animation for the loading screen.
-var spinnerFrames = []string{
-	"● ● ◌",
-	"● ◌ ●",
-	"◌ ● ●",
-}
-
 type screenType int
 
 const (
@@ -123,6 +116,7 @@ type HelpScreen struct {
 	searching   bool
 	searchQuery string
 	thm         *theme.Theme
+	showIcons   bool
 }
 
 // TrustScreen surfaces trust warnings and records commands for a path.
@@ -252,6 +246,7 @@ type LoadingScreen struct {
 	borderColorIdx int
 	tip            string
 	thm            *theme.Theme
+	showIcons      bool
 }
 
 // NewConfirmScreen creates a confirm screen preloaded with a message.
@@ -284,14 +279,15 @@ func NewInfoScreen(message string, thm *theme.Theme) *InfoScreen {
 }
 
 // NewLoadingScreen creates a loading modal with the given message.
-func NewLoadingScreen(message string, thm *theme.Theme) *LoadingScreen {
+func NewLoadingScreen(message string, thm *theme.Theme, showIcons bool) *LoadingScreen {
 	// Pick a random tip (cryptographic randomness not needed for UI tips)
 	tip := loadingTips[rand.IntN(len(loadingTips))] //nolint:gosec
 
 	return &LoadingScreen{
-		message: message,
-		tip:     tip,
-		thm:     thm,
+		message:   message,
+		tip:       tip,
+		thm:       thm,
+		showIcons: showIcons,
 	}
 }
 
@@ -769,7 +765,8 @@ func (s *LoadingScreen) loadingBorderColors() []lipgloss.Color {
 
 // Tick advances the loading animation (spinner frame and border colour).
 func (s *LoadingScreen) Tick() {
-	s.frameIdx = (s.frameIdx + 1) % len(spinnerFrames)
+	frames := spinnerFrameSet(s.showIcons)
+	s.frameIdx = (s.frameIdx + 1) % len(frames)
 	colors := s.loadingBorderColors()
 	s.borderColorIdx = (s.borderColorIdx + 1) % len(colors)
 }
@@ -790,7 +787,8 @@ func (s *LoadingScreen) View() string {
 		Height(height)
 
 	// Spinner animation
-	spinnerFrame := spinnerFrames[s.frameIdx%len(spinnerFrames)]
+	frames := spinnerFrameSet(s.showIcons)
+	spinnerFrame := frames[s.frameIdx%len(frames)]
 	spinnerStyle := lipgloss.NewStyle().
 		Foreground(s.thm.Accent).
 		Bold(true)
@@ -1213,7 +1211,7 @@ Example: lazyworktree --config=lw.theme=nord --config=lw.auto_fetch_prs=true
 Custom themes: define custom_themes in the configuration file. Without a base theme, all 11 colour fields are required.
 
 **{{HELP_ICON_CONFIGURATION}}Icon Configuration**
-- icon_set: Choose icon set ("nerd-font-v3", "nerd-font-v2", "emoji", "unicode"). Default: "nerd-font-v3". Applies to file icons, UI indicators, and help headings. Nerd Font v2 uses the lazygit icon map patched for Nerd Fonts v2.
+- icon_set: Choose icon set ("nerd-font-v3", "emoji", "text"). Default: "nerd-font-v3". Applies to file icons, UI indicators, and help headings. The text set uses plain labels.
 - show_icons: Toggle icons across file trees, PR/issue views, CI checks, and UI indicators (true/false).
 
 {{HELP_TIP}}Tip: PR data is not fetched by default for speed.
@@ -1292,6 +1290,7 @@ Custom themes: define custom_themes in the configuration file. Without a base th
 		fullText:    fullLines,
 		searchInput: ti,
 		thm:         thm,
+		showIcons:   showIcons,
 	}
 
 	hs.refreshContent()
@@ -1892,6 +1891,10 @@ func getCIStatusIcon(ciStatus string, isDraft, showIcons bool) string {
 		return "✓"
 	case "failure":
 		return "✗"
+	case "skipped":
+		return "-"
+	case "cancelled":
+		return "⊘"
 	case "pending":
 		return "~"
 	default:
@@ -2302,7 +2305,8 @@ func (s *HelpScreen) renderContent() string {
 		// Style section headers (lines that start with ** and end with **)
 		if strings.HasPrefix(line, "**") && strings.HasSuffix(line, "**") {
 			header := strings.TrimPrefix(strings.TrimSuffix(line, "**"), "**")
-			styledLines = append(styledLines, titleStyle.Render("▶ "+header))
+			prefix := disclosureIndicator(false, s.showIcons)
+			styledLines = append(styledLines, titleStyle.Render(prefix+" "+header))
 			continue
 		}
 
@@ -3406,10 +3410,7 @@ func (s *CommitFilesScreen) View() string {
 
 		var label string
 		if node.IsDir() {
-			icon := "▼"
-			if s.collapsedDirs[node.Path] {
-				icon = "▶"
-			}
+			icon := disclosureIndicator(s.collapsedDirs[node.Path], s.showIcons)
 			// Show just the last part of the path for display
 			displayPath := node.Path
 			if parts := strings.Split(node.Path, "/"); len(parts) > 0 {

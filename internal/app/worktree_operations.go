@@ -539,7 +539,7 @@ func (m *Model) showPruneMerged() tea.Cmd {
 	m.updateTable()
 	m.updateTableColumns(m.worktreeTable.Width())
 	m.loading = true
-	m.loadingScreen = NewLoadingScreen("Fetching PR data...", m.theme)
+	m.loadingScreen = NewLoadingScreen("Fetching PR data...", m.theme, m.config.ShowIcons)
 	m.currentScreen = screenLoading
 	return m.fetchPRData()
 }

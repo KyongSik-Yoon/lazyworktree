@@ -1,5 +1,7 @@
 package app
 
+import "fmt"
+
 // IconProvider defines the interface for providing icons.
 type IconProvider interface {
 	GetFileIcon(name string, isDir bool) string
@@ -54,6 +56,14 @@ const (
 	UIIconBehind
 	UIIconArrowLeft
 	UIIconArrowRight
+	UIIconDisclosureOpen
+	UIIconDisclosureClosed
+	UIIconSpinnerFilled
+	UIIconSpinnerEmpty
+	UIIconPRStateOpen
+	UIIconPRStateMerged
+	UIIconPRStateClosed
+	UIIconPRStateUnknown
 )
 
 const (
@@ -87,39 +97,55 @@ const (
 	nerdFontUIIconBehind            = "↓"
 	nerdFontUIIconArrowLeft         = "←"
 	nerdFontUIIconArrowRight        = "→"
+	nerdFontUIIconDisclosureOpen    = "▼"
+	nerdFontUIIconDisclosureClosed  = "▶"
+	nerdFontUIIconSpinnerFilled     = "●"
+	nerdFontUIIconSpinnerEmpty      = "◌"
+	nerdFontUIIconPRStateOpen       = nerdFontUIIconSpinnerFilled
+	nerdFontUIIconPRStateMerged     = "◆"
+	nerdFontUIIconPRStateClosed     = "✕"
+	nerdFontUIIconPRStateUnknown    = "?"
 )
 
 const (
-	unicodeUIIconHelpTitle         = "*"
-	unicodeUIIconNavigation        = ">"
-	unicodeUIIconStatusPane        = "S"
-	unicodeUIIconLogPane           = "L"
-	unicodeUIIconCommitTree        = "T"
-	unicodeUIIconWorktreeActions   = "W"
-	unicodeUIIconBranchNaming      = "B"
-	unicodeUIIconViewingTools      = "/"
-	unicodeUIIconRepoOps           = "R"
-	unicodeUIIconBackgroundRefresh = "H"
-	unicodeUIIconFilterSearch      = "/"
-	unicodeUIIconStatusIndicators  = "I"
-	unicodeUIIconHelpNavigation    = "?"
-	unicodeUIIconShellCompletion   = "C"
-	unicodeUIIconConfiguration     = "C"
-	unicodeUIIconIconConfiguration = "I"
-	unicodeUIIconTip               = "!"
-	unicodeUIIconSearch            = "/"
-	unicodeUIIconFilter            = "F"
-	unicodeUIIconZoom              = "Z"
-	unicodeUIIconBot               = "B"
-	unicodeUIIconThemeSelect       = "T"
-	unicodeUIIconWorktreeMain      = "M"
-	unicodeUIIconWorktree          = "W"
-	unicodeUIIconStatusClean       = "C"
-	unicodeUIIconStatusDirty       = "D"
-	unicodeUIIconAhead             = "↑"
-	unicodeUIIconBehind            = "↓"
-	unicodeUIIconArrowLeft         = "←"
-	unicodeUIIconArrowRight        = "→"
+	textUIIconHelpTitle         = "*"
+	textUIIconNavigation        = ">"
+	textUIIconStatusPane        = "S"
+	textUIIconLogPane           = "L"
+	textUIIconCommitTree        = "T"
+	textUIIconWorktreeActions   = "W"
+	textUIIconBranchNaming      = "B"
+	textUIIconSearch            = "/"
+	textUIIconViewingTools      = textUIIconSearch
+	textUIIconRepoOps           = "R"
+	textUIIconBackgroundRefresh = "H"
+	textUIIconFilterSearch      = textUIIconSearch
+	textUIIconStatusIndicators  = "I"
+	textUIIconHelpNavigation    = "?"
+	textUIIconShellCompletion   = "C"
+	textUIIconConfiguration     = textUIIconShellCompletion
+	textUIIconIconConfiguration = textUIIconStatusIndicators
+	textUIIconTip               = "!"
+	textUIIconFilter            = "F"
+	textUIIconZoom              = "Z"
+	textUIIconBot               = textUIIconBranchNaming
+	textUIIconThemeSelect       = "T"
+	textUIIconWorktreeMain      = "M"
+	textUIIconWorktree          = textUIIconWorktreeActions
+	textUIIconStatusClean       = textUIIconShellCompletion
+	textUIIconStatusDirty       = "D"
+	textUIIconAhead             = "↑"
+	textUIIconBehind            = "↓"
+	textUIIconArrowLeft         = "←"
+	textUIIconArrowRight        = "→"
+	textUIIconDisclosureOpen    = "▼"
+	textUIIconDisclosureClosed  = "▶"
+	textUIIconSpinnerFilled     = "●"
+	textUIIconSpinnerEmpty      = "◌"
+	textUIIconPRStateOpen       = textUIIconSpinnerFilled
+	textUIIconPRStateMerged     = "◆"
+	textUIIconPRStateClosed     = "✕"
+	textUIIconPRStateUnknown    = "?"
 )
 
 // NerdFontV3Provider implements IconProvider for Nerd Font v3.
@@ -170,46 +196,6 @@ func (p *NerdFontV3Provider) GetUIIcon(icon UIIcon) string {
 	return nerdFontUIIcon(icon, p.GetPRIcon(), p.GetIssueIcon())
 }
 
-// NerdFontV2Provider implements IconProvider for Nerd Font v2.
-type NerdFontV2Provider struct{}
-
-// GetFileIcon returns the file icon for the given name and type.
-func (p *NerdFontV2Provider) GetFileIcon(name string, isDir bool) string {
-	if name == "" {
-		return ""
-	}
-	return lazyGitFileIcon(name, isDir, 2)
-}
-
-// GetPRIcon returns the PR icon.
-func (p *NerdFontV2Provider) GetPRIcon() string { return "" }
-
-// GetIssueIcon returns the issue icon.
-func (p *NerdFontV2Provider) GetIssueIcon() string { return "" }
-
-// GetCIIcon returns the CI status icon for the given conclusion.
-func (p *NerdFontV2Provider) GetCIIcon(conclusion string) string {
-	switch conclusion {
-	case iconSuccess:
-		return ""
-	case iconFailure:
-		return ""
-	case iconSkipped:
-		return ""
-	case iconCancelled:
-		return ""
-	case iconPending, "":
-		return ""
-	default:
-		return ""
-	}
-}
-
-// GetUIIcon returns the UI icon for the given identifier.
-func (p *NerdFontV2Provider) GetUIIcon(icon UIIcon) string {
-	return nerdFontUIIcon(icon, p.GetPRIcon(), p.GetIssueIcon())
-}
-
 // EmojiProvider implements IconProvider using emojis.
 type EmojiProvider struct{}
 
@@ -250,11 +236,14 @@ func (p *EmojiProvider) GetUIIcon(icon UIIcon) string {
 	return emojiUIIcon(icon, p.GetPRIcon(), p.GetIssueIcon())
 }
 
-// UnicodeProvider implements IconProvider using Unicode characters.
-type UnicodeProvider struct{}
+// TextProvider implements IconProvider using simple Unicode-safe characters.
+type TextProvider struct{}
 
 // GetFileIcon returns the file icon for the given name and type.
-func (p *UnicodeProvider) GetFileIcon(name string, isDir bool) string {
+func (p *TextProvider) GetFileIcon(name string, isDir bool) string {
+	if name == "" {
+		return ""
+	}
 	if isDir {
 		return "/"
 	}
@@ -262,13 +251,13 @@ func (p *UnicodeProvider) GetFileIcon(name string, isDir bool) string {
 }
 
 // GetPRIcon returns the PR icon.
-func (p *UnicodeProvider) GetPRIcon() string { return "[PR]" }
+func (p *TextProvider) GetPRIcon() string { return "[PR]" }
 
 // GetIssueIcon returns the issue icon.
-func (p *UnicodeProvider) GetIssueIcon() string { return "[I]" }
+func (p *TextProvider) GetIssueIcon() string { return "[I]" }
 
 // GetCIIcon returns the CI status icon for the given conclusion.
-func (p *UnicodeProvider) GetCIIcon(conclusion string) string {
+func (p *TextProvider) GetCIIcon(conclusion string) string {
 	switch conclusion {
 	case iconSuccess:
 		return "✓"
@@ -286,8 +275,8 @@ func (p *UnicodeProvider) GetCIIcon(conclusion string) string {
 }
 
 // GetUIIcon returns the UI icon for the given identifier.
-func (p *UnicodeProvider) GetUIIcon(icon UIIcon) string {
-	return unicodeUIIcon(icon, p.GetPRIcon(), p.GetIssueIcon())
+func (p *TextProvider) GetUIIcon(icon UIIcon) string {
+	return textUIIcon(icon, p.GetPRIcon(), p.GetIssueIcon())
 }
 
 func nerdFontUIIcon(icon UIIcon, prIcon, issueIcon string) string {
@@ -356,6 +345,22 @@ func nerdFontUIIcon(icon UIIcon, prIcon, issueIcon string) string {
 		return nerdFontUIIconArrowLeft
 	case UIIconArrowRight:
 		return nerdFontUIIconArrowRight
+	case UIIconDisclosureOpen:
+		return nerdFontUIIconDisclosureOpen
+	case UIIconDisclosureClosed:
+		return nerdFontUIIconDisclosureClosed
+	case UIIconSpinnerFilled:
+		return nerdFontUIIconSpinnerFilled
+	case UIIconSpinnerEmpty:
+		return nerdFontUIIconSpinnerEmpty
+	case UIIconPRStateOpen:
+		return nerdFontUIIconPRStateOpen
+	case UIIconPRStateMerged:
+		return nerdFontUIIconPRStateMerged
+	case UIIconPRStateClosed:
+		return nerdFontUIIconPRStateClosed
+	case UIIconPRStateUnknown:
+		return nerdFontUIIconPRStateUnknown
 	default:
 		return ""
 	}
@@ -418,7 +423,7 @@ func emojiUIIcon(icon UIIcon, prIcon, issueIcon string) string {
 	case UIIconStatusClean, UIIconSyncClean:
 		return "✅"
 	case UIIconStatusDirty:
-		return "✎"
+		return "✏️"
 	case UIIconAhead:
 		return "⬆️"
 	case UIIconBehind:
@@ -427,77 +432,109 @@ func emojiUIIcon(icon UIIcon, prIcon, issueIcon string) string {
 		return "⬅️"
 	case UIIconArrowRight:
 		return "➡️"
+	case UIIconDisclosureOpen:
+		return "▼"
+	case UIIconDisclosureClosed:
+		return "▶"
+	case UIIconSpinnerFilled:
+		return "●"
+	case UIIconSpinnerEmpty:
+		return "◌"
+	case UIIconPRStateOpen:
+		return "🟢"
+	case UIIconPRStateMerged:
+		return "✅"
+	case UIIconPRStateClosed:
+		return "❌"
+	case UIIconPRStateUnknown:
+		return "❓"
 	default:
 		return ""
 	}
 }
 
-func unicodeUIIcon(icon UIIcon, prIcon, issueIcon string) string {
+func textUIIcon(icon UIIcon, prIcon, issueIcon string) string {
 	switch icon {
 	case UIIconHelpTitle:
-		return unicodeUIIconHelpTitle
+		return textUIIconHelpTitle
 	case UIIconNavigation:
-		return unicodeUIIconNavigation
+		return textUIIconNavigation
 	case UIIconStatusPane:
-		return unicodeUIIconStatusPane
+		return textUIIconStatusPane
 	case UIIconLogPane:
-		return unicodeUIIconLogPane
+		return textUIIconLogPane
 	case UIIconCommitTree:
-		return unicodeUIIconCommitTree
+		return textUIIconCommitTree
 	case UIIconWorktreeActions:
-		return unicodeUIIconWorktreeActions
+		return textUIIconWorktreeActions
 	case UIIconBranchNaming:
-		return unicodeUIIconBranchNaming
+		return textUIIconBranchNaming
 	case UIIconViewingTools:
-		return unicodeUIIconViewingTools
+		return textUIIconViewingTools
 	case UIIconRepoOps:
-		return unicodeUIIconRepoOps
+		return textUIIconRepoOps
 	case UIIconBackgroundRefresh:
-		return unicodeUIIconBackgroundRefresh
+		return textUIIconBackgroundRefresh
 	case UIIconFilterSearch:
-		return unicodeUIIconFilterSearch
+		return textUIIconFilterSearch
 	case UIIconStatusIndicators:
-		return unicodeUIIconStatusIndicators
+		return textUIIconStatusIndicators
 	case UIIconHelpNavigation:
-		return unicodeUIIconHelpNavigation
+		return textUIIconHelpNavigation
 	case UIIconShellCompletion:
-		return unicodeUIIconShellCompletion
+		return textUIIconShellCompletion
 	case UIIconConfiguration:
-		return unicodeUIIconConfiguration
+		return textUIIconConfiguration
 	case UIIconIconConfiguration:
-		return unicodeUIIconIconConfiguration
+		return textUIIconIconConfiguration
 	case UIIconTip:
-		return unicodeUIIconTip
+		return textUIIconTip
 	case UIIconSearch:
-		return unicodeUIIconSearch
+		return textUIIconSearch
 	case UIIconFilter:
-		return unicodeUIIconFilter
+		return textUIIconFilter
 	case UIIconZoom:
-		return unicodeUIIconZoom
+		return textUIIconZoom
 	case UIIconBot:
-		return unicodeUIIconBot
+		return textUIIconBot
 	case UIIconThemeSelect:
-		return unicodeUIIconThemeSelect
+		return textUIIconThemeSelect
 	case UIIconPRSelect:
 		return prIcon
 	case UIIconIssueSelect:
 		return issueIcon
 	case UIIconWorktreeMain:
-		return unicodeUIIconWorktreeMain
+		return textUIIconWorktreeMain
 	case UIIconWorktree:
-		return unicodeUIIconWorktree
+		return textUIIconWorktree
 	case UIIconStatusClean, UIIconSyncClean:
-		return unicodeUIIconStatusClean
+		return textUIIconStatusClean
 	case UIIconStatusDirty:
-		return unicodeUIIconStatusDirty
+		return textUIIconStatusDirty
 	case UIIconAhead:
-		return unicodeUIIconAhead
+		return textUIIconAhead
 	case UIIconBehind:
-		return unicodeUIIconBehind
+		return textUIIconBehind
 	case UIIconArrowLeft:
-		return unicodeUIIconArrowLeft
+		return textUIIconArrowLeft
 	case UIIconArrowRight:
-		return unicodeUIIconArrowRight
+		return textUIIconArrowRight
+	case UIIconDisclosureOpen:
+		return textUIIconDisclosureOpen
+	case UIIconDisclosureClosed:
+		return textUIIconDisclosureClosed
+	case UIIconSpinnerFilled:
+		return textUIIconSpinnerFilled
+	case UIIconSpinnerEmpty:
+		return textUIIconSpinnerEmpty
+	case UIIconPRStateOpen:
+		return textUIIconPRStateOpen
+	case UIIconPRStateMerged:
+		return textUIIconPRStateMerged
+	case UIIconPRStateClosed:
+		return textUIIconPRStateClosed
+	case UIIconPRStateUnknown:
+		return textUIIconPRStateUnknown
 	default:
 		return ""
 	}
@@ -603,6 +640,60 @@ func arrowPair(showIcons bool) string {
 		return "Up/Down"
 	}
 	return arrowUp(true) + arrowDown(true)
+}
+
+func disclosureIndicator(collapsed, showIcons bool) string {
+	if !showIcons {
+		if collapsed {
+			return ">"
+		}
+		return "v"
+	}
+	if collapsed {
+		return uiIcon(UIIconDisclosureClosed)
+	}
+	return uiIcon(UIIconDisclosureOpen)
+}
+
+func spinnerFrameSet(showIcons bool) []string {
+	if !showIcons {
+		return []string{"...", ".. ", ".  "}
+	}
+	filled := uiIcon(UIIconSpinnerFilled)
+	empty := uiIcon(UIIconSpinnerEmpty)
+	if filled == "" || empty == "" {
+		return []string{"...", ".. ", ".  "}
+	}
+	return []string{
+		fmt.Sprintf("%s %s %s", filled, filled, empty),
+		fmt.Sprintf("%s %s %s", filled, empty, filled),
+		fmt.Sprintf("%s %s %s", empty, filled, filled),
+	}
+}
+
+func prStateIndicator(state string, showIcons bool) string {
+	if !showIcons {
+		switch state {
+		case "OPEN":
+			return "O"
+		case "MERGED":
+			return "M"
+		case "CLOSED":
+			return "C"
+		default:
+			return "?"
+		}
+	}
+	switch state {
+	case "OPEN":
+		return uiIcon(UIIconPRStateOpen)
+	case "MERGED":
+		return uiIcon(UIIconPRStateMerged)
+	case "CLOSED":
+		return uiIcon(UIIconPRStateClosed)
+	default:
+		return uiIcon(UIIconPRStateUnknown)
+	}
 }
 
 func iconWithSpace(icon string) string {

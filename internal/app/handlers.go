@@ -390,7 +390,7 @@ func (m *Model) handleBuiltInKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case "r":
 		m.loading = true
-		m.loadingScreen = NewLoadingScreen(loadingRefreshWorktrees, m.theme)
+		m.loadingScreen = NewLoadingScreen(loadingRefreshWorktrees, m.theme, m.config.ShowIcons)
 		m.currentScreen = screenLoading
 		return m, m.refreshWorktrees()
 
@@ -440,7 +440,7 @@ func (m *Model) handleBuiltInKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.updateTable()
 		m.loading = true
 		m.statusContent = "Fetching PR data..."
-		m.loadingScreen = NewLoadingScreen("Fetching PR data...", m.theme)
+		m.loadingScreen = NewLoadingScreen("Fetching PR data...", m.theme, m.config.ShowIcons)
 		m.currentScreen = screenLoading
 		return m, m.fetchPRData()
 
@@ -453,7 +453,7 @@ func (m *Model) handleBuiltInKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "R":
 		m.loading = true
 		m.statusContent = "Fetching remotes..."
-		m.loadingScreen = NewLoadingScreen("Fetching remotes...", m.theme)
+		m.loadingScreen = NewLoadingScreen("Fetching remotes...", m.theme, m.config.ShowIcons)
 		m.currentScreen = screenLoading
 		return m, m.fetchRemotes()
 

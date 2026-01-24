@@ -56,9 +56,6 @@ const (
 	osDarwin  = "darwin"
 	osWindows = "windows"
 
-	// Visual symbols for enhanced UI
-	symbolFilledCircle = "●"
-
 	searchFiles = "Search files..."
 
 	// Loading messages
@@ -443,12 +440,10 @@ func NewModel(cfg *config.AppConfig, initialFilter string) *Model {
 
 	// Initialize icon provider based on config
 	switch cfg.IconSet {
-	case "nerd-font-v2":
-		SetIconProvider(&NerdFontV2Provider{})
 	case "emoji":
 		SetIconProvider(&EmojiProvider{})
-	case "unicode":
-		SetIconProvider(&UnicodeProvider{})
+	case "text":
+		SetIconProvider(&TextProvider{})
 	default:
 		SetIconProvider(&NerdFontV3Provider{})
 	}
@@ -1225,18 +1220,7 @@ func (m *Model) updateTable() {
 				if m.config.ShowIcons {
 					prIcon = iconWithSpace(getIconPR())
 				}
-				// Use Unicode symbols to indicate PR state
-				var stateSymbol string
-				switch wt.PR.State {
-				case "OPEN":
-					stateSymbol = symbolFilledCircle
-				case "MERGED":
-					stateSymbol = "◆"
-				case "CLOSED":
-					stateSymbol = "✕"
-				default:
-					stateSymbol = "?"
-				}
+				stateSymbol := prStateIndicator(wt.PR.State, m.config.ShowIcons)
 				// Right-align PR numbers for consistent column width
 				prStr = fmt.Sprintf("%s#%-5d%s", prIcon, wt.PR.Number, stateSymbol)
 			}
@@ -2311,7 +2295,7 @@ func (m *Model) showCommandPalette() tea.Cmd {
 			m.updateTableColumns(m.worktreeTable.Width())
 			m.loading = true
 			m.statusContent = "Fetching PR data..."
-			m.loadingScreen = NewLoadingScreen("Fetching PR data...", m.theme)
+			m.loadingScreen = NewLoadingScreen("Fetching PR data...", m.theme, m.config.ShowIcons)
 			m.currentScreen = screenLoading
 			return m.fetchPRData()
 		case "pr":

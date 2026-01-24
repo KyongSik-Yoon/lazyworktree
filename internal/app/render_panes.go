@@ -157,13 +157,17 @@ func (m *Model) buildInfoContent(wt *models.WorktreeInfo) string {
 		relTime := formatRelativeTime(accessTime)
 		infoLines = append(infoLines, fmt.Sprintf("%s %s", labelStyle.Render("Last Accessed:"), valueStyle.Render(relTime)))
 	}
-	if wt.Divergence != "" {
-		// Colorize arrows to match Python: cyan ahead, red behind
-		aheadIcon := aheadIndicator(m.config.ShowIcons)
-		behindIcon := behindIndicator(m.config.ShowIcons)
-		coloredDiv := strings.ReplaceAll(wt.Divergence, "↑", lipgloss.NewStyle().Foreground(m.theme.Cyan).Render(aheadIcon))
-		coloredDiv = strings.ReplaceAll(coloredDiv, "↓", lipgloss.NewStyle().Foreground(m.theme.ErrorFg).Render(behindIcon))
-		infoLines = append(infoLines, fmt.Sprintf("%s %s", labelStyle.Render("Divergence:"), coloredDiv))
+	if wt.Ahead > 0 || wt.Behind > 0 {
+		aheadStyle := lipgloss.NewStyle().Foreground(m.theme.Cyan)
+		behindStyle := lipgloss.NewStyle().Foreground(m.theme.ErrorFg)
+		parts := make([]string, 0, 2)
+		if wt.Ahead > 0 {
+			parts = append(parts, aheadStyle.Render(fmt.Sprintf("%s%d", aheadIndicator(m.config.ShowIcons), wt.Ahead)))
+		}
+		if wt.Behind > 0 {
+			parts = append(parts, behindStyle.Render(fmt.Sprintf("%s%d", behindIndicator(m.config.ShowIcons), wt.Behind)))
+		}
+		infoLines = append(infoLines, fmt.Sprintf("%s %s", labelStyle.Render("Divergence:"), strings.Join(parts, " ")))
 	}
 	if wt.PR != nil {
 		// Match Python: white number, colored state (green=OPEN, magenta=MERGED, red=else)
@@ -217,33 +221,22 @@ func (m *Model) buildInfoContent(wt *models.WorktreeInfo) string {
 			grayStyle := lipgloss.NewStyle().Foreground(m.theme.MutedFg)
 
 			for _, check := range cached.checks {
-				var symbol string
 				var style lipgloss.Style
 				switch check.Conclusion {
 				case "success":
-					symbol = "✓"
 					style = greenStyle
 				case "failure":
-					symbol = "✗"
 					style = redStyle
 				case "skipped":
-					symbol = "○"
 					style = grayStyle
 				case "cancelled":
-					symbol = "⊘"
 					style = grayStyle
 				case "pending", "":
-					symbol = symbolFilledCircle
 					style = yellowStyle
 				default:
-					symbol = "?"
 					style = grayStyle
 				}
-				if m.config.ShowIcons {
-					if icon := ciIconForConclusion(check.Conclusion); icon != "" {
-						symbol = icon
-					}
-				}
+				symbol := getCIStatusIcon(check.Conclusion, false, m.config.ShowIcons)
 				infoLines = append(infoLines, fmt.Sprintf("  %s %s", style.Render(symbol), check.Name))
 			}
 		}
@@ -262,7 +255,7 @@ func (m *Model) buildInfoContent(wt *models.WorktreeInfo) string {
 		case models.PRFetchStatusError:
 			labelStyle := lipgloss.NewStyle().Foreground(m.theme.TextFg).Bold(true)
 			infoLines = append(infoLines, labelStyle.Render("PR Status:"))
-			infoLines = append(infoLines, errorStyle.Render("  ✗ Fetch failed"))
+			infoLines = append(infoLines, errorStyle.Render("  Fetch failed"))
 
 			// Provide helpful error messages based on error content
 			switch {
@@ -337,10 +330,7 @@ func (m *Model) renderStatusFiles() string {
 		var fileIcon string
 		if node.IsDir() {
 			// Directory line: "  ▼ dirname" or "  ▶ dirname"
-			expandIcon := "▼"
-			if m.statusCollapsedDirs[node.Path] {
-				expandIcon = "▶"
-			}
+			expandIcon := disclosureIndicator(m.statusCollapsedDirs[node.Path], m.config.ShowIcons)
 			dirIcon := ""
 			if m.config.ShowIcons {
 				dirIcon = iconWithSpace(deviconForName(node.Name(), true))

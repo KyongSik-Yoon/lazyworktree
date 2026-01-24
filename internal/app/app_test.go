@@ -2089,7 +2089,7 @@ func TestFetchRemotesCompleteTriggersRefresh(t *testing.T) {
 	cfg := &config.AppConfig{WorktreeDir: t.TempDir()}
 	m := NewModel(cfg, "")
 	m.loading = true
-	m.loadingScreen = NewLoadingScreen("Fetching remotes...", m.theme)
+	m.loadingScreen = NewLoadingScreen("Fetching remotes...", m.theme, m.config.ShowIcons)
 
 	_, cmd := m.Update(fetchRemotesCompleteMsg{})
 	// loading stays true while refreshing worktrees

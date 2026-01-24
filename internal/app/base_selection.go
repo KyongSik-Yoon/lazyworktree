@@ -266,7 +266,7 @@ func (m *Model) showBranchNameInput(baseRef, defaultName string) tea.Cmd {
 		}
 		m.loading = true
 		m.statusContent = fmt.Sprintf("Creating worktree from %s...", baseRef)
-		m.loadingScreen = NewLoadingScreen(m.statusContent, m.theme)
+		m.loadingScreen = NewLoadingScreen(m.statusContent, m.theme, m.config.ShowIcons)
 		m.currentScreen = screenLoading
 
 		return m.createWorktreeFromBaseAsync(newBranch, targetPath, baseRef), true
@@ -434,7 +434,7 @@ func (m *Model) showWorktreeNameForExistingBranch(branchName string) tea.Cmd {
 		}
 		m.loading = true
 		m.statusContent = fmt.Sprintf("Checking out %s...", branchName)
-		m.loadingScreen = NewLoadingScreen(m.statusContent, m.theme)
+		m.loadingScreen = NewLoadingScreen(m.statusContent, m.theme, m.config.ShowIcons)
 		m.currentScreen = screenLoading
 
 		return m.checkoutExistingBranchAsync(worktreeName, targetPath, branchName), true
@@ -547,7 +547,7 @@ func (m *Model) createWorktreeFromBase(newBranch, targetPath, baseRef string) te
 	// Show loading screen while creating worktree (can take time, so do it async with a loading pulse)
 	m.loading = true
 	m.statusContent = fmt.Sprintf("Creating worktree from %s...", baseRef)
-	m.loadingScreen = NewLoadingScreen(m.statusContent, m.theme)
+	m.loadingScreen = NewLoadingScreen(m.statusContent, m.theme, m.config.ShowIcons)
 	m.currentScreen = screenLoading
 
 	return m.createWorktreeFromBaseAsync(newBranch, targetPath, baseRef)
@@ -761,7 +761,7 @@ func (m *Model) executeCustomCreateCommand(menu *config.CustomCreateMenu) tea.Cm
 	}
 
 	// Non-interactive mode: capture stdout directly
-	m.loadingScreen = NewLoadingScreen(fmt.Sprintf("Running: %s", menu.Label), m.theme)
+	m.loadingScreen = NewLoadingScreen(fmt.Sprintf("Running: %s", menu.Label), m.theme, m.config.ShowIcons)
 	m.currentScreen = screenLoading
 
 	return func() tea.Msg {
@@ -874,7 +874,7 @@ func (m *Model) showBaseBranchForCustomCreateMenu(menu *config.CustomCreateMenu)
 
 // executeCustomPostCommand runs a non-interactive post-creation command in the new worktree directory.
 func (m *Model) executeCustomPostCommand(script, targetPath string, env map[string]string) tea.Cmd {
-	m.loadingScreen = NewLoadingScreen("Running post-creation command...", m.theme)
+	m.loadingScreen = NewLoadingScreen("Running post-creation command...", m.theme, m.config.ShowIcons)
 	m.currentScreen = screenLoading
 
 	return func() tea.Msg {

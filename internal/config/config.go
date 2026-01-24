@@ -95,7 +95,7 @@ type AppConfig struct {
 	MergeMethod             string // Merge method for absorb: "rebase" or "merge" (default: "rebase")
 	FuzzyFinderInput        bool   // Enable fuzzy finder for input suggestions (default: false)
 	ShowIcons               bool   // Render Nerd Font icons in file trees and PR views (default: true)
-	IconSet                 string // Icon set: "nerd-font-v3", "nerd-font-v2", "emoji", "unicode" (default: "nerd-font-v3")
+	IconSet                 string // Icon set: "nerd-font-v3", "emoji", "text" (default: "nerd-font-v3")
 	IssueBranchNameTemplate string // Template for issue branch names with placeholders: {number}, {title} (default: "issue-{number}-{title}")
 	PRBranchNameTemplate    string // Template for PR branch names with placeholders: {number}, {title} (default: "pr-{number}-{title}")
 	SessionPrefix           string // Prefix for tmux/zellij session names (default: "wt-")
@@ -166,7 +166,13 @@ func DefaultConfig() *AppConfig {
 	}
 }
 
-func parseConfig(data map[string]any) *AppConfig {
+var iconSetOptions = []string{"nerd-font-v3", "emoji", "text"}
+
+func iconSetOptionsString() string {
+	return strings.Join(iconSetOptions, ", ")
+}
+
+func parseConfig(data map[string]any) (*AppConfig, error) {
 	cfg := DefaultConfig()
 
 	if worktreeDir, ok := data["worktree_dir"].(string); ok {
@@ -225,8 +231,10 @@ func parseConfig(data map[string]any) *AppConfig {
 	if iconSet, ok := data["icon_set"].(string); ok {
 		iconSet = strings.ToLower(strings.TrimSpace(iconSet))
 		switch iconSet {
-		case "nerd-font-v3", "nerd-font-v2", "emoji", "unicode":
+		case "nerd-font-v3", "emoji", "text":
 			cfg.IconSet = iconSet
+		default:
+			return nil, fmt.Errorf("invalid icon_set %q (available: %s)", iconSet, iconSetOptionsString())
 		}
 	}
 
@@ -339,7 +347,7 @@ func parseConfig(data map[string]any) *AppConfig {
 		cfg.CustomThemes = parseCustomThemes(data)
 	}
 
-	return cfg
+	return cfg, nil
 }
 
 func parseCustomCommands(data map[string]any) map[string]*CustomCommand {
@@ -729,7 +737,10 @@ func (cfg *AppConfig) ApplyCLIOverrides(overrides []string) error {
 	if err != nil {
 		return err
 	}
-	overrideCfg := parseConfig(overrideData)
+	overrideCfg, err := parseConfig(overrideData)
+	if err != nil {
+		return err
+	}
 
 	// Apply each non-zero/non-empty field from overrideCfg to cfg
 	if overrideCfg.WorktreeDir != "" {
@@ -884,7 +895,10 @@ func LoadConfig(configPath string) (*AppConfig, error) {
 	}
 
 	// 5. Parse the merged data into AppConfig
-	cfg := parseConfig(mergedData)
+	cfg, err := parseConfig(mergedData)
+	if err != nil {
+		return nil, err
+	}
 	cfg.ConfigPath = actualConfigPath
 
 	// 6. Theme detection (if theme not set from any config source)
