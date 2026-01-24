@@ -51,6 +51,7 @@ type WorktreeInfo struct {
 	Dirty          bool
 	Ahead          int
 	Behind         int
+	Unpushed       int // Commits not on any remote (for branches without upstream)
 	HasUpstream    bool
 	UpstreamBranch string // The upstream branch name (e.g., "origin/main" or "chmouel/feature-branch")
 	LastActive     string

@@ -91,8 +91,8 @@ const (
 	nerdFontUIIconThemeSelect       = ""
 	nerdFontUIIconWorktreeMain      = ""
 	nerdFontUIIconWorktree          = ""
-	nerdFontUIIconStatusClean       = ""
-	nerdFontUIIconStatusDirty       = ""
+	nerdFontUIIconStatusClean       = "-"
+	nerdFontUIIconStatusDirty       = ""
 	nerdFontUIIconAhead             = "↑"
 	nerdFontUIIconBehind            = "↓"
 	nerdFontUIIconArrowLeft         = "←"
@@ -581,16 +581,16 @@ func statusIndicator(clean, showIcons bool) string {
 		return uiIcon(UIIconStatusDirty)
 	}
 	if clean {
-		return "C"
+		return " "
 	}
-	return "D"
+	return "~"
 }
 
 func syncIndicator(showIcons bool) string {
 	if showIcons {
 		return uiIcon(UIIconSyncClean)
 	}
-	return "OK"
+	return "-"
 }
 
 func aheadIndicator(showIcons bool) string {

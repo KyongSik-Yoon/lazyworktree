@@ -516,10 +516,7 @@ func (s *ChecklistScreen) View() string {
 	// Render items
 	var itemViews []string
 
-	end := s.scrollOffset + maxVisible
-	if end > len(s.filtered) {
-		end = len(s.filtered)
-	}
+	end := min(s.scrollOffset+maxVisible, len(s.filtered))
 	start := s.scrollOffset
 	if start > end {
 		start = end

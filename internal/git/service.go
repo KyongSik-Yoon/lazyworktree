@@ -534,6 +534,17 @@ func (s *Service) GetWorktrees(ctx context.Context) ([]*models.WorktreeInfo, err
 				}
 			}
 
+			// Calculate unpushed commits for branches without upstream
+			unpushed := 0
+			if !hasUpstream {
+				unpushedRaw := s.RunGit(ctx, []string{"git", "rev-list", "-100", "HEAD", "--not", "--remotes"}, path, []int{0}, true, true)
+				for _, line := range strings.Split(unpushedRaw, "\n") {
+					if strings.TrimSpace(line) != "" {
+						unpushed++
+					}
+				}
+			}
+
 			info, exists := branchInfo[branch]
 			lastActive := ""
 			lastActiveTS := int64(0)
@@ -549,6 +560,7 @@ func (s *Service) GetWorktrees(ctx context.Context) ([]*models.WorktreeInfo, err
 				Dirty:          (untracked + modified + staged) > 0,
 				Ahead:          ahead,
 				Behind:         behind,
+				Unpushed:       unpushed,
 				HasUpstream:    hasUpstream,
 				UpstreamBranch: upstreamBranch,
 				LastActive:     lastActive,

@@ -71,10 +71,10 @@ func TestStatusAndSyncIndicators(t *testing.T) {
 	t.Cleanup(func() { SetIconProvider(&NerdFontV3Provider{}) })
 	assert.Equal(t, "✅", statusIndicator(true, true))
 	assert.Equal(t, "✏️", statusIndicator(false, true))
-	assert.Equal(t, "C", statusIndicator(true, false))
-	assert.Equal(t, "D", statusIndicator(false, false))
+	assert.Equal(t, " ", statusIndicator(true, false))
+	assert.Equal(t, "~", statusIndicator(false, false))
 	assert.Equal(t, "✅", syncIndicator(true))
-	assert.Equal(t, "OK", syncIndicator(false))
+	assert.Equal(t, "-", syncIndicator(false))
 }
 
 func TestCIIconForConclusionSuccess(t *testing.T) {

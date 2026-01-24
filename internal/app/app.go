@@ -1197,7 +1197,11 @@ func (m *Model) updateTable() {
 		var abStr string
 		switch {
 		case !wt.HasUpstream:
-			abStr = "-"
+			if wt.Unpushed > 0 {
+				abStr = fmt.Sprintf("%s%d", aheadIndicator(showIcons), wt.Unpushed)
+			} else {
+				abStr = "-"
+			}
 		case wt.Ahead == 0 && wt.Behind == 0:
 			abStr = syncIndicator(showIcons)
 			if showIcons {
