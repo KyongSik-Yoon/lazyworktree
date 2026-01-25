@@ -10,6 +10,7 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/x/ansi"
 	"github.com/chmouel/lazyworktree/internal/config"
 	"github.com/chmouel/lazyworktree/internal/models"
 	"github.com/chmouel/lazyworktree/internal/theme"
@@ -2242,7 +2243,8 @@ func (s *ListSelectionScreen) View() string {
 
 		var line string
 		if i == s.cursor {
-			line = selectedStyle.Render(label)
+			// Strip ANSI codes from label for consistent selection styling
+			line = selectedStyle.Render(ansi.Strip(label))
 		} else {
 			line = itemStyle.Render(label)
 		}

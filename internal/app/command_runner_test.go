@@ -11,6 +11,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/chmouel/lazyworktree/internal/config"
 	"github.com/chmouel/lazyworktree/internal/models"
+	"github.com/chmouel/lazyworktree/internal/theme"
 )
 
 type commandCapture struct {
@@ -738,5 +739,45 @@ func TestOpenCICheckSelectionWithChecks(t *testing.T) {
 	}
 	if m.listScreen == nil {
 		t.Fatal("expected listScreen to be set")
+	}
+}
+
+func TestCICheckSelectionColouredIcons(t *testing.T) {
+	cfg := &config.AppConfig{
+		WorktreeDir: t.TempDir(),
+	}
+	m := NewModel(cfg, "")
+	m.theme = theme.Dracula()
+	m.filteredWts = []*models.WorktreeInfo{
+		{Path: testWorktreePath, Branch: "feat"},
+	}
+	m.selectedIndex = 0
+	m.setWindowSize(120, 40)
+
+	m.ciCache["feat"] = &ciCacheEntry{
+		checks: []*models.CICheck{
+			{Name: "build", Conclusion: "success"},
+			{Name: "test", Conclusion: "failure"},
+			{Name: "lint", Conclusion: "skipped"},
+			{Name: "deploy", Conclusion: "pending"},
+		},
+	}
+
+	m.openCICheckSelection()
+
+	if m.listScreen == nil {
+		t.Fatal("expected listScreen to be set")
+	}
+	if len(m.listScreen.items) != 4 {
+		t.Fatalf("expected 4 items, got %d", len(m.listScreen.items))
+	}
+
+	// Verify each label contains the check name (icon styling is applied
+	// but ANSI codes are stripped in non-TTY test environment)
+	expectedNames := []string{"build", "test", "lint", "deploy"}
+	for i, item := range m.listScreen.items {
+		if !strings.Contains(item.label, expectedNames[i]) {
+			t.Errorf("expected label to contain %q, got %q", expectedNames[i], item.label)
+		}
 	}
 }

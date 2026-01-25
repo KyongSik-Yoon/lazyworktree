@@ -2887,13 +2887,32 @@ func (m *Model) openCICheckSelection() tea.Cmd {
 
 	// Build selection items from CI checks
 	items := make([]selectionItem, 0, len(cached.checks))
+
+	// Styled CI status icons (same pattern as render_panes.go)
+	greenStyle := lipgloss.NewStyle().Foreground(m.theme.SuccessFg)
+	redStyle := lipgloss.NewStyle().Foreground(m.theme.ErrorFg)
+	yellowStyle := lipgloss.NewStyle().Foreground(m.theme.WarnFg)
+	grayStyle := lipgloss.NewStyle().Foreground(m.theme.MutedFg)
+
 	for i, check := range cached.checks {
-		// Build status indicator
-		status := ciIconForConclusion(check.Conclusion)
-		if status == "" {
-			status = check.Status
+		var style lipgloss.Style
+		switch check.Conclusion {
+		case "success":
+			style = greenStyle
+		case "failure":
+			style = redStyle
+		case "skipped", "cancelled":
+			style = grayStyle
+		case "pending", "":
+			style = yellowStyle
+		default:
+			style = grayStyle
 		}
-		label := fmt.Sprintf("%s %s", status, check.Name)
+
+		icon := getCIStatusIcon(check.Conclusion, false, m.config.IconsEnabled())
+		styledIcon := style.Render(icon)
+		label := fmt.Sprintf("%s %s", styledIcon, check.Name)
+
 		items = append(items, selectionItem{
 			id:    fmt.Sprintf("%d", i),
 			label: label,
