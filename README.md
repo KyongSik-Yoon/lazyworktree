@@ -853,23 +853,23 @@ branch_name_script: |
 
 <img width="3730" height="2484" alt="image" src="https://github.com/user-attachments/assets/ab19a23a-852c-46c3-a6f4-a27d8519f89a" />
 
-### Command Palette (dracula theme)
+### Command Palette (nord)
 
-<img width="1754" height="1077" alt="image" src="https://github.com/user-attachments/assets/c765db31-0419-40f6-99c4-328a686447b1" />
+<img width="3730" height="2484" alt="image" src="https://github.com/user-attachments/assets/8a722eea-5d00-47b2-8e59-6019cfd6336f" />
 
-### Github Actions Logs viewer (rose-pine theme)
+### Github Actions Logs viewer (rose-pine)
 
 <img width="3730" height="2484" alt="image" src="https://github.com/user-attachments/assets/a37dd525-ff75-44f3-98b2-0c226653f699" />
 
-### Branch creation (dracula theme)
+### Branch creation (tokyo-night)
 
-<img width="1760" height="1072" alt="image" src="https://github.com/user-attachments/assets/f705c330-d1d7-4d09-9f56-85de7d37543a" />
+<img width="3730" height="2484" alt="image" src="https://github.com/user-attachments/assets/92888a4f-c3aa-4b39-b78b-d3c62897b69a" />
 
-### Files in commit view (dracula theme)
+### Files in commit view (dracula)
 
 <img width="3835" height="2116" alt="files-in-git-commit-view" src="https://github.com/user-attachments/assets/031bd043-c1a2-4f88-837e-89e26812cea7" />
 
-### Create a branch from a Issue (clean-light theme)
+### Create a branch from a Issue (clean-light)
 
 <https://github.com/user-attachments/assets/a733b95f-cd11-48a9-be58-810866aff1a2>
 
