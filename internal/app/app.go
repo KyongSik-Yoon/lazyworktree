@@ -2827,6 +2827,28 @@ func (m *Model) openZellijSession(zellijCfg *config.TmuxCommand, wt *models.Work
 	})
 }
 
+// openURLInBrowser opens the given URL in the default browser.
+func (m *Model) openURLInBrowser(urlStr string) tea.Cmd {
+	return func() tea.Msg {
+		var cmd *exec.Cmd
+		switch runtime.GOOS {
+		case osDarwin:
+			// #nosec G204 -- the URL is executed directly as a single argument
+			cmd = m.commandRunner("open", urlStr)
+		case osWindows:
+			// #nosec G204 -- the URL is executed directly as a single argument
+			cmd = m.commandRunner("rundll32", "url.dll,FileProtocolHandler", urlStr)
+		default:
+			// #nosec G204 -- the URL is executed directly as a single argument
+			cmd = m.commandRunner("xdg-open", urlStr)
+		}
+		if err := m.startCommand(cmd); err != nil {
+			return errMsg{err: err}
+		}
+		return nil
+	}
+}
+
 func (m *Model) openPR() tea.Cmd {
 	if m.selectedIndex < 0 || m.selectedIndex >= len(m.filteredWts) {
 		return nil
@@ -2835,29 +2857,100 @@ func (m *Model) openPR() tea.Cmd {
 	if wt.PR == nil {
 		return nil
 	}
-	return func() tea.Msg {
-		prURL, err := sanitizePRURL(wt.PR.URL)
-		if err != nil {
-			return errMsg{err: err}
-		}
+	prURL, err := sanitizePRURL(wt.PR.URL)
+	if err != nil {
+		return func() tea.Msg { return errMsg{err: err} }
+	}
+	return m.openURLInBrowser(prURL)
+}
 
-		var cmd *exec.Cmd
-		switch runtime.GOOS {
-		case osDarwin:
-			// #nosec G204 -- the URL is sanitized and only executed directly as a single argument
-			cmd = m.commandRunner("open", prURL)
-		case osWindows:
-			// #nosec G204 -- the URL is sanitized and only executed directly as a single argument
-			cmd = m.commandRunner("rundll32", "url.dll,FileProtocolHandler", prURL)
-		default:
-			// #nosec G204 -- the URL is sanitized and only executed directly as a single argument
-			cmd = m.commandRunner("xdg-open", prURL)
-		}
-		if err := m.startCommand(cmd); err != nil {
-			return errMsg{err: err}
-		}
+// showCICheckLog opens the CI check log in a pager using gh run view.
+// For external CI systems (non-GitHub Actions), it opens the check link in the browser.
+func (m *Model) showCICheckLog(check *models.CICheck) tea.Cmd {
+	if m.selectedIndex < 0 || m.selectedIndex >= len(m.filteredWts) {
 		return nil
 	}
+	wt := m.filteredWts[m.selectedIndex]
+
+	// Extract run ID from the check link
+	runID := extractRunIDFromLink(check.Link)
+	if runID == "" {
+		// Not a GitHub Actions URL - open in browser instead
+		if check.Link == "" {
+			m.showInfo("No link available for this check.", nil)
+			return nil
+		}
+		return m.openURLInBrowser(check.Link)
+	}
+
+	// Build environment variables
+	env := m.buildCommandEnv(wt.Branch, wt.Path)
+	envVars := os.Environ()
+	for k, v := range env {
+		envVars = append(envVars, fmt.Sprintf("%s=%s", k, v))
+	}
+
+	// Get pager configuration
+	pager := m.pagerCommand()
+	pagerEnv := m.pagerEnv(pager)
+	pagerCmd := pager
+	if pagerEnv != "" {
+		pagerCmd = fmt.Sprintf("%s %s", pagerEnv, pager)
+	}
+
+	// Use --log-failed for failed checks, --log for others
+	logFlag := "--log"
+	if check.Conclusion == iconFailure {
+		logFlag = "--log-failed"
+	}
+
+	// Build the command to fetch and display logs
+	cmdStr := fmt.Sprintf("set -o pipefail; gh run view %s %s 2>&1 | %s", runID, logFlag, pagerCmd)
+
+	// Create command
+	// #nosec G204 -- command is constructed from controlled inputs
+	c := m.commandRunner("bash", "-c", cmdStr)
+	c.Dir = wt.Path
+	c.Env = envVars
+
+	return m.execProcess(c, func(err error) tea.Msg {
+		if err != nil {
+			// Ignore exit status 141 (SIGPIPE) which happens when the pager is closed early
+			if exitErr, ok := err.(*exec.ExitError); ok && exitErr.ExitCode() == 141 {
+				return refreshCompleteMsg{}
+			}
+			return errMsg{err: err}
+		}
+		return refreshCompleteMsg{}
+	})
+}
+
+// extractRunIDFromLink extracts the run ID from a GitHub Actions URL.
+// Example URL: https://github.com/owner/repo/actions/runs/12345678/job/98765432
+func extractRunIDFromLink(link string) string {
+	if link == "" {
+		return ""
+	}
+
+	parsed, err := url.Parse(link)
+	if err != nil {
+		return ""
+	}
+
+	// Check if it's a GitHub Actions URL
+	if !strings.Contains(parsed.Host, "github.com") {
+		return ""
+	}
+
+	// Path should contain /actions/runs/<run_id>
+	parts := strings.Split(parsed.Path, "/")
+	for i, part := range parts {
+		if part == "runs" && i+1 < len(parts) {
+			return parts[i+1]
+		}
+	}
+
+	return ""
 }
 
 func (m *Model) showCherryPick() tea.Cmd {

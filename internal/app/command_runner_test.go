@@ -516,3 +516,168 @@ func runGitCommand(t *testing.T, dir string, args ...string) string {
 	}
 	return string(out)
 }
+
+func TestOpenURLInBrowserUsesCommandRunner(t *testing.T) {
+	cfg := &config.AppConfig{
+		WorktreeDir: t.TempDir(),
+	}
+	m := NewModel(cfg, "")
+
+	capture := &commandCapture{}
+	m.commandRunner = capture.runner
+	m.startCommand = capture.start
+
+	testURL := "https://example.com/ci/logs"
+	cmd := m.openURLInBrowser(testURL)
+	if cmd == nil {
+		t.Fatal("expected command to be returned")
+	}
+	_ = cmd()
+
+	expected := "xdg-open"
+	switch runtime.GOOS {
+	case osDarwin:
+		expected = "open"
+	case osWindows:
+		expected = "rundll32"
+	}
+	if capture.name != expected {
+		t.Fatalf("expected %q command, got %q", expected, capture.name)
+	}
+	if runtime.GOOS == osWindows {
+		if len(capture.args) < 2 || capture.args[1] != testURL {
+			t.Fatalf("expected windows URL args, got %v", capture.args)
+		}
+	} else {
+		if len(capture.args) != 1 || capture.args[0] != testURL {
+			t.Fatalf("expected URL arg, got %v", capture.args)
+		}
+	}
+}
+
+func TestShowCICheckLogExternalCIOpensInBrowser(t *testing.T) {
+	cfg := &config.AppConfig{
+		WorktreeDir: t.TempDir(),
+	}
+	m := NewModel(cfg, "")
+	m.filteredWts = []*models.WorktreeInfo{
+		{
+			Path:   testWorktreePath,
+			Branch: "feat",
+		},
+	}
+	m.selectedIndex = 0
+
+	capture := &commandCapture{}
+	m.commandRunner = capture.runner
+	m.startCommand = capture.start
+
+	// External CI link (not a GitHub Actions URL)
+	externalLink := "https://console.tekton.dev/pipelines/runs/12345"
+	check := &models.CICheck{
+		Name: "tekton-build",
+		Link: externalLink,
+	}
+
+	cmd := m.showCICheckLog(check)
+	if cmd == nil {
+		t.Fatal("expected command to be returned for external CI link")
+	}
+	_ = cmd()
+
+	// Should open in browser
+	expected := "xdg-open"
+	switch runtime.GOOS {
+	case osDarwin:
+		expected = "open"
+	case osWindows:
+		expected = "rundll32"
+	}
+	if capture.name != expected {
+		t.Fatalf("expected %q command for external CI, got %q", expected, capture.name)
+	}
+	if runtime.GOOS == osWindows {
+		if len(capture.args) < 2 || capture.args[1] != externalLink {
+			t.Fatalf("expected windows URL args, got %v", capture.args)
+		}
+	} else {
+		if len(capture.args) != 1 || capture.args[0] != externalLink {
+			t.Fatalf("expected URL arg, got %v", capture.args)
+		}
+	}
+}
+
+func TestShowCICheckLogEmptyLinkShowsInfo(t *testing.T) {
+	cfg := &config.AppConfig{
+		WorktreeDir: t.TempDir(),
+	}
+	m := NewModel(cfg, "")
+	m.filteredWts = []*models.WorktreeInfo{
+		{
+			Path:   testWorktreePath,
+			Branch: "feat",
+		},
+	}
+	m.selectedIndex = 0
+
+	check := &models.CICheck{
+		Name: "some-check",
+		Link: "",
+	}
+
+	cmd := m.showCICheckLog(check)
+	if cmd != nil {
+		t.Fatal("expected nil command for empty link")
+	}
+	if m.infoScreen == nil || !strings.Contains(m.infoScreen.message, "No link available") {
+		t.Fatalf("expected info message about no link, got %v", m.infoScreen)
+	}
+}
+
+func TestExtractRunIDFromLink(t *testing.T) {
+	tests := []struct {
+		name     string
+		link     string
+		expected string
+	}{
+		{
+			name:     "GitHub Actions URL with job",
+			link:     "https://github.com/owner/repo/actions/runs/12345678/job/98765432",
+			expected: "12345678",
+		},
+		{
+			name:     "GitHub Actions URL without job",
+			link:     "https://github.com/owner/repo/actions/runs/12345678",
+			expected: "12345678",
+		},
+		{
+			name:     "External CI URL",
+			link:     "https://console.tekton.dev/pipelines/runs/12345",
+			expected: "",
+		},
+		{
+			name:     "Empty link",
+			link:     "",
+			expected: "",
+		},
+		{
+			name:     "Invalid URL",
+			link:     "not-a-url",
+			expected: "",
+		},
+		{
+			name:     "GitHub URL without runs",
+			link:     "https://github.com/owner/repo/actions",
+			expected: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := extractRunIDFromLink(tt.link)
+			if result != tt.expected {
+				t.Errorf("extractRunIDFromLink(%q) = %q, want %q", tt.link, result, tt.expected)
+			}
+		})
+	}
+}

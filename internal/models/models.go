@@ -41,6 +41,7 @@ type CICheck struct {
 	Name       string // Name of the check/job
 	Status     string // Status: "completed", "in_progress", "queued", "pending"
 	Conclusion string // Conclusion: "success", "failure", "skipped", "cancelled", etc.
+	Link       string // URL to the check details page
 }
 
 // WorktreeInfo summarizes the information for a git worktree.
