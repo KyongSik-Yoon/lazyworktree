@@ -2900,6 +2900,15 @@ func (m *Model) openPR() tea.Cmd {
 		return nil
 	}
 	wt := m.filteredWts[m.selectedIndex]
+
+	// On main branch with merged/closed/no PR: open root repo in browser
+	shouldOpenRepo := wt.IsMain && (wt.PR == nil || wt.PR.State == "MERGED" || wt.PR.State == "CLOSED")
+
+	if shouldOpenRepo {
+		return m.openRepoInBrowser()
+	}
+
+	// Otherwise, open PR in browser (existing behaviour)
 	if wt.PR == nil {
 		return nil
 	}
@@ -2908,6 +2917,67 @@ func (m *Model) openPR() tea.Cmd {
 		return func() tea.Msg { return errMsg{err: err} }
 	}
 	return m.openURLInBrowser(prURL)
+}
+
+func (m *Model) openRepoInBrowser() tea.Cmd {
+	// Get remote URL
+	remoteURL := strings.TrimSpace(m.git.RunGit(m.ctx, []string{"git", "remote", "get-url", "origin"}, "", []int{0}, true, false))
+	if remoteURL == "" {
+		return func() tea.Msg {
+			return errMsg{err: fmt.Errorf("could not determine repository remote URL")}
+		}
+	}
+
+	// Convert git URL to web URL
+	webURL := m.gitURLToWebURL(remoteURL)
+	if webURL == "" {
+		return func() tea.Msg {
+			return errMsg{err: fmt.Errorf("could not convert git URL to web URL")}
+		}
+	}
+
+	return m.openURLInBrowser(webURL)
+}
+
+// gitURLToWebURL converts a git remote URL to a web URL.
+// Handles both SSH (git@github.com:user/repo.git) and HTTPS (https://github.com/user/repo.git) formats.
+func (m *Model) gitURLToWebURL(gitURL string) string {
+	gitURL = strings.TrimSpace(gitURL)
+
+	// Remove .git suffix if present
+	gitURL = strings.TrimSuffix(gitURL, ".git")
+
+	// Handle SSH format: git@github.com:user/repo
+	if strings.HasPrefix(gitURL, "git@") {
+		// Extract host and path
+		parts := strings.SplitN(gitURL, "@", 2)
+		if len(parts) == 2 {
+			hostPath := parts[1]
+			// Replace : with /
+			hostPath = strings.Replace(hostPath, ":", "/", 1)
+			return "https://" + hostPath
+		}
+	}
+
+	// Handle HTTPS format: https://github.com/user/repo
+	if strings.HasPrefix(gitURL, "https://") || strings.HasPrefix(gitURL, "http://") {
+		return gitURL
+	}
+
+	// Handle ssh:// format: ssh://git@github.com/user/repo
+	if strings.HasPrefix(gitURL, "ssh://") {
+		gitURL = strings.TrimPrefix(gitURL, "ssh://")
+		// Remove git@ if present
+		gitURL = strings.TrimPrefix(gitURL, "git@")
+		return "https://" + gitURL
+	}
+
+	// Handle git:// format: git://github.com/user/repo
+	if strings.HasPrefix(gitURL, "git://") {
+		return strings.Replace(gitURL, "git://", "https://", 1)
+	}
+
+	return ""
 }
 
 // sortCIChecks sorts CI checks so that GitHub Actions jobs appear first,
@@ -2985,7 +3055,7 @@ func (m *Model) openCICheckSelection() tea.Cmd {
 		"",
 		m.theme,
 	)
-	m.listScreen.footerHint = "Ctrl+o open • Ctrl+r restart"
+	m.listScreen.footerHint = "Enter open • Ctrl+v view logs • Ctrl+r restart"
 
 	// Store checks for later access in submit handler and Ctrl+R rerun
 	checks := sortCIChecks(cached.checks)
@@ -3722,13 +3792,24 @@ func (m *Model) handleScreenKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.currentScreen = screenNone
 			return m, nil
 		}
-		// Ctrl+O: Open CI job URL in browser (only when viewing CI checks)
-		if keyStr == "ctrl+o" && m.listScreenCIChecks != nil {
+		// Enter: Open CI job URL in browser (only when viewing CI checks)
+		if keyStr == keyEnter && m.listScreenCIChecks != nil {
 			if item, ok := m.listScreen.Selected(); ok {
 				var idx int
 				if _, err := fmt.Sscanf(item.id, "%d", &idx); err == nil && idx >= 0 && idx < len(m.listScreenCIChecks) {
 					check := m.listScreenCIChecks[idx]
 					return m, m.openURLInBrowser(check.Link)
+				}
+			}
+			return m, nil
+		}
+		// Ctrl+V: View CI check logs in pager (only when viewing CI checks)
+		if keyStr == "ctrl+v" && m.listScreenCIChecks != nil {
+			if item, ok := m.listScreen.Selected(); ok {
+				var idx int
+				if _, err := fmt.Sscanf(item.id, "%d", &idx); err == nil && idx >= 0 && idx < len(m.listScreenCIChecks) {
+					check := m.listScreenCIChecks[idx]
+					return m, m.showCICheckLog(check)
 				}
 			}
 			return m, nil

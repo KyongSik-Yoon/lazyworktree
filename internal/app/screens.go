@@ -1168,7 +1168,7 @@ Supported: Letters (a-z, A-Z), numbers (0-9), and hyphens (-). See help for full
 
 **{{HELP_VIEWING_TOOLS}}Viewing & Tools**
 - d: Full-screen diff viewer
-- o: Open PR/MR in browser
+- o: Open PR/MR in browser (or root repo in editor if main branch with merged/closed/no PR)
 - g: Open LazyGit (or go to top in diff pane)
 - =: Toggle zoom for focused pane
 - : / Ctrl+P: Command Palette
@@ -1180,8 +1180,9 @@ Supported: Letters (a-z, A-Z), numbers (0-9), and hyphens (-). See help for full
 - S: Synchronise with upstream (git pull, then git push, current branch only, requires a clean worktree, honours merge_method)
 - P: Push to upstream branch (current branch only, requires a clean worktree, prompts to set upstream when missing)
 - p: Fetch PR/MR status from GitHub/GitLab
-- v: View CI check logs (select from available checks)
-- Ctrl+o: Open selected CI job in browser (within CI check selection)
+- v: View CI checks (Enter opens in browser, Ctrl+v views logs in pager)
+- Enter: Open selected CI job in browser (within CI check selection)
+- Ctrl+v: View selected CI check logs in pager (within CI check selection)
 - Ctrl+r: Restart selected CI job (GitHub Actions only, within CI check selection)
 - s: Cycle sort (Path / Last Active / Last Switched)
 

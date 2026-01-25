@@ -411,11 +411,15 @@ Fetch PR/MR status (also refreshes CI checks).
 .
 .TP
 .B v
-View CI check logs (select from available checks).
+View CI checks (Enter opens in browser, Ctrl+v views logs in pager).
 .
 .TP
-.B Ctrl+o
+.B Enter
 Open selected CI job in browser (within CI check selection).
+.
+.TP
+.B Ctrl+v
+View selected CI check logs in pager (within CI check selection).
 .
 .TP
 .B Ctrl+r
@@ -423,7 +427,7 @@ Restart selected CI job (GitHub Actions only, within CI check selection).
 .
 .TP
 .B o
-Open PR/MR in browser.
+Open PR/MR in browser (or root repository in editor if main branch with merged/closed/no PR).
 .
 .SS Command Palette
 .TP

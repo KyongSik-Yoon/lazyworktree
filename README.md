@@ -205,8 +205,8 @@ Deletes the worktree and associated branch (only if worktree name matches branch
 | `X` | Prune merged worktrees (refreshes PR data, checks merge status) |
 | `!` | Run arbitrary command in selected worktree (with command history) |
 | `p` | Fetch PR/MR status (also refreshes CI checks) |
-| `v` | View CI check logs (select from available checks) |
-| `o` | Open PR/MR in browser |
+| `v` | View CI checks (Enter opens in browser, Ctrl+v views logs in pager) |
+| `o` | Open PR/MR in browser (or root repo in editor if main branch with merged/closed/no PR) |
 | `ctrl+p`, `:` | Command palette |
 | `g` | Open LazyGit |
 | `r` | Refresh list |
@@ -273,11 +273,12 @@ are sorted alphabetically within each directory level.
 
 CI Status Pane:
 
-When viewing CI check logs, the status pane shows available checks for the selected worktree's PR/MR.
+When viewing CI checks, a selection screen shows available checks for the selected worktree's PR/MR.
 
 | Key | Action |
 |--- | --- |
-| `Ctrl+o` | Open selected CI job in browser (within CI check selection) |
+| `Enter` | Open selected CI job in browser (within CI check selection) |
+| `Ctrl+v` | View selected CI check logs in pager (within CI check selection) |
 | `Ctrl+r` | Restart selected CI job (GitHub Actions only, within CI check selection) |
 
 **Filter Mode:**

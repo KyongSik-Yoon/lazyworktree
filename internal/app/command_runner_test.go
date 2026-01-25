@@ -225,6 +225,64 @@ func TestOpenPRUsesCommandRunner(t *testing.T) {
 	}
 }
 
+func TestGitURLToWebURL(t *testing.T) {
+	cfg := &config.AppConfig{
+		WorktreeDir: t.TempDir(),
+	}
+	m := NewModel(cfg, "")
+
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "SSH format",
+			input:    "git@github.com:chmouel/lazyworktree.git",
+			expected: "https://github.com/chmouel/lazyworktree",
+		},
+		{
+			name:     "SSH format without .git",
+			input:    "git@github.com:chmouel/lazyworktree",
+			expected: "https://github.com/chmouel/lazyworktree",
+		},
+		{
+			name:     "HTTPS format",
+			input:    "https://github.com/chmouel/lazyworktree.git",
+			expected: "https://github.com/chmouel/lazyworktree",
+		},
+		{
+			name:     "HTTPS format without .git",
+			input:    "https://github.com/chmouel/lazyworktree",
+			expected: "https://github.com/chmouel/lazyworktree",
+		},
+		{
+			name:     "ssh:// format",
+			input:    "ssh://git@github.com/chmouel/lazyworktree.git",
+			expected: "https://github.com/chmouel/lazyworktree",
+		},
+		{
+			name:     "git:// format",
+			input:    "git://github.com/chmouel/lazyworktree.git",
+			expected: "https://github.com/chmouel/lazyworktree",
+		},
+		{
+			name:     "GitLab SSH",
+			input:    "git@gitlab.com:group/project.git",
+			expected: "https://gitlab.com/group/project",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := m.gitURLToWebURL(tt.input)
+			if result != tt.expected {
+				t.Fatalf("expected %q, got %q", tt.expected, result)
+			}
+		})
+	}
+}
+
 func TestAttachTmuxSessionCmdUsesCommandRunner(t *testing.T) {
 	cfg := &config.AppConfig{
 		WorktreeDir: t.TempDir(),
