@@ -242,9 +242,6 @@ func (m *Model) buildInfoContent(wt *models.WorktreeInfo) string {
 			case m.prDataLoaded && wt.HasUpstream:
 				// Fetch was attempted, no error, no PR found - this is expected
 				infoLines = append(infoLines, grayStyle.Render("No PR for this branch"))
-			case !m.prDataLoaded:
-				// PR data hasn't been fetched yet
-				infoLines = append(infoLines, grayStyle.Render("PR data not loaded (press 'p' to fetch)"))
 			case !wt.HasUpstream:
 				// No upstream, so no PR possible
 				infoLines = append(infoLines, grayStyle.Render("Branch has no upstream"))
@@ -270,25 +267,41 @@ func (m *Model) buildInfoContent(wt *models.WorktreeInfo) string {
 		redStyle := lipgloss.NewStyle().Foreground(m.theme.ErrorFg)
 		yellowStyle := lipgloss.NewStyle().Foreground(m.theme.WarnFg)
 		grayStyle := lipgloss.NewStyle().Foreground(m.theme.MutedFg)
+		selectedStyle := lipgloss.NewStyle().
+			Foreground(m.theme.AccentFg).
+			Background(m.theme.Accent).
+			Bold(true)
 
-		for _, check := range sortCIChecks(cached.checks) {
-			var style lipgloss.Style
-			switch check.Conclusion {
-			case "success":
-				style = greenStyle
-			case "failure":
-				style = redStyle
-			case "skipped":
-				style = grayStyle
-			case "cancelled":
-				style = grayStyle
-			case "pending", "":
-				style = yellowStyle
-			default:
-				style = grayStyle
-			}
+		checks := sortCIChecks(cached.checks)
+		for i, check := range checks {
 			symbol := getCIStatusIcon(check.Conclusion, false, m.config.IconsEnabled())
-			infoLines = append(infoLines, fmt.Sprintf("  %s %s", style.Render(symbol), check.Name))
+			isSelected := m.focusedPane == 1 && m.ciCheckIndex >= 0 && i == m.ciCheckIndex
+
+			var line string
+			if isSelected {
+				// When selected, apply selection style to entire line
+				line = fmt.Sprintf("  %s %s", symbol, check.Name)
+				line = selectedStyle.Render(line)
+			} else {
+				// When not selected, apply conclusion color to icon only
+				var iconStyle lipgloss.Style
+				switch check.Conclusion {
+				case "success":
+					iconStyle = greenStyle
+				case "failure":
+					iconStyle = redStyle
+				case "skipped":
+					iconStyle = grayStyle
+				case "cancelled":
+					iconStyle = grayStyle
+				case "pending", "":
+					iconStyle = yellowStyle
+				default:
+					iconStyle = grayStyle
+				}
+				line = fmt.Sprintf("  %s %s", iconStyle.Render(symbol), check.Name)
+			}
+			infoLines = append(infoLines, line)
 		}
 	}
 

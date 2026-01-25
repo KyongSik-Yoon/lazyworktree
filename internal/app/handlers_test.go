@@ -3399,3 +3399,324 @@ func TestHandlePrevFolder(t *testing.T) {
 		}
 	})
 }
+
+func TestCICheckNavigationDown(t *testing.T) {
+	cfg := &config.AppConfig{
+		WorktreeDir: t.TempDir(),
+	}
+	m := NewModel(cfg, "")
+	m.focusedPane = 1
+	m.selectedIndex = 0
+	m.filteredWts = []*models.WorktreeInfo{
+		{Path: testWorktreePath, Branch: "feat"},
+	}
+
+	// Add CI checks to cache
+	checks := []*models.CICheck{
+		{Name: "build", Conclusion: "success", Link: "https://github.com/owner/repo/actions/runs/123"},
+		{Name: "test", Conclusion: "failure", Link: "https://github.com/owner/repo/actions/runs/456"},
+		{Name: "lint", Conclusion: "success", Link: "https://github.com/owner/repo/actions/runs/789"},
+	}
+	m.ciCache["feat"] = &ciCacheEntry{checks: checks}
+
+	// Start navigating CI checks
+	m.ciCheckIndex = 0
+
+	// Navigate down
+	_, _ = m.handleNavigationDown(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
+	if m.ciCheckIndex != 1 {
+		t.Fatalf("expected ciCheckIndex 1 after j, got %d", m.ciCheckIndex)
+	}
+
+	// Navigate down again
+	_, _ = m.handleNavigationDown(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
+	if m.ciCheckIndex != 2 {
+		t.Fatalf("expected ciCheckIndex 2 after second j, got %d", m.ciCheckIndex)
+	}
+
+	// At last CI check, should wrap to file tree
+	m.setStatusFiles([]StatusFile{
+		{Filename: "file1.go", Status: ".M", IsUntracked: false},
+	})
+	_, _ = m.handleNavigationDown(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
+	if m.ciCheckIndex != -1 {
+		t.Fatalf("expected ciCheckIndex -1 after wrapping, got %d", m.ciCheckIndex)
+	}
+	if m.statusTreeIndex != 0 {
+		t.Fatalf("expected statusTreeIndex 0 after wrapping, got %d", m.statusTreeIndex)
+	}
+}
+
+func TestCICheckNavigationUp(t *testing.T) {
+	cfg := &config.AppConfig{
+		WorktreeDir: t.TempDir(),
+	}
+	m := NewModel(cfg, "")
+	m.focusedPane = 1
+	m.selectedIndex = 0
+	m.filteredWts = []*models.WorktreeInfo{
+		{Path: testWorktreePath, Branch: "feat"},
+	}
+
+	// Add CI checks to cache
+	checks := []*models.CICheck{
+		{Name: "build", Conclusion: "success", Link: "https://github.com/owner/repo/actions/runs/123"},
+		{Name: "test", Conclusion: "failure", Link: "https://github.com/owner/repo/actions/runs/456"},
+		{Name: "lint", Conclusion: "success", Link: "https://github.com/owner/repo/actions/runs/789"},
+	}
+	m.ciCache["feat"] = &ciCacheEntry{checks: checks}
+
+	// Set up file tree
+	m.setStatusFiles([]StatusFile{
+		{Filename: "file1.go", Status: ".M", IsUntracked: false},
+	})
+	m.statusTreeIndex = 0
+
+	// Start at first CI check
+	m.ciCheckIndex = 1
+
+	// Navigate up
+	_, _ = m.handleNavigationUp(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'k'}})
+	if m.ciCheckIndex != 0 {
+		t.Fatalf("expected ciCheckIndex 0 after k, got %d", m.ciCheckIndex)
+	}
+
+	// At first CI check, should stay at 0
+	_, _ = m.handleNavigationUp(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'k'}})
+	if m.ciCheckIndex != 0 {
+		t.Fatalf("expected ciCheckIndex to stay at 0, got %d", m.ciCheckIndex)
+	}
+
+	// Test wrapping from file tree to CI checks
+	m.ciCheckIndex = -1
+	m.statusTreeIndex = 0
+	_, _ = m.handleNavigationUp(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'k'}})
+	if m.ciCheckIndex != 2 {
+		t.Fatalf("expected ciCheckIndex 2 after wrapping from file tree, got %d", m.ciCheckIndex)
+	}
+}
+
+func TestCICheckEnterOpensURL(t *testing.T) {
+	cfg := &config.AppConfig{
+		WorktreeDir: t.TempDir(),
+	}
+	m := NewModel(cfg, "")
+	m.focusedPane = 1
+	m.selectedIndex = 0
+	m.filteredWts = []*models.WorktreeInfo{
+		{Path: testWorktreePath, Branch: "feat"},
+	}
+
+	// Add CI checks to cache
+	checkURL := "https://github.com/owner/repo/actions/runs/123"
+	checks := []*models.CICheck{
+		{Name: "build", Conclusion: "success", Link: checkURL},
+	}
+	m.ciCache["feat"] = &ciCacheEntry{checks: checks}
+	m.ciCheckIndex = 0
+
+	// Capture command
+	var capturedCmd *exec.Cmd
+	m.commandRunner = func(name string, args ...string) *exec.Cmd {
+		capturedCmd = exec.Command(name, args...)
+		return capturedCmd
+	}
+	m.startCommand = func(cmd *exec.Cmd) error {
+		return nil
+	}
+
+	// Press Enter
+	_, cmd := m.handleEnterKey()
+	if cmd == nil {
+		t.Fatal("expected command to be returned")
+	}
+
+	// Execute command to capture URL
+	_ = cmd()
+
+	// Verify the command was to open URL (platform-specific)
+	if capturedCmd == nil || len(capturedCmd.Args) == 0 {
+		t.Fatal("expected command to be executed")
+	}
+	// Check for common browser commands
+	validCommands := []string{"open", "xdg-open", "rundll32"}
+	isValid := false
+	for _, validCmd := range validCommands {
+		if capturedCmd.Args[0] == validCmd {
+			isValid = true
+			break
+		}
+	}
+	if !isValid {
+		t.Fatalf("expected browser command, got %v", capturedCmd.Args)
+	}
+}
+
+func TestCICheckCtrlVShowsLogs(t *testing.T) {
+	cfg := &config.AppConfig{
+		WorktreeDir: t.TempDir(),
+	}
+	m := NewModel(cfg, "")
+	m.focusedPane = 1
+	m.selectedIndex = 0
+	m.filteredWts = []*models.WorktreeInfo{
+		{Path: testWorktreePath, Branch: "feat"},
+	}
+
+	// Add CI checks to cache
+	checkURL := "https://github.com/owner/repo/actions/runs/123"
+	checks := []*models.CICheck{
+		{Name: "build", Conclusion: "success", Link: checkURL},
+	}
+	m.ciCache["feat"] = &ciCacheEntry{checks: checks}
+	m.ciCheckIndex = 0
+
+	// Capture command
+	var capturedCmd *exec.Cmd
+	m.commandRunner = func(name string, args ...string) *exec.Cmd {
+		capturedCmd = exec.Command(name, args...)
+		return capturedCmd
+	}
+	m.startCommand = func(cmd *exec.Cmd) error {
+		return nil
+	}
+
+	// Press Ctrl+v
+	_, cmd := m.handleBuiltInKey(tea.KeyMsg{Type: tea.KeyCtrlV})
+	if cmd == nil {
+		t.Fatal("expected command to be returned")
+	}
+
+	// Execute command
+	_ = cmd()
+
+	// Verify the command contains gh run view
+	if capturedCmd == nil || len(capturedCmd.Args) < 2 {
+		t.Fatal("expected command with args")
+	}
+	if capturedCmd.Args[0] != "bash" {
+		t.Fatalf("expected bash command, got %s", capturedCmd.Args[0])
+	}
+	if !strings.Contains(capturedCmd.Args[2], "gh run view") {
+		t.Fatalf("expected gh run view in command, got %s", capturedCmd.Args[2])
+	}
+}
+
+func TestCICheckSelectionResetOnWorktreeChange(t *testing.T) {
+	cfg := &config.AppConfig{
+		WorktreeDir: t.TempDir(),
+	}
+	m := NewModel(cfg, "")
+	m.selectedIndex = 0
+	m.filteredWts = []*models.WorktreeInfo{
+		{Path: testWorktreePath, Branch: "feat"},
+		{Path: "/other/path", Branch: "other"},
+	}
+
+	// Add CI checks to cache
+	checks := []*models.CICheck{
+		{Name: "build", Conclusion: "success", Link: "https://github.com/owner/repo/actions/runs/123"},
+	}
+	m.ciCache["feat"] = &ciCacheEntry{checks: checks}
+	m.ciCheckIndex = 0
+
+	// Change worktree selection
+	m.selectedIndex = 1
+	m.updateDetailsView()
+
+	// CI check selection should be reset
+	if m.ciCheckIndex != -1 {
+		t.Fatalf("expected ciCheckIndex -1 after worktree change, got %d", m.ciCheckIndex)
+	}
+}
+
+func TestCICheckSelectionResetOnPaneSwitch(t *testing.T) {
+	cfg := &config.AppConfig{
+		WorktreeDir: t.TempDir(),
+	}
+	m := NewModel(cfg, "")
+	m.focusedPane = 1
+	m.selectedIndex = 0
+	m.filteredWts = []*models.WorktreeInfo{
+		{Path: testWorktreePath, Branch: "feat"},
+	}
+
+	// Add CI checks to cache
+	checks := []*models.CICheck{
+		{Name: "build", Conclusion: "success", Link: "https://github.com/owner/repo/actions/runs/123"},
+	}
+	m.ciCache["feat"] = &ciCacheEntry{checks: checks}
+	m.ciCheckIndex = 0
+
+	// Switch to pane 0
+	_, _ = m.handleBuiltInKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'1'}})
+
+	// CI check selection should be reset
+	if m.ciCheckIndex != -1 {
+		t.Fatalf("expected ciCheckIndex -1 after pane switch, got %d", m.ciCheckIndex)
+	}
+}
+
+func TestCICheckSelectionResetWhenUnavailable(t *testing.T) {
+	cfg := &config.AppConfig{
+		WorktreeDir: t.TempDir(),
+	}
+	m := NewModel(cfg, "")
+	m.focusedPane = 1
+	m.selectedIndex = 0
+	m.filteredWts = []*models.WorktreeInfo{
+		{Path: testWorktreePath, Branch: "feat"},
+	}
+
+	// Add CI checks to cache
+	checks := []*models.CICheck{
+		{Name: "build", Conclusion: "success", Link: "https://github.com/owner/repo/actions/runs/123"},
+	}
+	m.ciCache["feat"] = &ciCacheEntry{checks: checks}
+	m.ciCheckIndex = 5 // Out of bounds
+
+	// Navigate - should reset invalid index
+	_, _ = m.handleNavigationDown(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
+	if m.ciCheckIndex != -1 {
+		t.Fatalf("expected ciCheckIndex -1 after invalid index, got %d", m.ciCheckIndex)
+	}
+
+	// Clear CI cache
+	m.ciCache = make(map[string]*ciCacheEntry)
+	m.ciCheckIndex = 0
+
+	// Navigate - should reset when no CI checks available
+	_, _ = m.handleNavigationDown(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
+	if m.ciCheckIndex != -1 {
+		t.Fatalf("expected ciCheckIndex -1 when no CI checks, got %d", m.ciCheckIndex)
+	}
+}
+
+func TestCICheckNavigationWithNoChecks(t *testing.T) {
+	cfg := &config.AppConfig{
+		WorktreeDir: t.TempDir(),
+	}
+	m := NewModel(cfg, "")
+	m.focusedPane = 1
+	m.statusViewport = viewport.New(40, 10)
+	m.selectedIndex = 0
+	m.filteredWts = []*models.WorktreeInfo{
+		{Path: testWorktreePath, Branch: "feat"},
+	}
+
+	// No CI checks in cache
+	m.setStatusFiles([]StatusFile{
+		{Filename: "file1.go", Status: ".M", IsUntracked: false},
+		{Filename: "file2.go", Status: "M.", IsUntracked: false},
+	})
+	m.statusTreeIndex = 0
+
+	// Navigation should work on file tree
+	_, _ = m.handleNavigationDown(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
+	if m.statusTreeIndex != 1 {
+		t.Fatalf("expected statusTreeIndex 1, got %d", m.statusTreeIndex)
+	}
+	if m.ciCheckIndex != -1 {
+		t.Fatalf("expected ciCheckIndex -1, got %d", m.ciCheckIndex)
+	}
+}

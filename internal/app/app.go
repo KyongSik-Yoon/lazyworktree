@@ -351,6 +351,7 @@ type Model struct {
 	statusTreeFlat      []*StatusTreeNode // Visible nodes after applying collapse state
 	statusCollapsedDirs map[string]bool   // Collapsed directory paths
 	statusTreeIndex     int               // Current selection in flattened tree
+	ciCheckIndex        int               // Current selection in CI checks (-1 = none, 0+ = index)
 
 	// Cache
 	cache           map[string]any
@@ -574,6 +575,7 @@ func NewModel(cfg *config.AppConfig, initialFilter string) *Model {
 		statusContent:   "Loading...",
 		spinner:         sp,
 		loading:         true,
+		ciCheckIndex:    -1,
 		commandRunner:   exec.Command,
 		execProcess:     tea.ExecProcess,
 		startCommand: func(cmd *exec.Cmd) error {
@@ -1279,6 +1281,9 @@ func (m *Model) updateDetailsView() tea.Cmd {
 	if m.selectedIndex < 0 || m.selectedIndex >= len(m.filteredWts) {
 		return nil
 	}
+
+	// Reset CI check selection when worktree changes
+	m.ciCheckIndex = -1
 
 	wt := m.filteredWts[m.selectedIndex]
 	if !m.worktreesLoaded {
@@ -2982,6 +2987,19 @@ func (m *Model) gitURLToWebURL(gitURL string) string {
 	}
 
 	return ""
+}
+
+// getCIChecksForCurrentWorktree returns CI checks for the current worktree and whether they're visible.
+func (m *Model) getCIChecksForCurrentWorktree() ([]*models.CICheck, bool) {
+	if m.selectedIndex < 0 || m.selectedIndex >= len(m.filteredWts) {
+		return nil, false
+	}
+	wt := m.filteredWts[m.selectedIndex]
+	cached, ok := m.ciCache[wt.Branch]
+	if !ok || len(cached.checks) == 0 {
+		return nil, false
+	}
+	return sortCIChecks(cached.checks), true
 }
 
 // sortCIChecks sorts CI checks so that GitHub Actions jobs appear first,

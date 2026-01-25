@@ -247,6 +247,9 @@ func (m *Model) handleBuiltInKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			// Switching to different pane - exit zoom and switch
 			m.zoomedPane = -1
 			wasPane1 := m.focusedPane == 1
+			if wasPane1 {
+				m.ciCheckIndex = -1
+			}
 			m.focusedPane = targetPane
 			m.worktreeTable.Focus()
 			if wasPane1 {
@@ -286,6 +289,9 @@ func (m *Model) handleBuiltInKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			// Switching to different pane - exit zoom and switch
 			m.zoomedPane = -1
 			wasPane1 := m.focusedPane == 1
+			if wasPane1 {
+				m.ciCheckIndex = -1
+			}
 			m.focusedPane = targetPane
 			m.logTable.Focus()
 			if wasPane1 {
@@ -298,6 +304,9 @@ func (m *Model) handleBuiltInKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.zoomedPane = -1 // exit zoom mode
 		wasPane1 := m.focusedPane == 1
 		m.focusedPane = (m.focusedPane + 1) % 3
+		if wasPane1 && m.focusedPane != 1 {
+			m.ciCheckIndex = -1
+		}
 		switch m.focusedPane {
 		case 0:
 			m.worktreeTable.Focus()
@@ -313,6 +322,9 @@ func (m *Model) handleBuiltInKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.zoomedPane = -1 // exit zoom mode
 		wasPane1 := m.focusedPane == 1
 		m.focusedPane = (m.focusedPane - 1 + 3) % 3
+		if wasPane1 && m.focusedPane != 1 {
+			m.ciCheckIndex = -1
+		}
 		switch m.focusedPane {
 		case 0:
 			m.worktreeTable.Focus()
@@ -434,6 +446,17 @@ func (m *Model) handleBuiltInKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "v":
 		// Open CI check selection from any pane
 		return m, m.openCICheckSelection()
+
+	case "ctrl+v":
+		// View CI check logs in pager when a CI check is selected in status screen
+		if m.focusedPane == 1 {
+			ciChecks, hasCIChecks := m.getCIChecksForCurrentWorktree()
+			if hasCIChecks && m.ciCheckIndex >= 0 && m.ciCheckIndex < len(ciChecks) {
+				check := ciChecks[m.ciCheckIndex]
+				return m, m.showCICheckLog(check)
+			}
+		}
+		return m, nil
 
 	case "p":
 		m.ciCache = make(map[string]*ciCacheEntry)
@@ -588,12 +611,37 @@ func (m *Model) handleNavigationDown(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, cmd)
 		cmds = append(cmds, m.debouncedUpdateDetailsView())
 	case 1:
-		// Navigate through status tree items
-		if len(m.statusTreeFlat) > 0 {
-			if m.statusTreeIndex < len(m.statusTreeFlat)-1 {
-				m.statusTreeIndex++
+		// Check if we're navigating CI checks
+		ciChecks, hasCIChecks := m.getCIChecksForCurrentWorktree()
+		// Reset if CI checks are no longer available or index is out of bounds
+		if !hasCIChecks || (hasCIChecks && m.ciCheckIndex >= len(ciChecks)) {
+			if m.ciCheckIndex >= 0 {
+				m.ciCheckIndex = -1
+				m.infoContent = m.buildInfoContent(m.filteredWts[m.selectedIndex])
 			}
-			m.rebuildStatusContentWithHighlight()
+		}
+		if hasCIChecks && m.ciCheckIndex >= 0 {
+			// Navigate CI checks
+			if m.ciCheckIndex < len(ciChecks)-1 {
+				m.ciCheckIndex++
+				m.infoContent = m.buildInfoContent(m.filteredWts[m.selectedIndex])
+			} else {
+				// At last CI check, wrap to file tree
+				m.ciCheckIndex = -1
+				m.infoContent = m.buildInfoContent(m.filteredWts[m.selectedIndex])
+				if len(m.statusTreeFlat) > 0 {
+					m.statusTreeIndex = 0
+					m.rebuildStatusContentWithHighlight()
+				}
+			}
+		} else {
+			// Navigate through status tree items
+			if len(m.statusTreeFlat) > 0 {
+				if m.statusTreeIndex < len(m.statusTreeFlat)-1 {
+					m.statusTreeIndex++
+				}
+				m.rebuildStatusContentWithHighlight()
+			}
 		}
 	default:
 		m.logTable, cmd = m.logTable.Update(keyMsg)
@@ -614,12 +662,34 @@ func (m *Model) handleNavigationUp(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, cmd)
 		cmds = append(cmds, m.debouncedUpdateDetailsView())
 	case 1:
-		// Navigate through status tree items
-		if len(m.statusTreeFlat) > 0 {
-			if m.statusTreeIndex > 0 {
-				m.statusTreeIndex--
+		// Check if we're navigating CI checks
+		ciChecks, hasCIChecks := m.getCIChecksForCurrentWorktree()
+		// Reset if CI checks are no longer available or index is out of bounds
+		if !hasCIChecks || (hasCIChecks && m.ciCheckIndex >= len(ciChecks)) {
+			if m.ciCheckIndex >= 0 {
+				m.ciCheckIndex = -1
+				m.infoContent = m.buildInfoContent(m.filteredWts[m.selectedIndex])
 			}
-			m.rebuildStatusContentWithHighlight()
+		}
+		switch {
+		case hasCIChecks && m.ciCheckIndex >= 0:
+			// Navigate CI checks
+			if m.ciCheckIndex > 0 {
+				m.ciCheckIndex--
+				m.infoContent = m.buildInfoContent(m.filteredWts[m.selectedIndex])
+			}
+		case hasCIChecks && m.ciCheckIndex == -1 && m.statusTreeIndex == 0:
+			// At top of file tree, wrap to last CI check
+			m.ciCheckIndex = len(ciChecks) - 1
+			m.infoContent = m.buildInfoContent(m.filteredWts[m.selectedIndex])
+		default:
+			// Navigate through status tree items
+			if len(m.statusTreeFlat) > 0 {
+				if m.statusTreeIndex > 0 {
+					m.statusTreeIndex--
+				}
+				m.rebuildStatusContentWithHighlight()
+			}
 		}
 	default:
 		m.logTable, cmd = m.logTable.Update(msg)
@@ -790,8 +860,18 @@ func (m *Model) handleEnterKey() (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		}
 	case 1:
-		// Handle Enter on status tree items
-		if len(m.statusTreeFlat) > 0 && m.statusTreeIndex >= 0 && m.statusTreeIndex < len(m.statusTreeFlat) {
+		// Check if a CI check is selected
+		ciChecks, hasCIChecks := m.getCIChecksForCurrentWorktree()
+		switch {
+		case hasCIChecks && m.ciCheckIndex >= 0 && m.ciCheckIndex < len(ciChecks):
+			// Open selected CI check URL
+			check := ciChecks[m.ciCheckIndex]
+			if check.Link != "" {
+				return m, m.openURLInBrowser(check.Link)
+			}
+			return m, nil
+		case len(m.statusTreeFlat) > 0 && m.statusTreeIndex >= 0 && m.statusTreeIndex < len(m.statusTreeFlat):
+			// Handle Enter on status tree items
 			node := m.statusTreeFlat[m.statusTreeIndex]
 			if node.IsDir() {
 				// Toggle collapse state for directories

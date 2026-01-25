@@ -1116,8 +1116,9 @@ func NewHelpScreen(maxWidth, maxHeight int, customCommands map[string]*config.Cu
 - Enter: Jump to selected worktree (exit and cd)
 
 **{{HELP_STATUS_PANE}}Status Pane (when focused)**
-- j / k: Navigate files and directories
-- Enter: Show diff for selected file in pager
+- j / k: Navigate files and directories, or CI checks (when visible)
+- Enter: Show diff for selected file in pager, or open selected CI check URL
+- Ctrl+v: View selected CI check logs in pager (when CI check is selected)
 - e: Open selected file in editor
 - d: Show full diff (all files) in pager
 - s: Stage/unstage selected file or directory
@@ -1130,6 +1131,12 @@ func NewHelpScreen(maxWidth, maxHeight int, customCommands map[string]*config.Cu
 - Ctrl+U: Half page up
 - PageUp / PageDown: Full page up/down
 - g / G: Jump to top / bottom
+
+**{{HELP_CI_CHECKS}}CI Checks Navigation (in Status Pane)**
+When CI checks are displayed in the info panel:
+- j / k: Navigate through CI checks (wraps to/from file tree at boundaries)
+- Enter: Open selected CI check URL in browser
+- Ctrl+v: View selected CI check logs in pager
 
 **{{HELP_LOG}}Log Pane**
 - j / k: Move between commits
@@ -1180,10 +1187,10 @@ Supported: Letters (a-z, A-Z), numbers (0-9), and hyphens (-). See help for full
 - S: Synchronise with upstream (git pull, then git push, current branch only, requires a clean worktree, honours merge_method)
 - P: Push to upstream branch (current branch only, requires a clean worktree, prompts to set upstream when missing)
 - p: Fetch PR/MR status from GitHub/GitLab
-- v: View CI checks (Enter opens in browser, Ctrl+v views logs in pager)
-- Enter: Open selected CI job in browser (within CI check selection)
-- Ctrl+v: View selected CI check logs in pager (within CI check selection)
-- Ctrl+r: Restart selected CI job (GitHub Actions only, within CI check selection)
+- v: View CI checks (opens selection screen)
+- Enter: Open selected CI job in browser (within CI check selection screen)
+- Ctrl+v: View selected CI check logs in pager (within CI check selection screen, or in status pane when CI check is selected)
+- Ctrl+r: Restart selected CI job (GitHub Actions only, within CI check selection screen)
 - s: Cycle sort (Path / Last Active / Last Switched)
 
 **{{HELP_BACKGROUND_REFRESH}}Background Refresh**
@@ -1241,6 +1248,7 @@ Custom themes: define custom_themes in the configuration file. Without a base th
 		"{{HELP_TITLE}}", iconPrefix(UIIconHelpTitle, showIcons),
 		"{{HELP_NAV}}", iconPrefix(UIIconNavigation, showIcons),
 		"{{HELP_STATUS_PANE}}", iconPrefix(UIIconStatusPane, showIcons),
+		"{{HELP_CI_CHECKS}}", iconPrefix(UIIconCICheck, showIcons),
 		"{{HELP_LOG}}", iconPrefix(UIIconLogPane, showIcons),
 		"{{HELP_COMMIT_TREE}}", iconPrefix(UIIconCommitTree, showIcons),
 		"{{HELP_WORKTREE_ACTIONS}}", iconPrefix(UIIconWorktreeActions, showIcons),
