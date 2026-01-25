@@ -263,6 +263,73 @@ func TestIntegrationPRAndCIFlowUpdatesView(t *testing.T) {
 	}
 }
 
+func TestIntegrationMainBranchMergedPRHidesInfo(t *testing.T) {
+	// Set default provider for testing
+	SetIconProvider(&NerdFontV3Provider{})
+	cfg := config.DefaultConfig()
+	cfg.WorktreeDir = t.TempDir()
+	m := NewModel(cfg, "")
+	m.repoConfigPath = testSkipPath
+	m.setWindowSize(120, 40)
+
+	worktreePath := cfg.WorktreeDir + "/wt"
+	wt := &models.WorktreeInfo{
+		Path:   worktreePath,
+		Branch: "main",
+		IsMain: true,
+	}
+
+	updated, cmd := m.Update(worktreesLoadedMsg{worktrees: []*models.WorktreeInfo{wt}})
+	m = updated.(*Model)
+	m.setDetailsCache(worktreePath, &detailsCacheEntry{
+		statusRaw: "",
+		logRaw:    "",
+		fetchedAt: time.Now(),
+	})
+	if cmd != nil {
+		if msg := cmd(); msg != nil {
+			updated, _ = m.Update(msg)
+			m = updated.(*Model)
+		}
+	}
+
+	prMsg := prDataLoadedMsg{
+		prMap: map[string]*models.PRInfo{
+			"main": {Number: 77, State: "MERGED", Title: "Done", URL: testPRURL},
+		},
+	}
+	updated, cmd = m.Update(prMsg)
+	m = updated.(*Model)
+	m.setDetailsCache(worktreePath, &detailsCacheEntry{
+		statusRaw: "",
+		logRaw:    "",
+		fetchedAt: time.Now(),
+	})
+	if cmd != nil {
+		if msg := cmd(); msg != nil {
+			updated, _ = m.Update(msg)
+			m = updated.(*Model)
+		}
+	}
+
+	ciMsg := ciStatusLoadedMsg{
+		branch: "main",
+		checks: []*models.CICheck{
+			{Name: "build", Status: "completed", Conclusion: "success"},
+		},
+	}
+	updated, _ = m.Update(ciMsg)
+	m = updated.(*Model)
+
+	view := m.View()
+	if strings.Contains(view, "PR:") {
+		t.Fatalf("expected PR info to be hidden on main, got %q", view)
+	}
+	if !strings.Contains(view, "CI Checks:") {
+		t.Fatalf("expected CI info to be rendered, got %q", view)
+	}
+}
+
 func TestIntegrationPaletteSelectsActiveTmuxSession(t *testing.T) {
 	// Skip this test if tmux is not available
 	if _, err := exec.LookPath("tmux"); err != nil {

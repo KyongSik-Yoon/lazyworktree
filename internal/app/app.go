@@ -61,6 +61,10 @@ const (
 	// Loading messages
 	loadingRefreshWorktrees = "Refreshing worktrees..."
 
+	prStateOpen   = "OPEN"
+	prStateMerged = "MERGED"
+	prStateClosed = "CLOSED"
+
 	commitMessageMaxLength     = 80
 	filterWorktreesPlaceholder = "Filter worktrees..."
 )
@@ -1447,7 +1451,7 @@ func (m *Model) maybeFetchCIStatus() tea.Cmd {
 
 	// If we have an OPEN PR, use PR-based CI fetch
 	// For merged/closed PRs, gh pr checks returns empty, so use commit-based fetch
-	if wt.PR != nil && wt.PR.State == "OPEN" {
+	if wt.PR != nil && wt.PR.State == prStateOpen {
 		return m.fetchCIStatus(wt.PR.Number, wt.Branch)
 	}
 
@@ -2902,7 +2906,7 @@ func (m *Model) openPR() tea.Cmd {
 	wt := m.filteredWts[m.selectedIndex]
 
 	// On main branch with merged/closed/no PR: open root repo in browser
-	shouldOpenRepo := wt.IsMain && (wt.PR == nil || wt.PR.State == "MERGED" || wt.PR.State == "CLOSED")
+	shouldOpenRepo := wt.IsMain && (wt.PR == nil || wt.PR.State == prStateMerged || wt.PR.State == prStateClosed)
 
 	if shouldOpenRepo {
 		return m.openRepoInBrowser()

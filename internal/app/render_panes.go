@@ -169,8 +169,8 @@ func (m *Model) buildInfoContent(wt *models.WorktreeInfo) string {
 		}
 		infoLines = append(infoLines, fmt.Sprintf("%s %s", labelStyle.Render("Divergence:"), strings.Join(parts, " ")))
 	}
-	if wt.PR != nil {
-		// Match Python: white number, colored state (green=OPEN, magenta=MERGED, red=else)
+	hidePRDetails := wt.PR != nil && wt.IsMain && (wt.PR.State == prStateMerged || wt.PR.State == prStateClosed)
+	if wt.PR != nil && !hidePRDetails {
 		prLabelStyle := lipgloss.NewStyle().Foreground(m.theme.Accent).Bold(true) // Accent for PR prominence
 		prPrefix := "PR:"
 		if m.config.IconsEnabled() {
@@ -180,13 +180,12 @@ func (m *Model) buildInfoContent(wt *models.WorktreeInfo) string {
 		numStyle := lipgloss.NewStyle().Foreground(m.theme.TextFg)
 		stateColor := m.theme.SuccessFg // default to success for OPEN
 		switch wt.PR.State {
-		case "MERGED":
+		case prStateMerged:
 			stateColor = m.theme.Accent
-		case "CLOSED":
+		case prStateClosed:
 			stateColor = m.theme.ErrorFg
 		}
 		stateStyle := lipgloss.NewStyle().Foreground(stateColor)
-		// Format: PR: #123 Title [STATE] (matches Python grid layout)
 		infoLines = append(infoLines, fmt.Sprintf("%s %s %s [%s]",
 			prLabel,
 			numStyle.Render(fmt.Sprintf("#%d", wt.PR.Number)),
@@ -209,7 +208,7 @@ func (m *Model) buildInfoContent(wt *models.WorktreeInfo) string {
 		// URL styled with cyan for consistency
 		urlStyle := lipgloss.NewStyle().Foreground(m.theme.Cyan).Underline(true)
 		infoLines = append(infoLines, fmt.Sprintf("     %s", urlStyle.Render(wt.PR.URL)))
-	} else {
+	} else if wt.PR == nil {
 		// Show PR status/error when PR is nil
 		grayStyle := lipgloss.NewStyle().Foreground(m.theme.MutedFg)
 		errorStyle := lipgloss.NewStyle().Foreground(m.theme.ErrorFg)
