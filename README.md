@@ -861,7 +861,7 @@ branch_name_script: |
 
 ### Github Actions Logs viewer (rose-pine)
 
-<img width="3730" height="2484" alt="image" src="https://github.com/user-attachments/assets/a37dd525-ff75-44f3-98b2-0c226653f699" />
+<img width="3730" height="2484" alt="image" src="./.github/screenshots/ci-runs.png" />
 
 ### Branch creation (tokyo-night)
 

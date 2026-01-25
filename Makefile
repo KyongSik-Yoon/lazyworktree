@@ -26,4 +26,6 @@ coverage:
 release:
 	./hack/make-release.sh
 
+optimize:
+	for i in .github/screenshots/*.png;do pngquant --ext .new.png --skip-if-larger --quality 75 -f $$i;t=$${i/.png/.new.png};[[ -e $$t ]] && mv -vf $$t $$i || true;done
 .PHONY: all build lint format test coverage sanity mkdir release
