@@ -856,6 +856,9 @@ branch_name_script: |
 
 <img width="1754" height="1077" alt="image" src="https://github.com/user-attachments/assets/c765db31-0419-40f6-99c4-328a686447b1" />
 
+### Github Actions Logs viewer (one-dark theme)
+<img width="3730" height="2484" alt="image" src="https://github.com/user-attachments/assets/962fa2a9-85a0-4d69-abbf-c129b0b81ae9" />
+
 ### Branch creation (dracula theme)
 
 <img width="1760" height="1072" alt="image" src="https://github.com/user-attachments/assets/f705c330-d1d7-4d09-9f56-85de7d37543a" />
