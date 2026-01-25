@@ -13,7 +13,8 @@ Built with [BubbleTea](https://github.com/charmbracelet/bubbletea), it focuses o
 
 ## Screenshot
 
-<img width="1865" height="1242" alt="screen" src="https://github.com/user-attachments/assets/d4f2ff92-ed90-460a-8ebf-dc14a40040d1" />
+![lazyworktree screenshot](https://github.com/user-attachments/assets/229a4d6d-f26f-4b85-b909-fc28b9c524c2)
+
 
 _See other [Screenshots below](#screenshots)_
 
