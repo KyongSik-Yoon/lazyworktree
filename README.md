@@ -867,7 +867,7 @@ branch_name_script: |
 
 ### Files in commit view (kanagawa)
 
-<img width="3730" height="2484" alt="image" src="https://github.com/user-attachments/assets/7f68c113-2306-4ecc-b9a6-425f2b2063ab" />
+<img width="3730" height="2484" alt="image" src="https://github.com/user-attachments/assets/735458b2-a3a9-451c-ac51-b43452d5e421" />
 
 ### Create a branch from a Issue (clean-light)
 
