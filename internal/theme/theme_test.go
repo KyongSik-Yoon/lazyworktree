@@ -50,8 +50,8 @@ func TestAvailableThemesIncludesDefaults(t *testing.T) {
 }
 
 func TestDefaults(t *testing.T) {
-	if got := DefaultDark(); got != DraculaName {
-		t.Errorf("DefaultDark() = %q, want %q", got, DraculaName)
+	if got := DefaultDark(); got != RosePineName {
+		t.Errorf("DefaultDark() = %q, want %q", got, RosePineName)
 	}
 	if got := DefaultLight(); got != DraculaLightName {
 		t.Errorf("DefaultLight() = %q, want %q", got, DraculaLightName)

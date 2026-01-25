@@ -491,7 +491,7 @@ func GetTheme(name string) *Theme {
 
 // DefaultDark returns the default dark theme name.
 func DefaultDark() string {
-	return DraculaName
+	return RosePineName
 }
 
 // DefaultLight returns the default light theme name.

@@ -1196,10 +1196,11 @@ Search Mode:
 - Esc: Clear search
 
 **{{HELP_STATUS_INDICATORS}}Status Indicators**
-- {{STATUS_CLEAN}}: No local changes (clean)
+- -: Clean and synced with remote
 - {{STATUS_DIRTY}}: Uncommitted changes (dirty)
 - {{STATUS_AHEAD}}N: Ahead of remote by N commits
 - {{STATUS_BEHIND}}N: Behind remote by N commits
+- {{STATUS_DIRTY}} {{STATUS_AHEAD}}N: Dirty and ahead by N commits
 
 **{{HELP_HELP_NAVIGATION}}Help Navigation**
 - /: Search help (Enter to apply, Esc to clear)

@@ -181,8 +181,7 @@ func (m *Model) applyLayout(layout layoutDims) {
 
 // updateTableColumns updates the worktree table column widths based on available space.
 func (m *Model) updateTableColumns(totalWidth int) {
-	status := 8
-	ab := 7
+	status := 10
 	last := 15
 
 	// Only include PR column width if PR data has been loaded
@@ -193,14 +192,14 @@ func (m *Model) updateTableColumns(totalWidth int) {
 
 	// The table library handles separators internally (3 spaces per separator)
 	// So we need to account for them: (numColumns - 1) * 3
-	numColumns := 4
+	numColumns := 3
 	if m.prDataLoaded {
-		numColumns = 5
+		numColumns = 4
 	}
 	separatorSpace := (numColumns - 1) * 3
 
-	worktree := maxInt(12, totalWidth-status-ab-last-pr-separatorSpace)
-	excess := worktree + status + ab + pr + last + separatorSpace - totalWidth
+	worktree := maxInt(12, totalWidth-status-last-pr-separatorSpace)
+	excess := worktree + status + pr + last + separatorSpace - totalWidth
 	for excess > 0 && last > 10 {
 		last--
 		excess--
@@ -215,12 +214,8 @@ func (m *Model) updateTableColumns(totalWidth int) {
 		worktree--
 		excess--
 	}
-	for excess > 0 && status > 4 {
+	for excess > 0 && status > 6 {
 		status--
-		excess--
-	}
-	for excess > 0 && ab > 5 {
-		ab--
 		excess--
 	}
 	if excess > 0 {
@@ -228,7 +223,7 @@ func (m *Model) updateTableColumns(totalWidth int) {
 	}
 
 	// Final adjustment: ensure column widths + separators sum exactly to totalWidth
-	actualTotal := worktree + status + ab + last + pr + separatorSpace
+	actualTotal := worktree + status + last + pr + separatorSpace
 	if actualTotal < totalWidth {
 		// Distribute remaining space to the worktree column
 		worktree += (totalWidth - actualTotal)
@@ -239,8 +234,7 @@ func (m *Model) updateTableColumns(totalWidth int) {
 
 	columns := []table.Column{
 		{Title: "Name", Width: worktree},
-		{Title: "Changes", Width: status},
-		{Title: "Status", Width: ab},
+		{Title: "Status", Width: status},
 		{Title: "Last Active", Width: last},
 	}
 

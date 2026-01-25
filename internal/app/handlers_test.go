@@ -393,18 +393,18 @@ func TestHandlePRDataLoadedUpdatesTable(t *testing.T) {
 	if m.worktrees[0].PR == nil {
 		t.Fatal("expected PR info to be applied to worktree")
 	}
-	if len(m.worktreeTable.Columns()) != 5 {
-		t.Fatalf("expected 5 columns after PR data, got %d", len(m.worktreeTable.Columns()))
+	if len(m.worktreeTable.Columns()) != 4 {
+		t.Fatalf("expected 4 columns after PR data, got %d", len(m.worktreeTable.Columns()))
 	}
 	rows := m.worktreeTable.Rows()
 	if len(rows) != 1 {
 		t.Fatalf("expected 1 row after PR data, got %d", len(rows))
 	}
-	if len(rows[0]) != 5 {
-		t.Fatalf("expected 5 columns in row, got %d", len(rows[0]))
+	if len(rows[0]) != 4 {
+		t.Fatalf("expected 4 columns in row, got %d", len(rows[0]))
 	}
-	if !strings.Contains(rows[0][4], getIconPR()) {
-		t.Fatalf("expected PR column to include icon %q, got %q", getIconPR(), rows[0][4])
+	if !strings.Contains(rows[0][3], getIconPR()) {
+		t.Fatalf("expected PR column to include icon %q, got %q", getIconPR(), rows[0][3])
 	}
 }
 
@@ -435,11 +435,11 @@ func TestHandlePRDataLoadedOmitsIconWhenDisabled(t *testing.T) {
 	}
 
 	rows := m.worktreeTable.Rows()
-	if len(rows) != 1 || len(rows[0]) != 5 {
+	if len(rows) != 1 || len(rows[0]) != 4 {
 		t.Fatalf("unexpected row shape: %+v", rows)
 	}
-	if strings.Contains(rows[0][4], getIconPR()) {
-		t.Fatalf("expected PR icon to be omitted, got %q", rows[0][4])
+	if strings.Contains(rows[0][3], getIconPR()) {
+		t.Fatalf("expected PR icon to be omitted, got %q", rows[0][3])
 	}
 }
 
@@ -2855,12 +2855,12 @@ func TestPRAssignmentsPreservedOnWorktreeRefresh(t *testing.T) {
 	if len(rows) != 2 {
 		t.Fatalf("expected 2 rows, got %d", len(rows))
 	}
-	// With prDataLoaded=true, rows should have 5 columns including PR
-	if len(rows[0]) != 5 {
-		t.Fatalf("expected 5 columns in row (including PR), got %d", len(rows[0]))
+	// With prDataLoaded=true, rows should have 4 columns including PR
+	if len(rows[0]) != 4 {
+		t.Fatalf("expected 4 columns in row (including PR), got %d", len(rows[0]))
 	}
 	// PR column should not be "-"
-	prColumn := rows[0][4] // 5th column is PR
+	prColumn := rows[0][3] // 4th column is PR
 	if prColumn == "-" {
 		t.Fatal("PR column shows '-' instead of PR data after refresh")
 	}
@@ -3087,7 +3087,7 @@ func TestPRDataResetSyncsRowsAndColumns(t *testing.T) {
 	}
 	m.filteredWts = m.worktrees
 
-	// First, load PR data (5 columns)
+	// First, load PR data (4 columns)
 	prMsg := prDataLoadedMsg{
 		prMap: map[string]*models.PRInfo{
 			"feature": {Number: 12, State: "OPEN", Title: "Test PR", URL: "https://example.com"},
@@ -3098,15 +3098,15 @@ func TestPRDataResetSyncsRowsAndColumns(t *testing.T) {
 	if !m.prDataLoaded {
 		t.Fatal("expected prDataLoaded to be true after loading PR data")
 	}
-	if len(m.worktreeTable.Columns()) != 5 {
-		t.Fatalf("expected 5 columns after PR data, got %d", len(m.worktreeTable.Columns()))
+	if len(m.worktreeTable.Columns()) != 4 {
+		t.Fatalf("expected 4 columns after PR data, got %d", len(m.worktreeTable.Columns()))
 	}
 	rows := m.worktreeTable.Rows()
-	if len(rows[0]) != 5 {
-		t.Fatalf("expected 5 values in row after PR data, got %d", len(rows[0]))
+	if len(rows[0]) != 4 {
+		t.Fatalf("expected 4 values in row after PR data, got %d", len(rows[0]))
 	}
 
-	// Now simulate pressing 'p' to refetch - this should reset to 4 columns
+	// Now simulate pressing 'p' to refetch - this should reset to 3 columns
 	m.ciCache = make(map[string]*ciCacheEntry)
 	m.prDataLoaded = false
 	m.updateTable()
@@ -3115,12 +3115,12 @@ func TestPRDataResetSyncsRowsAndColumns(t *testing.T) {
 	if m.prDataLoaded {
 		t.Fatal("expected prDataLoaded to be false after reset")
 	}
-	if len(m.worktreeTable.Columns()) != 4 {
-		t.Fatalf("expected 4 columns after reset, got %d", len(m.worktreeTable.Columns()))
+	if len(m.worktreeTable.Columns()) != 3 {
+		t.Fatalf("expected 3 columns after reset, got %d", len(m.worktreeTable.Columns()))
 	}
 	rows = m.worktreeTable.Rows()
-	if len(rows[0]) != 4 {
-		t.Fatalf("expected 4 values in row after reset, got %d", len(rows[0]))
+	if len(rows[0]) != 3 {
+		t.Fatalf("expected 3 values in row after reset, got %d", len(rows[0]))
 	}
 }
 

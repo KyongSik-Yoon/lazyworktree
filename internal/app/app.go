@@ -1188,40 +1188,11 @@ func (m *Model) updateTable() {
 			}
 		}
 
-		status := statusIndicator(!wt.Dirty, showIcons)
-		if showIcons {
-			status = iconWithSpace(status)
-		}
-
-		// Build lazygit-style sync status: behind/ahead counts, sync, or no upstream.
-		var abStr string
-		switch {
-		case !wt.HasUpstream:
-			if wt.Unpushed > 0 {
-				abStr = fmt.Sprintf("%s%d", aheadIndicator(showIcons), wt.Unpushed)
-			} else {
-				abStr = "-"
-			}
-		case wt.Ahead == 0 && wt.Behind == 0:
-			abStr = syncIndicator(showIcons)
-			if showIcons {
-				abStr = iconWithSpace(abStr)
-			}
-		default:
-			var parts []string
-			if wt.Behind > 0 {
-				parts = append(parts, fmt.Sprintf("%s%d", behindIndicator(showIcons), wt.Behind))
-			}
-			if wt.Ahead > 0 {
-				parts = append(parts, fmt.Sprintf("%s%d", aheadIndicator(showIcons), wt.Ahead))
-			}
-			abStr = strings.Join(parts, "")
-		}
+		statusStr := combinedStatusIndicator(wt.Dirty, wt.HasUpstream, wt.Ahead, wt.Behind, wt.Unpushed, showIcons, m.config.IconSet)
 
 		row := table.Row{
 			name,
-			status,
-			abStr,
+			statusStr,
 			wt.LastActive,
 		}
 

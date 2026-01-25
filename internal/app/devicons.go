@@ -423,11 +423,11 @@ func emojiUIIcon(icon UIIcon, prIcon, issueIcon string) string {
 	case UIIconStatusClean, UIIconSyncClean:
 		return "✅"
 	case UIIconStatusDirty:
-		return "✏️"
+		return "📝"
 	case UIIconAhead:
-		return "⬆️"
+		return "⏫"
 	case UIIconBehind:
-		return "⬇️"
+		return "⏬"
 	case UIIconArrowLeft:
 		return "⬅️"
 	case UIIconArrowRight:
@@ -701,4 +701,59 @@ func iconWithSpace(icon string) string {
 		return ""
 	}
 	return icon + " "
+}
+
+// combinedStatusIndicator returns a combined dirty + sync status string.
+// Returns "-" when clean and synced, otherwise shows dirty indicator and/or ahead/behind counts.
+func combinedStatusIndicator(dirty, hasUpstream bool, ahead, behind, unpushed int, showIcons bool, iconSet string) string {
+	// Build dirty indicator
+	var dirtyStr string
+	if dirty {
+		if showIcons {
+			dirtyStr = uiIcon(UIIconStatusDirty)
+		} else {
+			dirtyStr = "~"
+		}
+	}
+
+	// Build sync/ahead/behind indicator
+	var syncStr string
+	switch {
+	case !hasUpstream:
+		if unpushed > 0 {
+			syncStr = fmt.Sprintf("%s%d", aheadIndicator(showIcons), unpushed)
+		}
+	case ahead == 0 && behind == 0:
+		// Synced with upstream, no indicator needed
+	default:
+		if behind > 0 {
+			syncStr += fmt.Sprintf("%s%d", behindIndicator(showIcons), behind)
+		}
+		if ahead > 0 {
+			syncStr += fmt.Sprintf("%s%d", aheadIndicator(showIcons), ahead)
+		}
+	}
+
+	// Combine the indicators with a space between dirty and sync if both present
+	var result string
+	switch {
+	case dirtyStr != "" && syncStr != "":
+		result = dirtyStr + " " + syncStr
+	case dirtyStr != "":
+		result = dirtyStr
+	case syncStr != "":
+		if iconSet == "emoji" {
+			result = "   " + syncStr
+		} else {
+			result = "  " + syncStr
+		}
+	default:
+		if iconSet == "emoji" {
+			return "   -"
+		} else {
+			return "  -"
+		}
+	}
+
+	return result
 }

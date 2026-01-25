@@ -327,7 +327,7 @@ max_untracked_diffs: 10
 max_diff_chars: 200000
 max_name_length: 95       # Maximum length for worktree names in table display (0 disables truncation)
 theme: ""       # Leave empty to auto-detect based on terminal background colour
-                # (defaults to "dracula" for dark, "dracula-light" for light).
+                # (defaults to "rose-pine" for dark, "dracula-light" for light).
                 # Options: see the Themes section below.
 git_pager: delta
 pager: "less --use-color --wordwrap -qcR -P 'Press q to exit..'"

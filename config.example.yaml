@@ -23,7 +23,7 @@ fuzzy_finder_input: false
 # UI & DISPLAY
 # ============================================================================
 
-# TUI theme (default: "dracula" for dark terminals, "dracula-light" for light terminals)
+# TUI theme (default: "rose-pine" for dark terminals, "dracula-light" for light terminals)
 # Options: "dracula", "dracula-light", "narna", "clean-light", "solarized-dark",
 #          "solarized-light", "gruvbox-dark", "gruvbox-light", "nord", "monokai",
 #          "catppuccin-mocha", "modern", "tokyo-night", "one-dark", "rose-pine",
