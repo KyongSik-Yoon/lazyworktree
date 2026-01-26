@@ -1,0 +1,429 @@
+package app
+
+import (
+	"context"
+	"fmt"
+	"net/url"
+	"os"
+	"os/exec"
+	"sort"
+	"strings"
+	"time"
+
+	"github.com/charmbracelet/bubbles/textinput"
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
+	"github.com/chmouel/lazyworktree/internal/models"
+	"github.com/chmouel/lazyworktree/internal/utils"
+)
+
+type ciCacheEntry struct {
+	checks    []*models.CICheck
+	fetchedAt time.Time
+}
+
+// openCICheckSelection opens a selection screen for CI checks on the current worktree.
+func (m *Model) openCICheckSelection() tea.Cmd {
+	if m.selectedIndex < 0 || m.selectedIndex >= len(m.filteredWts) {
+		return nil
+	}
+	wt := m.filteredWts[m.selectedIndex]
+
+	// Get CI checks from cache
+	cached, ok := m.ciCache[wt.Branch]
+	if !ok || len(cached.checks) == 0 {
+		m.showInfo("No CI checks available. Press 'p' to fetch PR data first.", nil)
+		return nil
+	}
+
+	// Build selection items from CI checks
+	items := make([]selectionItem, 0, len(cached.checks))
+
+	// Styled CI status icons (same pattern as render_panes.go)
+	greenStyle := lipgloss.NewStyle().Foreground(m.theme.SuccessFg)
+	redStyle := lipgloss.NewStyle().Foreground(m.theme.ErrorFg)
+	yellowStyle := lipgloss.NewStyle().Foreground(m.theme.WarnFg)
+	grayStyle := lipgloss.NewStyle().Foreground(m.theme.MutedFg)
+
+	for i, check := range cached.checks {
+		var style lipgloss.Style
+		switch check.Conclusion {
+		case "success":
+			style = greenStyle
+		case "failure":
+			style = redStyle
+		case "skipped", "cancelled":
+			style = grayStyle
+		case "pending", "":
+			style = yellowStyle
+		default:
+			style = grayStyle
+		}
+
+		icon := getCIStatusIcon(check.Conclusion, false, m.config.IconsEnabled())
+		styledIcon := style.Render(icon)
+		label := fmt.Sprintf("%s %s", styledIcon, check.Name)
+
+		items = append(items, selectionItem{
+			id:    fmt.Sprintf("%d", i),
+			label: label,
+		})
+	}
+
+	m.listScreen = NewListSelectionScreen(
+		items,
+		labelWithIcon(UIIconCICheck, "Select CI Check", m.config.IconsEnabled()),
+		"Filter checks...",
+		"No CI checks found.",
+		m.windowWidth,
+		m.windowHeight,
+		"",
+		m.theme,
+	)
+	m.listScreen.footerHint = "Enter open • Ctrl+v view logs • Ctrl+r restart"
+
+	// Store checks for later access in submit handler and Ctrl+R rerun
+	checks := sortCIChecks(cached.checks)
+	m.listScreenCIChecks = checks
+	m.listSubmit = func(item selectionItem) tea.Cmd {
+		// Keep the selection screen open - don't clear listScreen/listSubmit/currentScreen
+		// This allows users to view multiple checks without reopening the selection
+
+		// Parse the index from item.id
+		var idx int
+		if _, err := fmt.Sscanf(item.id, "%d", &idx); err != nil || idx < 0 || idx >= len(checks) {
+			return nil
+		}
+
+		return m.showCICheckLog(checks[idx])
+	}
+
+	m.currentScreen = screenListSelect
+	return textinput.Blink
+}
+
+// showCICheckLog opens the CI check log in a pager using gh run view.
+// For external CI systems (non-GitHub Actions), it opens the check link in the browser.
+func (m *Model) showCICheckLog(check *models.CICheck) tea.Cmd {
+	if m.selectedIndex < 0 || m.selectedIndex >= len(m.filteredWts) {
+		return nil
+	}
+	wt := m.filteredWts[m.selectedIndex]
+
+	// Extract run ID from the check link
+	runID := extractRunIDFromLink(check.Link)
+	if runID == "" {
+		// Not a GitHub Actions URL - open in browser instead
+		if check.Link == "" {
+			m.showInfo("No link available for this check.", nil)
+			return nil
+		}
+		return m.openURLInBrowser(check.Link)
+	}
+
+	// Build environment variables
+	env := m.buildCommandEnv(wt.Branch, wt.Path)
+
+	// Add CI-specific environment variables
+	env["LW_CI_JOB_NAME"] = check.Name
+	env["LW_CI_JOB_NAME_CLEAN"] = utils.SanitizeBranchName(check.Name, 0)
+	env["LW_CI_RUN_ID"] = runID
+	if !check.StartedAt.IsZero() {
+		env["LW_CI_STARTED_AT"] = check.StartedAt.Format(time.RFC3339)
+	}
+
+	envVars := os.Environ()
+	for k, v := range env {
+		envVars = append(envVars, fmt.Sprintf("%s=%s", k, v))
+	}
+
+	// Use --log-failed for failed checks, --log for others
+	logFlag := "--log"
+	if check.Conclusion == iconFailure {
+		logFlag = "--log-failed"
+	}
+
+	// Get CI-specific pager configuration
+	pager, isInteractive := m.ciScriptPagerCommand()
+
+	var cmdStr string
+	if isInteractive {
+		// Interactive pager - direct terminal control
+		cmdStr = fmt.Sprintf("gh run view %s %s 2>&1 | %s", runID, logFlag, pager)
+	} else {
+		// Non-interactive pager - use pager environment settings
+		pagerEnv := m.pagerEnv(pager)
+		pagerCmd := pager
+		if pagerEnv != "" {
+			pagerCmd = fmt.Sprintf("%s %s", pagerEnv, pager)
+		}
+		cmdStr = fmt.Sprintf("set -o pipefail; gh run view %s %s 2>&1 | %s", runID, logFlag, pagerCmd)
+	}
+
+	// Create command
+	// #nosec G204 -- command is constructed from controlled inputs
+	c := m.commandRunner("bash", "-c", cmdStr)
+	c.Dir = wt.Path
+	c.Env = envVars
+
+	return m.execProcess(c, func(err error) tea.Msg {
+		if err != nil {
+			// Ignore exit status 141 (SIGPIPE) which happens when the pager is closed early
+			if exitErr, ok := err.(*exec.ExitError); ok && exitErr.ExitCode() == 141 {
+				return refreshCompleteMsg{}
+			}
+			return errMsg{err: err}
+		}
+		return refreshCompleteMsg{}
+	})
+}
+
+// extractRunIDFromLink extracts the run ID from a GitHub Actions URL.
+// Example URL: https://github.com/owner/repo/actions/runs/12345678/job/98765432
+func extractRunIDFromLink(link string) string {
+	if link == "" {
+		return ""
+	}
+
+	parsed, err := url.Parse(link)
+	if err != nil {
+		return ""
+	}
+
+	// Check if it's a GitHub Actions URL
+	if !strings.Contains(parsed.Host, "github.com") {
+		return ""
+	}
+
+	// Path should contain /actions/runs/<run_id>
+	parts := strings.Split(parsed.Path, "/")
+	for i, part := range parts {
+		if part == "runs" && i+1 < len(parts) {
+			return parts[i+1]
+		}
+	}
+
+	return ""
+}
+
+// extractJobIDFromLink extracts the job ID from a GitHub Actions URL.
+// Example URL: https://github.com/owner/repo/actions/runs/12345678/job/98765432 -> 98765432
+func extractJobIDFromLink(link string) string {
+	if link == "" {
+		return ""
+	}
+
+	parsed, err := url.Parse(link)
+	if err != nil {
+		return ""
+	}
+
+	// Check if it's a GitHub Actions URL
+	if !strings.Contains(parsed.Host, "github.com") {
+		return ""
+	}
+
+	// Path should contain /job/<job_id>
+	parts := strings.Split(parsed.Path, "/")
+	for i, part := range parts {
+		if part == "job" && i+1 < len(parts) {
+			return parts[i+1]
+		}
+	}
+
+	return ""
+}
+
+// extractRepoFromLink extracts the owner/repo from a GitHub Actions URL.
+// Example URL: https://github.com/owner/repo/actions/runs/12345678 -> owner/repo
+func extractRepoFromLink(link string) string {
+	if link == "" {
+		return ""
+	}
+
+	parsed, err := url.Parse(link)
+	if err != nil {
+		return ""
+	}
+
+	// Check if it's a GitHub URL
+	if !strings.Contains(parsed.Host, "github.com") {
+		return ""
+	}
+
+	// Path should be /owner/repo/...
+	parts := strings.Split(strings.TrimPrefix(parsed.Path, "/"), "/")
+	if len(parts) >= 2 {
+		return parts[0] + "/" + parts[1]
+	}
+
+	return ""
+}
+
+// rerunCICheck restarts a CI job and returns the run URL.
+func (m *Model) rerunCICheck(check *models.CICheck) tea.Cmd {
+	if m.selectedIndex < 0 || m.selectedIndex >= len(m.filteredWts) {
+		return nil
+	}
+	wt := m.filteredWts[m.selectedIndex]
+
+	// Extract run ID and job ID from the check link
+	runID := extractRunIDFromLink(check.Link)
+	if runID == "" {
+		m.showInfo("Cannot restart: not a GitHub Actions job.", nil)
+		return nil
+	}
+
+	jobID := extractJobIDFromLink(check.Link)
+	repo := extractRepoFromLink(check.Link)
+	if repo == "" {
+		m.showInfo("Cannot restart: unable to determine repository from link.", nil)
+		return nil
+	}
+
+	// Show loading screen
+	m.loading = true
+	m.loadingOperation = "rerun"
+	m.loadingScreen = NewLoadingScreen("Restarting CI job...", m.theme, m.config.IconsEnabled())
+	m.currentScreen = screenLoading
+
+	return func() tea.Msg {
+		ctx, cancel := context.WithTimeout(m.ctx, 30*time.Second)
+		defer cancel()
+
+		// Build the gh run rerun command
+		args := []string{"run", "rerun", runID}
+		if jobID != "" {
+			args = append(args, "--job", jobID)
+		}
+		args = append(args, "-R", repo)
+
+		// gh run rerun produces no stdout on success, so we can't check output.
+		// RunGit with silent=false sends a notification on failure.
+		m.git.RunGit(ctx, append([]string{"gh"}, args...), wt.Path, []int{0}, true, false)
+
+		// Construct the run URL
+		runURL := fmt.Sprintf("https://github.com/%s/actions/runs/%s", repo, runID)
+
+		return ciRerunResultMsg{runURL: runURL}
+	}
+}
+
+// getCIChecksForCurrentWorktree returns CI checks for the current worktree and whether they're visible.
+func (m *Model) getCIChecksForCurrentWorktree() ([]*models.CICheck, bool) {
+	if m.selectedIndex < 0 || m.selectedIndex >= len(m.filteredWts) {
+		return nil, false
+	}
+	wt := m.filteredWts[m.selectedIndex]
+	cached, ok := m.ciCache[wt.Branch]
+	if !ok || len(cached.checks) == 0 {
+		return nil, false
+	}
+	return sortCIChecks(cached.checks), true
+}
+
+// sortCIChecks sorts CI checks so that GitHub Actions jobs appear first,
+// followed by non-GitHub Actions checks (e.g., Tekton, external status checks).
+func sortCIChecks(checks []*models.CICheck) []*models.CICheck {
+	sorted := make([]*models.CICheck, len(checks))
+	copy(sorted, checks)
+	sort.SliceStable(sorted, func(i, j int) bool {
+		// GitHub Actions links contain "/actions/"
+		iIsGHA := strings.Contains(sorted[i].Link, "/actions/")
+		jIsGHA := strings.Contains(sorted[j].Link, "/actions/")
+		if iIsGHA != jIsGHA {
+			return iIsGHA // GitHub Actions first
+		}
+		return false // Preserve original order within each group
+	})
+	return sorted
+}
+
+func (m *Model) fetchCIStatus(prNumber int, branch string) tea.Cmd {
+	return func() tea.Msg {
+		checks, err := m.git.FetchCIStatus(m.ctx, prNumber, branch)
+		return ciStatusLoadedMsg{
+			branch: branch,
+			checks: checks,
+			err:    err,
+		}
+	}
+}
+
+// fetchCIStatusByCommit fetches CI status for a commit SHA (non-PR branches on GitHub).
+func (m *Model) fetchCIStatusByCommit(worktreePath, branch string) tea.Cmd {
+	return func() tea.Msg {
+		commitSHA := m.git.GetHeadSHA(m.ctx, worktreePath)
+		if commitSHA == "" {
+			return ciStatusLoadedMsg{branch: branch, checks: nil, err: nil}
+		}
+		checks, err := m.git.FetchCIStatusByCommit(m.ctx, commitSHA, worktreePath)
+		return ciStatusLoadedMsg{branch: branch, checks: checks, err: err}
+	}
+}
+
+// maybeFetchCIStatus triggers CI fetch for current worktree if it has a PR or commit and cache is stale.
+func (m *Model) maybeFetchCIStatus() tea.Cmd {
+	if m.selectedIndex < 0 || m.selectedIndex >= len(m.filteredWts) {
+		return nil
+	}
+	wt := m.filteredWts[m.selectedIndex]
+
+	// Check cache - skip if fresh (within ciCacheTTL)
+	if cached, ok := m.ciCache[wt.Branch]; ok {
+		if time.Since(cached.fetchedAt) < ciCacheTTL {
+			return nil
+		}
+	}
+
+	// If we have an OPEN PR, use PR-based CI fetch
+	// For merged/closed PRs, gh pr checks returns empty, so use commit-based fetch
+	if wt.PR != nil && wt.PR.State == prStateOpen {
+		return m.fetchCIStatus(wt.PR.Number, wt.Branch)
+	}
+
+	// For non-PR branches on GitHub, use commit-based CI fetch
+	if m.git.IsGitHub(m.ctx) {
+		return m.fetchCIStatusByCommit(wt.Path, wt.Branch)
+	}
+
+	return nil
+}
+
+// ciScriptPagerCommand returns the pager command for CI logs.
+// Returns (pager, isInteractive) - ci_script_pager is implicitly interactive.
+func (m *Model) ciScriptPagerCommand() (string, bool) {
+	if m.config != nil {
+		if ciPager := strings.TrimSpace(m.config.CIScriptPager); ciPager != "" {
+			return ciPager, true
+		}
+	}
+	return m.pagerCommand(), false
+}
+
+// getCIStatusIcon returns the appropriate icon for CI status.
+// Draft PRs show "D" instead of CI status per user preference.
+func getCIStatusIcon(ciStatus string, isDraft, showIcons bool) string {
+	if isDraft {
+		return "D"
+	}
+	if showIcons {
+		if icon := ciIconForConclusion(ciStatus); icon != "" {
+			return icon
+		}
+	}
+	switch ciStatus {
+	case "success":
+		return "S"
+	case "failure":
+		return "F"
+	case "skipped":
+		return "-"
+	case "cancelled":
+		return "C"
+	case "pending":
+		return "P"
+	default:
+		return "?"
+	}
+}

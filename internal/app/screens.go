@@ -1903,33 +1903,6 @@ func (s *PRSelectionScreen) View() string {
 	return boxStyle.Render(content)
 }
 
-// getCIStatusIcon returns the appropriate icon for CI status.
-// Draft PRs show "D" instead of CI status per user preference.
-func getCIStatusIcon(ciStatus string, isDraft, showIcons bool) string {
-	if isDraft {
-		return "D"
-	}
-	if showIcons {
-		if icon := ciIconForConclusion(ciStatus); icon != "" {
-			return icon
-		}
-	}
-	switch ciStatus {
-	case "success":
-		return "S"
-	case "failure":
-		return "F"
-	case "skipped":
-		return "-"
-	case "cancelled":
-		return "C"
-	case "pending":
-		return "P"
-	default:
-		return "?"
-	}
-}
-
 // renderPRLine renders a PR line with colored CI status icon.
 func (s *PRSelectionScreen) renderPRLine(baseStyle lipgloss.Style, iconPrefix, prNum, author, ciIcon, title, ciStatus string, isDraft bool) string {
 	// Style for CI icon based on status
