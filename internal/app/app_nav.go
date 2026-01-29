@@ -225,6 +225,15 @@ func (m *Model) updateTable() {
 	m.updateWorktreeArrows()
 }
 
+func (m *Model) syncSelectedIndexFromCursor() {
+	cursor := m.state.ui.worktreeTable.Cursor()
+	if cursor < 0 || cursor >= len(m.state.data.filteredWts) {
+		m.state.data.selectedIndex = -1
+		return
+	}
+	m.state.data.selectedIndex = cursor
+}
+
 // updateWorktreeArrows updates the arrow indicator on the selected row.
 func (m *Model) updateWorktreeArrows() {
 	rows := m.state.ui.worktreeTable.Rows()

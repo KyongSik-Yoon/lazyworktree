@@ -164,6 +164,7 @@ func (m *Model) handleGotoTop() (tea.Model, tea.Cmd) {
 	case 0:
 		m.state.ui.worktreeTable.GotoTop()
 		m.updateWorktreeArrows()
+		m.syncSelectedIndexFromCursor()
 		return m, m.debouncedUpdateDetailsView()
 	case 1:
 		if len(m.state.services.statusTree.TreeFlat) > 0 {
@@ -181,6 +182,7 @@ func (m *Model) handleGotoBottom() (tea.Model, tea.Cmd) {
 	case 0:
 		m.state.ui.worktreeTable.GotoBottom()
 		m.updateWorktreeArrows()
+		m.syncSelectedIndexFromCursor()
 		return m, m.debouncedUpdateDetailsView()
 	case 1:
 		if len(m.state.services.statusTree.TreeFlat) > 0 {
@@ -588,6 +590,7 @@ func (m *Model) handleBuiltInKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	if m.state.view.FocusedPane == 0 {
 		var cmd tea.Cmd
 		m.state.ui.worktreeTable, cmd = m.state.ui.worktreeTable.Update(msg)
+		m.syncSelectedIndexFromCursor()
 		return m, tea.Batch(cmd, m.debouncedUpdateDetailsView())
 	}
 
@@ -604,6 +607,7 @@ func (m *Model) handleNavigationDown(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case 0:
 		m.state.ui.worktreeTable, cmd = m.state.ui.worktreeTable.Update(keyMsg)
 		m.updateWorktreeArrows()
+		m.syncSelectedIndexFromCursor()
 		cmds = append(cmds, cmd)
 		cmds = append(cmds, m.debouncedUpdateDetailsView())
 	case 1:
@@ -663,6 +667,7 @@ func (m *Model) handleNavigationUp(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case 0:
 		m.state.ui.worktreeTable, cmd = m.state.ui.worktreeTable.Update(msg)
 		m.updateWorktreeArrows()
+		m.syncSelectedIndexFromCursor()
 		cmds = append(cmds, cmd)
 		cmds = append(cmds, m.debouncedUpdateDetailsView())
 	case 1:
@@ -1006,6 +1011,7 @@ func (m *Model) handleMouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 			// Scroll worktree table up
 			m.state.ui.worktreeTable, _ = m.state.ui.worktreeTable.Update(tea.KeyMsg{Type: tea.KeyUp})
 			m.updateWorktreeArrows()
+			m.syncSelectedIndexFromCursor()
 			cmds = append(cmds, m.debouncedUpdateDetailsView())
 		case 1:
 			// Navigate up through tree items
@@ -1024,6 +1030,7 @@ func (m *Model) handleMouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 			// Scroll worktree table down
 			m.state.ui.worktreeTable, _ = m.state.ui.worktreeTable.Update(tea.KeyMsg{Type: tea.KeyDown})
 			m.updateWorktreeArrows()
+			m.syncSelectedIndexFromCursor()
 			cmds = append(cmds, m.debouncedUpdateDetailsView())
 		case 1:
 			// Navigate down through tree items

@@ -73,6 +73,41 @@ func TestHandleEnterKeySelectsWorktree(t *testing.T) {
 	}
 }
 
+func TestEnterAfterNavigationUsesHighlightedWorktree(t *testing.T) {
+	cfg := &config.AppConfig{
+		WorktreeDir: t.TempDir(),
+	}
+	m := NewModel(cfg, "")
+	m.state.view.FocusedPane = 0
+	m.state.ui.worktreeTable.Focus()
+
+	firstPath := filepath.Join(cfg.WorktreeDir, "wt1")
+	secondPath := filepath.Join(cfg.WorktreeDir, "wt2")
+	m.state.data.filteredWts = []*models.WorktreeInfo{
+		{Path: firstPath, Branch: testFeat},
+		{Path: secondPath, Branch: testOtherBranch},
+	}
+	m.state.ui.worktreeTable.SetRows([]table.Row{
+		{"wt1"},
+		{"wt2"},
+	})
+	m.state.ui.worktreeTable.SetCursor(0)
+	m.state.data.selectedIndex = 0
+
+	_, _ = m.handleNavigationDown(tea.KeyMsg{Type: tea.KeyDown})
+	if m.state.ui.worktreeTable.Cursor() != 1 {
+		t.Fatalf("expected cursor to move to 1, got %d", m.state.ui.worktreeTable.Cursor())
+	}
+
+	_, cmd := m.handleEnterKey()
+	if m.selectedPath != secondPath {
+		t.Fatalf("expected selected path %q, got %q", secondPath, m.selectedPath)
+	}
+	if cmd == nil {
+		t.Fatal("expected command to be returned")
+	}
+}
+
 func TestFilterEnterClosesWithoutSelecting(t *testing.T) {
 	cfg := &config.AppConfig{
 		WorktreeDir: t.TempDir(),
