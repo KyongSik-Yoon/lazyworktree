@@ -20,8 +20,8 @@ func TestShowDiffNonInteractiveNoDiff(t *testing.T) {
 		MaxDiffChars:      1000,
 	}
 	m := NewModel(cfg, "")
-	m.data.filteredWts = []*models.WorktreeInfo{{Path: cfg.WorktreeDir, Branch: featureBranch}}
-	m.data.selectedIndex = 0
+	m.state.data.filteredWts = []*models.WorktreeInfo{{Path: cfg.WorktreeDir, Branch: featureBranch}}
+	m.state.data.selectedIndex = 0
 	// statusFilesAll is empty by default, simulating no changes
 
 	// showDiff with no changes should now show an info screen
@@ -31,13 +31,13 @@ func TestShowDiffNonInteractiveNoDiff(t *testing.T) {
 	}
 
 	// Verify info screen is shown
-	if !m.ui.screenManager.IsActive() {
+	if !m.state.ui.screenManager.IsActive() {
 		t.Fatal("expected screen manager to be active")
 	}
-	if m.ui.screenManager.Type() != screen.TypeInfo {
-		t.Fatalf("expected info screen, got %v", m.ui.screenManager.Type())
+	if m.state.ui.screenManager.Type() != screen.TypeInfo {
+		t.Fatalf("expected info screen, got %v", m.state.ui.screenManager.Type())
 	}
-	infoScreen, ok := m.ui.screenManager.Current().(*screen.InfoScreen)
+	infoScreen, ok := m.state.ui.screenManager.Current().(*screen.InfoScreen)
 	if !ok {
 		t.Fatal("expected InfoScreen in screen manager")
 	}
@@ -55,8 +55,8 @@ func TestShowDiffInteractiveNoDiff(t *testing.T) {
 		MaxDiffChars:        1000,
 	}
 	m := NewModel(cfg, "")
-	m.data.filteredWts = []*models.WorktreeInfo{{Path: cfg.WorktreeDir, Branch: featureBranch}}
-	m.data.selectedIndex = 0
+	m.state.data.filteredWts = []*models.WorktreeInfo{{Path: cfg.WorktreeDir, Branch: featureBranch}}
+	m.state.data.selectedIndex = 0
 	// statusFilesAll is empty by default, simulating no changes
 
 	cmd := m.showDiff()
@@ -64,13 +64,13 @@ func TestShowDiffInteractiveNoDiff(t *testing.T) {
 		t.Fatal("expected no command when there are no changes in interactive mode")
 	}
 
-	if !m.ui.screenManager.IsActive() {
+	if !m.state.ui.screenManager.IsActive() {
 		t.Fatal("expected screen manager to be active")
 	}
-	if m.ui.screenManager.Type() != screen.TypeInfo {
-		t.Fatalf("expected info screen, got %v", m.ui.screenManager.Type())
+	if m.state.ui.screenManager.Type() != screen.TypeInfo {
+		t.Fatalf("expected info screen, got %v", m.state.ui.screenManager.Type())
 	}
-	infoScreen, ok := m.ui.screenManager.Current().(*screen.InfoScreen)
+	infoScreen, ok := m.state.ui.screenManager.Current().(*screen.InfoScreen)
 	if !ok {
 		t.Fatal("expected InfoScreen in screen manager")
 	}
@@ -87,8 +87,8 @@ func TestShowDiffVSCodeNoDiff(t *testing.T) {
 		MaxDiffChars:      1000,
 	}
 	m := NewModel(cfg, "")
-	m.data.filteredWts = []*models.WorktreeInfo{{Path: cfg.WorktreeDir, Branch: featureBranch}}
-	m.data.selectedIndex = 0
+	m.state.data.filteredWts = []*models.WorktreeInfo{{Path: cfg.WorktreeDir, Branch: featureBranch}}
+	m.state.data.selectedIndex = 0
 	// statusFilesAll is empty by default, simulating no changes
 
 	cmd := m.showDiff()
@@ -96,13 +96,13 @@ func TestShowDiffVSCodeNoDiff(t *testing.T) {
 		t.Fatal("expected no command when there are no changes in VSCode mode")
 	}
 
-	if !m.ui.screenManager.IsActive() {
+	if !m.state.ui.screenManager.IsActive() {
 		t.Fatal("expected screen manager to be active")
 	}
-	if m.ui.screenManager.Type() != screen.TypeInfo {
-		t.Fatalf("expected info screen, got %v", m.ui.screenManager.Type())
+	if m.state.ui.screenManager.Type() != screen.TypeInfo {
+		t.Fatalf("expected info screen, got %v", m.state.ui.screenManager.Type())
 	}
-	infoScreen, ok := m.ui.screenManager.Current().(*screen.InfoScreen)
+	infoScreen, ok := m.state.ui.screenManager.Current().(*screen.InfoScreen)
 	if !ok {
 		t.Fatal("expected InfoScreen in screen manager")
 	}
@@ -120,11 +120,11 @@ func TestShowDiffInteractiveWithChanges(t *testing.T) {
 		MaxDiffChars:        1000,
 	}
 	m := NewModel(cfg, "")
-	m.data.filteredWts = []*models.WorktreeInfo{{Path: cfg.WorktreeDir, Branch: featureBranch}}
-	m.data.selectedIndex = 0
+	m.state.data.filteredWts = []*models.WorktreeInfo{{Path: cfg.WorktreeDir, Branch: featureBranch}}
+	m.state.data.selectedIndex = 0
 
 	// Simulate having changes
-	m.data.statusFilesAll = []StatusFile{
+	m.state.data.statusFilesAll = []StatusFile{
 		{Filename: "test.go", Status: ".M", IsUntracked: false},
 	}
 
@@ -168,11 +168,11 @@ func TestShowDiffVSCodeWithChanges(t *testing.T) {
 		MaxDiffChars:      1000,
 	}
 	m := NewModel(cfg, "")
-	m.data.filteredWts = []*models.WorktreeInfo{{Path: cfg.WorktreeDir, Branch: featureBranch}}
-	m.data.selectedIndex = 0
+	m.state.data.filteredWts = []*models.WorktreeInfo{{Path: cfg.WorktreeDir, Branch: featureBranch}}
+	m.state.data.selectedIndex = 0
 
 	// Simulate having changes
-	m.data.statusFilesAll = []StatusFile{
+	m.state.data.statusFilesAll = []StatusFile{
 		{Filename: "test.go", Status: ".M", IsUntracked: false},
 	}
 

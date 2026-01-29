@@ -7,14 +7,14 @@ import (
 )
 
 func (m *Model) showDiff() tea.Cmd {
-	if m.data.selectedIndex < 0 || m.data.selectedIndex >= len(m.data.filteredWts) {
+	if m.state.data.selectedIndex < 0 || m.state.data.selectedIndex >= len(m.state.data.filteredWts) {
 		return nil
 	}
-	wt := m.data.filteredWts[m.data.selectedIndex]
+	wt := m.state.data.filteredWts[m.state.data.selectedIndex]
 
 	return m.diffRouter().ShowDiff(handlers.WorktreeDiffParams{
 		Worktree:        wt,
-		StatusFiles:     m.data.statusFilesAll,
+		StatusFiles:     m.state.data.statusFilesAll,
 		BuildCommandEnv: m.buildCommandEnv,
 		ShowInfo: func(message string) {
 			m.showInfo(message, nil)
@@ -24,10 +24,10 @@ func (m *Model) showDiff() tea.Cmd {
 
 // showFileDiff shows the diff for a single file in a pager.
 func (m *Model) showFileDiff(sf StatusFile) tea.Cmd {
-	if m.data.selectedIndex < 0 || m.data.selectedIndex >= len(m.data.filteredWts) {
+	if m.state.data.selectedIndex < 0 || m.state.data.selectedIndex >= len(m.state.data.filteredWts) {
 		return nil
 	}
-	wt := m.data.filteredWts[m.data.selectedIndex]
+	wt := m.state.data.filteredWts[m.state.data.selectedIndex]
 
 	return m.diffRouter().ShowFileDiff(handlers.FileDiffParams{
 		Worktree:        wt,
@@ -55,7 +55,7 @@ func (m *Model) showCommitFileDiff(commitSHA, filename, worktreePath string) tea
 func (m *Model) diffRouter() *handlers.DiffRouter {
 	return &handlers.DiffRouter{
 		Config:                m.config,
-		UseGitPager:           m.services.git.UseGitPager(),
+		UseGitPager:           m.state.services.git.UseGitPager(),
 		CommandRunner:         m.commandRunner,
 		Context:               m.ctx,
 		ExecProcess:           m.execProcess,

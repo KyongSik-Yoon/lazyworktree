@@ -45,25 +45,25 @@ func (m *Model) autoRefreshTick() tea.Cmd {
 }
 
 func (m *Model) refreshDetails() tea.Cmd {
-	if len(m.data.filteredWts) == 0 {
+	if len(m.state.data.filteredWts) == 0 {
 		return nil
 	}
-	idx := m.ui.worktreeTable.Cursor()
-	if idx < 0 || idx >= len(m.data.filteredWts) {
+	idx := m.state.ui.worktreeTable.Cursor()
+	if idx < 0 || idx >= len(m.state.data.filteredWts) {
 		return nil
 	}
-	m.deleteDetailsCache(m.data.filteredWts[idx].Path)
+	m.deleteDetailsCache(m.state.data.filteredWts[idx].Path)
 	return m.updateDetailsView()
 }
 
 func (m *Model) startGitWatcher() tea.Cmd {
-	if m.services.watch != nil && m.services.watch.Started {
+	if m.state.services.watch != nil && m.state.services.watch.Started {
 		return nil
 	}
-	if m.services.watch == nil {
-		m.services.watch = services.NewGitWatchService(m.services.git, m.debugf)
+	if m.state.services.watch == nil {
+		m.state.services.watch = services.NewGitWatchService(m.state.services.git, m.debugf)
 	}
-	started, err := m.services.watch.Start(m.ctx, m.config)
+	started, err := m.state.services.watch.Start(m.ctx, m.config)
 	if err != nil {
 		return func() tea.Msg {
 			return errMsg{err: err}
@@ -77,17 +77,17 @@ func (m *Model) startGitWatcher() tea.Cmd {
 }
 
 func (m *Model) stopGitWatcher() {
-	if m.services.watch == nil || !m.services.watch.Started {
+	if m.state.services.watch == nil || !m.state.services.watch.Started {
 		return
 	}
-	m.services.watch.Stop()
+	m.state.services.watch.Stop()
 }
 
 func (m *Model) waitForGitWatchEvent() tea.Cmd {
-	if m.services.watch == nil {
+	if m.state.services.watch == nil {
 		return nil
 	}
-	events := m.services.watch.NextEvent()
+	events := m.state.services.watch.NextEvent()
 	if events == nil {
 		return nil
 	}
@@ -101,8 +101,8 @@ func (m *Model) waitForGitWatchEvent() tea.Cmd {
 }
 
 func (m *Model) shouldRefreshGitEvent(now time.Time) bool {
-	if m.services.watch == nil {
+	if m.state.services.watch == nil {
 		return false
 	}
-	return m.services.watch.ShouldRefresh(now)
+	return m.state.services.watch.ShouldRefresh(now)
 }

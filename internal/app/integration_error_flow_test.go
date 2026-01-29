@@ -18,22 +18,22 @@ func TestIntegrationOpenPRsErrors(t *testing.T) {
 
 	updated, _ := m.Update(openPRsLoadedMsg{err: errors.New("boom")})
 	m = updated.(*Model)
-	if !m.ui.screenManager.IsActive() || m.ui.screenManager.Type() != appscreen.TypeInfo {
-		t.Fatalf("expected info screen, got active=%v type=%v", m.ui.screenManager.IsActive(), m.ui.screenManager.Type())
+	if !m.state.ui.screenManager.IsActive() || m.state.ui.screenManager.Type() != appscreen.TypeInfo {
+		t.Fatalf("expected info screen, got active=%v type=%v", m.state.ui.screenManager.IsActive(), m.state.ui.screenManager.Type())
 	}
-	infoScr := m.ui.screenManager.Current().(*appscreen.InfoScreen)
+	infoScr := m.state.ui.screenManager.Current().(*appscreen.InfoScreen)
 	if !strings.Contains(infoScr.Message, "Failed to fetch PRs") {
 		t.Fatalf("expected fetch error modal, got %q", infoScr.Message)
 	}
 
-	m.ui.screenManager.Pop()
+	m.state.ui.screenManager.Pop()
 
 	updated, _ = m.Update(openPRsLoadedMsg{prs: []*models.PRInfo{}})
 	m = updated.(*Model)
-	if !m.ui.screenManager.IsActive() || m.ui.screenManager.Type() != appscreen.TypeInfo {
-		t.Fatalf("expected info screen, got active=%v type=%v", m.ui.screenManager.IsActive(), m.ui.screenManager.Type())
+	if !m.state.ui.screenManager.IsActive() || m.state.ui.screenManager.Type() != appscreen.TypeInfo {
+		t.Fatalf("expected info screen, got active=%v type=%v", m.state.ui.screenManager.IsActive(), m.state.ui.screenManager.Type())
 	}
-	infoScr2 := m.ui.screenManager.Current().(*appscreen.InfoScreen)
+	infoScr2 := m.state.ui.screenManager.Current().(*appscreen.InfoScreen)
 	if !strings.Contains(infoScr2.Message, "No open PRs") {
 		t.Fatalf("unexpected info modal: %q", infoScr2.Message)
 	}
@@ -42,17 +42,17 @@ func TestIntegrationOpenPRsErrors(t *testing.T) {
 func TestIntegrationCreateFromPRValidationErrors(t *testing.T) {
 	cfg := &config.AppConfig{WorktreeDir: t.TempDir()}
 	m := NewModel(cfg, "")
-	m.view.WindowWidth = 120
-	m.view.WindowHeight = 40
+	m.state.view.WindowWidth = 120
+	m.state.view.WindowHeight = 40
 
 	missingBranch := &models.PRInfo{Number: 1, Title: "Add feature"}
 	updated, _ := m.Update(openPRsLoadedMsg{prs: []*models.PRInfo{missingBranch}})
 	m = updated.(*Model)
-	if !m.ui.screenManager.IsActive() || m.ui.screenManager.Type() != appscreen.TypePRSelect {
-		t.Fatalf("expected PR selection screen, got active=%v type=%v", m.ui.screenManager.IsActive(), m.ui.screenManager.Type())
+	if !m.state.ui.screenManager.IsActive() || m.state.ui.screenManager.Type() != appscreen.TypePRSelect {
+		t.Fatalf("expected PR selection screen, got active=%v type=%v", m.state.ui.screenManager.IsActive(), m.state.ui.screenManager.Type())
 	}
 
-	prScreen := m.ui.screenManager.Current().(*appscreen.PRSelectionScreen)
+	prScreen := m.state.ui.screenManager.Current().(*appscreen.PRSelectionScreen)
 	if prScreen == nil {
 		t.Fatal("expected PRSelectionScreen to be set")
 	}
@@ -66,10 +66,10 @@ func TestIntegrationCreateFromPRValidationErrors(t *testing.T) {
 		m = updated.(*Model)
 	}
 
-	if !m.ui.screenManager.IsActive() || m.ui.screenManager.Type() != appscreen.TypeInput {
+	if !m.state.ui.screenManager.IsActive() || m.state.ui.screenManager.Type() != appscreen.TypeInput {
 		t.Fatal("expected input screen for PR selection")
 	}
-	inputScr := m.ui.screenManager.Current().(*appscreen.InputScreen)
+	inputScr := m.state.ui.screenManager.Current().(*appscreen.InputScreen)
 	inputScr.OnSubmit("pr1-add-feature", false)
 	if inputScr.ErrorMsg != errPRBranchMissing {
 		t.Fatalf("unexpected error: %q", inputScr.ErrorMsg)
@@ -80,16 +80,16 @@ func TestIntegrationCreateFromPRValidationErrors(t *testing.T) {
 	m = updated.(*Model)
 
 	duplicateBranch := "my-feature"
-	m.data.worktrees = []*models.WorktreeInfo{{Branch: duplicateBranch}}
+	m.state.data.worktrees = []*models.WorktreeInfo{{Branch: duplicateBranch}}
 
-	prScreen = m.ui.screenManager.Current().(*appscreen.PRSelectionScreen)
+	prScreen = m.state.ui.screenManager.Current().(*appscreen.PRSelectionScreen)
 	cmd = prScreen.OnSelect(withBranch)
 	if cmd != nil {
 		updated, _ = m.Update(cmd())
 		m = updated.(*Model)
 	}
 
-	inputScr = m.ui.screenManager.Current().(*appscreen.InputScreen)
+	inputScr = m.state.ui.screenManager.Current().(*appscreen.InputScreen)
 	inputScr.OnSubmit(duplicateBranch, false)
 	if !strings.Contains(inputScr.ErrorMsg, "already exists") {
 		t.Fatalf("unexpected error: %q", inputScr.ErrorMsg)
@@ -99,19 +99,19 @@ func TestIntegrationCreateFromPRValidationErrors(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(m.getRepoWorktreeDir(), existsBranch), 0o750); err != nil {
 		t.Fatalf("mkdir: %v", err)
 	}
-	m.data.worktrees = nil
+	m.state.data.worktrees = nil
 
 	updated, _ = m.Update(openPRsLoadedMsg{prs: []*models.PRInfo{withBranch}})
 	m = updated.(*Model)
 
-	prScreen = m.ui.screenManager.Current().(*appscreen.PRSelectionScreen)
+	prScreen = m.state.ui.screenManager.Current().(*appscreen.PRSelectionScreen)
 	cmd = prScreen.OnSelect(withBranch)
 	if cmd != nil {
 		updated, _ = m.Update(cmd())
 		m = updated.(*Model)
 	}
 
-	inputScr = m.ui.screenManager.Current().(*appscreen.InputScreen)
+	inputScr = m.state.ui.screenManager.Current().(*appscreen.InputScreen)
 	inputScr.OnSubmit(existsBranch, false)
 	if !strings.Contains(inputScr.ErrorMsg, "Path already exists") {
 		t.Fatalf("unexpected error: %q", inputScr.ErrorMsg)
@@ -122,7 +122,7 @@ func TestIntegrationPRAndCIErrorPaths(t *testing.T) {
 	cfg := &config.AppConfig{WorktreeDir: t.TempDir()}
 	m := NewModel(cfg, "")
 	m.loading = true
-	m.data.worktrees = []*models.WorktreeInfo{{Branch: featureBranch}}
+	m.state.data.worktrees = []*models.WorktreeInfo{{Branch: featureBranch}}
 
 	updated, _ := m.Update(prDataLoadedMsg{err: errors.New("boom")})
 	m = updated.(*Model)
@@ -132,12 +132,12 @@ func TestIntegrationPRAndCIErrorPaths(t *testing.T) {
 	if m.prDataLoaded {
 		t.Fatal("expected prDataLoaded to remain false")
 	}
-	if m.data.worktrees[0].PR != nil {
+	if m.state.data.worktrees[0].PR != nil {
 		t.Fatal("expected PR data to remain unset")
 	}
 
-	m.data.filteredWts = []*models.WorktreeInfo{{Branch: featureBranch}}
-	m.data.selectedIndex = 0
+	m.state.data.filteredWts = []*models.WorktreeInfo{{Branch: featureBranch}}
+	m.state.data.selectedIndex = 0
 	m.infoContent = "before"
 	updated, _ = m.Update(ciStatusLoadedMsg{branch: featureBranch, err: errors.New("boom")})
 	m = updated.(*Model)

@@ -12,8 +12,8 @@ import (
 // renderBody renders the main body area with panes.
 func (m *Model) renderBody(layout layoutDims) string {
 	// Handle zoom mode: only render the zoomed pane
-	if m.view.ZoomedPane >= 0 {
-		switch m.view.ZoomedPane {
+	if m.state.view.ZoomedPane >= 0 {
+		switch m.state.view.ZoomedPane {
 		case 0:
 			return m.renderZoomedLeftPane(layout)
 		case 1:
@@ -33,10 +33,10 @@ func (m *Model) renderBody(layout layoutDims) string {
 
 // renderLeftPane renders the left pane (worktree table).
 func (m *Model) renderLeftPane(layout layoutDims) string {
-	title := m.renderPaneTitle(1, "Worktrees", m.view.FocusedPane == 0, layout.leftInnerWidth)
-	tableView := m.ui.worktreeTable.View()
+	title := m.renderPaneTitle(1, "Worktrees", m.state.view.FocusedPane == 0, layout.leftInnerWidth)
+	tableView := m.state.ui.worktreeTable.View()
 	content := lipgloss.JoinVertical(lipgloss.Left, title, tableView)
-	return m.paneStyle(m.view.FocusedPane == 0).
+	return m.paneStyle(m.state.view.FocusedPane == 0).
 		Width(layout.leftWidth).
 		Height(layout.bodyHeight).
 		Render(content)
@@ -52,20 +52,20 @@ func (m *Model) renderRightPane(layout layoutDims) string {
 
 // renderRightTopPane renders the right top pane (status viewport).
 func (m *Model) renderRightTopPane(layout layoutDims) string {
-	title := m.renderPaneTitle(2, "Status", m.view.FocusedPane == 1, layout.rightInnerWidth)
+	title := m.renderPaneTitle(2, "Status", m.state.view.FocusedPane == 1, layout.rightInnerWidth)
 	infoBox := m.renderInnerBox("Info", m.infoContent, layout.rightInnerWidth, 0)
 
 	innerBoxStyle := m.baseInnerBoxStyle()
 	statusBoxHeight := maxInt(layout.rightTopInnerHeight-lipgloss.Height(title)-lipgloss.Height(infoBox)-2, 3)
 	statusViewportWidth := maxInt(1, layout.rightInnerWidth-innerBoxStyle.GetHorizontalFrameSize())
 	statusViewportHeight := maxInt(1, statusBoxHeight-innerBoxStyle.GetVerticalFrameSize())
-	m.ui.statusViewport.Width = statusViewportWidth
-	m.ui.statusViewport.Height = statusViewportHeight
-	m.ui.statusViewport.SetContent(m.statusContent)
+	m.state.ui.statusViewport.Width = statusViewportWidth
+	m.state.ui.statusViewport.Height = statusViewportHeight
+	m.state.ui.statusViewport.SetContent(m.statusContent)
 	statusBox := innerBoxStyle.
 		Width(layout.rightInnerWidth).
 		Height(statusBoxHeight).
-		Render(m.ui.statusViewport.View())
+		Render(m.state.ui.statusViewport.View())
 
 	content := lipgloss.JoinVertical(
 		lipgloss.Left,
@@ -73,7 +73,7 @@ func (m *Model) renderRightTopPane(layout layoutDims) string {
 		infoBox,
 		statusBox,
 	)
-	return m.paneStyle(m.view.FocusedPane == 1).
+	return m.paneStyle(m.state.view.FocusedPane == 1).
 		Width(layout.rightWidth).
 		Height(layout.rightTopHeight).
 		Render(content)
@@ -81,9 +81,9 @@ func (m *Model) renderRightTopPane(layout layoutDims) string {
 
 // renderRightBottomPane renders the right bottom pane (log table).
 func (m *Model) renderRightBottomPane(layout layoutDims) string {
-	title := m.renderPaneTitle(3, "Log", m.view.FocusedPane == 2, layout.rightInnerWidth)
-	content := lipgloss.JoinVertical(lipgloss.Left, title, m.ui.logTable.View())
-	return m.paneStyle(m.view.FocusedPane == 2).
+	title := m.renderPaneTitle(3, "Log", m.state.view.FocusedPane == 2, layout.rightInnerWidth)
+	content := lipgloss.JoinVertical(lipgloss.Left, title, m.state.ui.logTable.View())
+	return m.paneStyle(m.state.view.FocusedPane == 2).
 		Width(layout.rightWidth).
 		Height(layout.rightBottomHeight).
 		Render(content)
@@ -92,7 +92,7 @@ func (m *Model) renderRightBottomPane(layout layoutDims) string {
 // renderZoomedLeftPane renders the zoomed left pane.
 func (m *Model) renderZoomedLeftPane(layout layoutDims) string {
 	title := m.renderPaneTitle(1, "Worktrees", true, layout.leftInnerWidth)
-	tableView := m.ui.worktreeTable.View()
+	tableView := m.state.ui.worktreeTable.View()
 	content := lipgloss.JoinVertical(lipgloss.Left, title, tableView)
 	return m.paneStyle(true).
 		Width(layout.leftWidth).
@@ -109,13 +109,13 @@ func (m *Model) renderZoomedRightTopPane(layout layoutDims) string {
 	statusBoxHeight := maxInt(layout.rightTopInnerHeight-lipgloss.Height(title)-lipgloss.Height(infoBox)-2, 3)
 	statusViewportWidth := maxInt(1, layout.rightInnerWidth-innerBoxStyle.GetHorizontalFrameSize())
 	statusViewportHeight := maxInt(1, statusBoxHeight-innerBoxStyle.GetVerticalFrameSize())
-	m.ui.statusViewport.Width = statusViewportWidth
-	m.ui.statusViewport.Height = statusViewportHeight
-	m.ui.statusViewport.SetContent(m.statusContent)
+	m.state.ui.statusViewport.Width = statusViewportWidth
+	m.state.ui.statusViewport.Height = statusViewportHeight
+	m.state.ui.statusViewport.SetContent(m.statusContent)
 	statusBox := innerBoxStyle.
 		Width(layout.rightInnerWidth).
 		Height(statusBoxHeight).
-		Render(m.ui.statusViewport.View())
+		Render(m.state.ui.statusViewport.View())
 
 	content := lipgloss.JoinVertical(
 		lipgloss.Left,
@@ -132,7 +132,7 @@ func (m *Model) renderZoomedRightTopPane(layout layoutDims) string {
 // renderZoomedRightBottomPane renders the zoomed right bottom pane.
 func (m *Model) renderZoomedRightBottomPane(layout layoutDims) string {
 	title := m.renderPaneTitle(3, "Log", true, layout.rightInnerWidth)
-	content := lipgloss.JoinVertical(lipgloss.Left, title, m.ui.logTable.View())
+	content := lipgloss.JoinVertical(lipgloss.Left, title, m.state.ui.logTable.View())
 	return m.paneStyle(true).
 		Width(layout.rightWidth).
 		Height(layout.bodyHeight).
@@ -275,7 +275,7 @@ func (m *Model) buildInfoContent(wt *models.WorktreeInfo) string {
 		checks := sortCIChecks(cachedChecks)
 		for i, check := range checks {
 			symbol := getCIStatusIcon(check.Conclusion, false, m.config.IconsEnabled())
-			isSelected := m.view.FocusedPane == 1 && m.ciCheckIndex >= 0 && i == m.ciCheckIndex
+			isSelected := m.state.view.FocusedPane == 1 && m.ciCheckIndex >= 0 && i == m.ciCheckIndex
 
 			var line string
 			if isSelected {
@@ -310,13 +310,13 @@ func (m *Model) buildInfoContent(wt *models.WorktreeInfo) string {
 
 // renderStatusFiles renders the status file list with current selection highlighted.
 func (m *Model) renderStatusFiles() string {
-	if len(m.services.statusTree.TreeFlat) == 0 {
-		if len(m.data.statusFilesAll) == 0 {
+	if len(m.state.services.statusTree.TreeFlat) == 0 {
+		if len(m.state.data.statusFilesAll) == 0 {
 			return lipgloss.NewStyle().Foreground(m.theme.SuccessFg).Render("Clean working tree")
 		}
-		if strings.TrimSpace(m.services.filter.StatusFilterQuery) != "" {
+		if strings.TrimSpace(m.state.services.filter.StatusFilterQuery) != "" {
 			return lipgloss.NewStyle().Foreground(m.theme.MutedFg).Render(
-				fmt.Sprintf("No files match %q", strings.TrimSpace(m.services.filter.StatusFilterQuery)),
+				fmt.Sprintf("No files match %q", strings.TrimSpace(m.state.services.filter.StatusFilterQuery)),
 			)
 		}
 		return lipgloss.NewStyle().Foreground(m.theme.MutedFg).Render("No files to display")
@@ -333,18 +333,18 @@ func (m *Model) renderStatusFiles() string {
 		Background(m.theme.Accent).
 		Bold(true)
 
-	viewportWidth := m.ui.statusViewport.Width
+	viewportWidth := m.state.ui.statusViewport.Width
 	showIcons := m.config.IconsEnabled()
 
-	lines := make([]string, 0, len(m.services.statusTree.TreeFlat))
-	for i, node := range m.services.statusTree.TreeFlat {
+	lines := make([]string, 0, len(m.state.services.statusTree.TreeFlat))
+	for i, node := range m.state.services.statusTree.TreeFlat {
 		indent := strings.Repeat("  ", node.Depth)
 
 		var lineContent string
 		var fileIcon string
 		if node.IsDir() {
 			// Directory line: "  ▼ dirname" or "  ▶ dirname"
-			expandIcon := disclosureIndicator(m.services.statusTree.CollapsedDirs[node.Path], showIcons)
+			expandIcon := disclosureIndicator(m.state.services.statusTree.CollapsedDirs[node.Path], showIcons)
 			dirIcon := ""
 			if showIcons {
 				dirIcon = iconWithSpace(deviconForName(node.Name(), true))
@@ -362,7 +362,7 @@ func (m *Model) renderStatusFiles() string {
 
 		// Apply styling based on selection and node type
 		switch {
-		case m.view.FocusedPane == 1 && i == m.services.statusTree.Index:
+		case m.state.view.FocusedPane == 1 && i == m.state.services.statusTree.Index:
 			if viewportWidth > 0 && len(lineContent) < viewportWidth {
 				lineContent += strings.Repeat(" ", viewportWidth-len(lineContent))
 			}

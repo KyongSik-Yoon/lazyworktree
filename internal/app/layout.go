@@ -27,15 +27,15 @@ type layoutDims struct {
 
 // setWindowSize updates the window dimensions and applies the layout.
 func (m *Model) setWindowSize(width, height int) {
-	m.view.WindowWidth = width
-	m.view.WindowHeight = height
+	m.state.view.WindowWidth = width
+	m.state.view.WindowHeight = height
 	m.applyLayout(m.computeLayout())
 }
 
 // computeLayout calculates the layout dimensions based on window size and UI state.
 func (m *Model) computeLayout() layoutDims {
-	width := m.view.WindowWidth
-	height := m.view.WindowHeight
+	width := m.state.view.WindowWidth
+	height := m.state.view.WindowHeight
 	if width <= 0 {
 		width = 120
 	}
@@ -46,7 +46,7 @@ func (m *Model) computeLayout() layoutDims {
 	headerHeight := 1
 	footerHeight := 1
 	filterHeight := 0
-	if m.view.ShowingFilter || m.view.ShowingSearch {
+	if m.state.view.ShowingFilter || m.state.view.ShowingSearch {
 		filterHeight = 1
 	}
 	gapX := 1
@@ -55,7 +55,7 @@ func (m *Model) computeLayout() layoutDims {
 	bodyHeight := maxInt(height-headerHeight-footerHeight-filterHeight, 8)
 
 	// Handle zoom mode: zoomed pane gets full body area
-	if m.view.ZoomedPane >= 0 {
+	if m.state.view.ZoomedPane >= 0 {
 		paneFrameX := m.basePaneStyle().GetHorizontalFrameSize()
 		paneFrameY := m.basePaneStyle().GetVerticalFrameSize()
 		fullWidth := width
@@ -84,7 +84,7 @@ func (m *Model) computeLayout() layoutDims {
 	}
 
 	leftRatio := 0.55
-	switch m.view.FocusedPane {
+	switch m.state.view.FocusedPane {
 	case 0:
 		leftRatio = 0.45
 	case 1, 2:
@@ -115,7 +115,7 @@ func (m *Model) computeLayout() layoutDims {
 	}
 
 	topRatio := 0.70
-	switch m.view.FocusedPane {
+	switch m.state.view.FocusedPane {
 	case 1: // Status focused → give more height to top pane
 		topRatio = 0.50
 	case 2: // Log focused → give more height to bottom pane
@@ -167,16 +167,16 @@ func (m *Model) applyLayout(layout layoutDims) {
 	// Subtract 2 extra lines for safety margin
 	// Minimum height of 3 is required to prevent viewport slice bounds panic
 	tableHeight := maxInt(3, layout.leftInnerHeight-titleHeight-tableHeaderHeight-2)
-	m.ui.worktreeTable.SetWidth(layout.leftInnerWidth)
-	m.ui.worktreeTable.SetHeight(tableHeight)
+	m.state.ui.worktreeTable.SetWidth(layout.leftInnerWidth)
+	m.state.ui.worktreeTable.SetHeight(tableHeight)
 	m.updateTableColumns(layout.leftInnerWidth)
 
 	logHeight := maxInt(3, layout.rightBottomInnerHeight-titleHeight-tableHeaderHeight-2)
-	m.ui.logTable.SetWidth(layout.rightInnerWidth)
-	m.ui.logTable.SetHeight(logHeight)
+	m.state.ui.logTable.SetWidth(layout.rightInnerWidth)
+	m.state.ui.logTable.SetHeight(logHeight)
 	m.updateLogColumns(layout.rightInnerWidth)
 
-	m.ui.filterInput.Width = maxInt(20, layout.width-18)
+	m.state.ui.filterInput.Width = maxInt(20, layout.width-18)
 }
 
 // updateTableColumns updates the worktree table column widths based on available space.
@@ -242,7 +242,7 @@ func (m *Model) updateTableColumns(totalWidth int) {
 		columns = append(columns, table.Column{Title: "PR", Width: pr})
 	}
 
-	m.ui.worktreeTable.SetColumns(columns)
+	m.state.ui.worktreeTable.SetColumns(columns)
 }
 
 // updateLogColumns updates the log table column widths based on available space.
@@ -264,7 +264,7 @@ func (m *Model) updateLogColumns(totalWidth int) {
 		message = maxInt(10, message-(actualTotal-totalWidth))
 	}
 
-	m.ui.logTable.SetColumns([]table.Column{
+	m.state.ui.logTable.SetColumns([]table.Column{
 		{Title: "SHA", Width: sha},
 		{Title: "Au", Width: author},
 		{Title: "Message", Width: message},

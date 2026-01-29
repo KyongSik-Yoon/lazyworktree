@@ -13,25 +13,25 @@ import (
 func (m *Model) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 
-	if m.view.ShowingSearch {
+	if m.state.view.ShowingSearch {
 		return m.handleSearchInput(msg)
 	}
 
 	// Handle filter input first - when filtering, only escape/enter should exit
-	if m.view.ShowingFilter {
+	if m.state.view.ShowingFilter {
 		keyStr := msg.String()
-		switch m.view.FilterTarget {
+		switch m.state.view.FilterTarget {
 		case filterTargetWorktrees:
 			if keyStr == keyEnter {
-				m.view.ShowingFilter = false
-				m.ui.filterInput.Blur()
+				m.state.view.ShowingFilter = false
+				m.state.ui.filterInput.Blur()
 				m.restoreFocusAfterFilter()
 				return m, nil
 			}
 			if isEscKey(keyStr) || keyStr == keyCtrlC {
-				m.view.ShowingFilter = false
-				m.ui.filterInput.Blur()
-				m.ui.worktreeTable.Focus()
+				m.state.view.ShowingFilter = false
+				m.state.ui.filterInput.Blur()
+				m.state.ui.worktreeTable.Focus()
 				return m, nil
 			}
 			if keyStr == "alt+n" || keyStr == "alt+p" {
@@ -40,42 +40,42 @@ func (m *Model) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			if keyStr == keyUp || keyStr == keyDown || keyStr == keyCtrlK || keyStr == keyCtrlJ {
 				return m.handleFilterNavigation(keyStr, false)
 			}
-			m.ui.filterInput, cmd = m.ui.filterInput.Update(msg)
-			m.setFilterQuery(filterTargetWorktrees, m.ui.filterInput.Value())
+			m.state.ui.filterInput, cmd = m.state.ui.filterInput.Update(msg)
+			m.setFilterQuery(filterTargetWorktrees, m.state.ui.filterInput.Value())
 			m.updateTable()
 			return m, cmd
 		case filterTargetStatus:
 			if keyStr == keyEnter {
-				m.view.ShowingFilter = false
-				m.ui.filterInput.Blur()
+				m.state.view.ShowingFilter = false
+				m.state.ui.filterInput.Blur()
 				m.restoreFocusAfterFilter()
 				return m, nil
 			}
 			if isEscKey(keyStr) || keyStr == keyCtrlC {
-				m.view.ShowingFilter = false
-				m.ui.filterInput.Blur()
+				m.state.view.ShowingFilter = false
+				m.state.ui.filterInput.Blur()
 				m.restoreFocusAfterFilter()
 				return m, nil
 			}
-			m.ui.filterInput, cmd = m.ui.filterInput.Update(msg)
-			m.setFilterQuery(filterTargetStatus, m.ui.filterInput.Value())
+			m.state.ui.filterInput, cmd = m.state.ui.filterInput.Update(msg)
+			m.setFilterQuery(filterTargetStatus, m.state.ui.filterInput.Value())
 			m.applyStatusFilter()
 			return m, cmd
 		case filterTargetLog:
 			if keyStr == keyEnter {
-				m.view.ShowingFilter = false
-				m.ui.filterInput.Blur()
+				m.state.view.ShowingFilter = false
+				m.state.ui.filterInput.Blur()
 				m.restoreFocusAfterFilter()
 				return m, nil
 			}
 			if isEscKey(keyStr) || keyStr == keyCtrlC {
-				m.view.ShowingFilter = false
-				m.ui.filterInput.Blur()
+				m.state.view.ShowingFilter = false
+				m.state.ui.filterInput.Blur()
 				m.restoreFocusAfterFilter()
 				return m, nil
 			}
-			m.ui.filterInput, cmd = m.ui.filterInput.Update(msg)
-			m.setFilterQuery(filterTargetLog, m.ui.filterInput.Value())
+			m.state.ui.filterInput, cmd = m.state.ui.filterInput.Update(msg)
+			m.setFilterQuery(filterTargetLog, m.state.ui.filterInput.Value())
 			m.applyLogFilter(false)
 			return m, cmd
 		}
@@ -93,8 +93,8 @@ func (m *Model) handleSearchInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	keyStr := msg.String()
 	switch keyStr {
 	case keyEnter:
-		m.view.ShowingSearch = false
-		m.ui.filterInput.Blur()
+		m.state.view.ShowingSearch = false
+		m.state.ui.filterInput.Blur()
 		m.restoreFocusAfterSearch()
 		return m, nil
 	case "n":
@@ -104,103 +104,103 @@ func (m *Model) handleSearchInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 	if isEscKey(keyStr) || keyStr == keyCtrlC {
 		m.clearSearchQuery()
-		m.view.ShowingSearch = false
-		m.ui.filterInput.Blur()
+		m.state.view.ShowingSearch = false
+		m.state.ui.filterInput.Blur()
 		m.restoreFocusAfterSearch()
 		return m, nil
 	}
 
 	var cmd tea.Cmd
-	m.ui.filterInput, cmd = m.ui.filterInput.Update(msg)
-	query := m.ui.filterInput.Value()
-	m.setSearchQuery(m.view.SearchTarget, query)
+	m.state.ui.filterInput, cmd = m.state.ui.filterInput.Update(msg)
+	query := m.state.ui.filterInput.Value()
+	m.setSearchQuery(m.state.view.SearchTarget, query)
 	return m, tea.Batch(cmd, m.applySearchQuery(query))
 }
 
 func (m *Model) clearSearchQuery() {
-	m.setSearchQuery(m.view.SearchTarget, "")
-	m.ui.filterInput.SetValue("")
-	m.ui.filterInput.CursorEnd()
+	m.setSearchQuery(m.state.view.SearchTarget, "")
+	m.state.ui.filterInput.SetValue("")
+	m.state.ui.filterInput.CursorEnd()
 }
 
 func (m *Model) restoreFocusAfterSearch() {
-	switch m.view.SearchTarget {
+	switch m.state.view.SearchTarget {
 	case searchTargetWorktrees:
-		m.ui.worktreeTable.Focus()
+		m.state.ui.worktreeTable.Focus()
 	case searchTargetLog:
-		m.ui.logTable.Focus()
+		m.state.ui.logTable.Focus()
 	}
 }
 
 func (m *Model) restoreFocusAfterFilter() {
-	switch m.view.FilterTarget {
+	switch m.state.view.FilterTarget {
 	case filterTargetWorktrees:
-		m.ui.worktreeTable.Focus()
+		m.state.ui.worktreeTable.Focus()
 	case filterTargetLog:
-		m.ui.logTable.Focus()
+		m.state.ui.logTable.Focus()
 	}
 }
 
 func (m *Model) clearCurrentPaneFilter() (tea.Model, tea.Cmd) {
-	switch m.view.FocusedPane {
+	switch m.state.view.FocusedPane {
 	case 0:
-		m.services.filter.FilterQuery = ""
-		m.ui.filterInput.SetValue("")
+		m.state.services.filter.FilterQuery = ""
+		m.state.ui.filterInput.SetValue("")
 		m.updateTable()
 	case 1:
-		m.services.filter.StatusFilterQuery = ""
-		m.ui.filterInput.SetValue("")
+		m.state.services.filter.StatusFilterQuery = ""
+		m.state.ui.filterInput.SetValue("")
 		m.applyStatusFilter()
 	case 2:
-		m.services.filter.LogFilterQuery = ""
-		m.ui.filterInput.SetValue("")
+		m.state.services.filter.LogFilterQuery = ""
+		m.state.ui.filterInput.SetValue("")
 		m.applyLogFilter(false)
 	}
 	return m, nil
 }
 
 func (m *Model) handleGotoTop() (tea.Model, tea.Cmd) {
-	switch m.view.FocusedPane {
+	switch m.state.view.FocusedPane {
 	case 0:
-		m.ui.worktreeTable.GotoTop()
+		m.state.ui.worktreeTable.GotoTop()
 		m.updateWorktreeArrows()
 		return m, m.debouncedUpdateDetailsView()
 	case 1:
-		if len(m.services.statusTree.TreeFlat) > 0 {
-			m.services.statusTree.Index = 0
+		if len(m.state.services.statusTree.TreeFlat) > 0 {
+			m.state.services.statusTree.Index = 0
 			m.rebuildStatusContentWithHighlight()
 		}
 	case 2:
-		m.ui.logTable.GotoTop()
+		m.state.ui.logTable.GotoTop()
 	}
 	return m, nil
 }
 
 func (m *Model) handleGotoBottom() (tea.Model, tea.Cmd) {
-	switch m.view.FocusedPane {
+	switch m.state.view.FocusedPane {
 	case 0:
-		m.ui.worktreeTable.GotoBottom()
+		m.state.ui.worktreeTable.GotoBottom()
 		m.updateWorktreeArrows()
 		return m, m.debouncedUpdateDetailsView()
 	case 1:
-		if len(m.services.statusTree.TreeFlat) > 0 {
-			m.services.statusTree.Index = len(m.services.statusTree.TreeFlat) - 1
+		if len(m.state.services.statusTree.TreeFlat) > 0 {
+			m.state.services.statusTree.Index = len(m.state.services.statusTree.TreeFlat) - 1
 			m.rebuildStatusContentWithHighlight()
 		}
 	case 2:
-		m.ui.logTable.GotoBottom()
+		m.state.ui.logTable.GotoBottom()
 	}
 	return m, nil
 }
 
 func (m *Model) handleNextFolder() (tea.Model, tea.Cmd) {
-	if len(m.services.statusTree.TreeFlat) == 0 {
+	if len(m.state.services.statusTree.TreeFlat) == 0 {
 		return m, nil
 	}
 	// Find next directory after current position
-	for i := m.services.statusTree.Index + 1; i < len(m.services.statusTree.TreeFlat); i++ {
-		if m.services.statusTree.TreeFlat[i].IsDir() {
-			m.services.statusTree.Index = i
+	for i := m.state.services.statusTree.Index + 1; i < len(m.state.services.statusTree.TreeFlat); i++ {
+		if m.state.services.statusTree.TreeFlat[i].IsDir() {
+			m.state.services.statusTree.Index = i
 			m.rebuildStatusContentWithHighlight()
 			return m, nil
 		}
@@ -209,13 +209,13 @@ func (m *Model) handleNextFolder() (tea.Model, tea.Cmd) {
 }
 
 func (m *Model) handlePrevFolder() (tea.Model, tea.Cmd) {
-	if len(m.services.statusTree.TreeFlat) == 0 {
+	if len(m.state.services.statusTree.TreeFlat) == 0 {
 		return m, nil
 	}
 	// Find previous directory before current position
-	for i := m.services.statusTree.Index - 1; i >= 0; i-- {
-		if m.services.statusTree.TreeFlat[i].IsDir() {
-			m.services.statusTree.Index = i
+	for i := m.state.services.statusTree.Index - 1; i >= 0; i-- {
+		if m.state.services.statusTree.TreeFlat[i].IsDir() {
+			m.state.services.statusTree.Index = i
 			m.rebuildStatusContentWithHighlight()
 			return m, nil
 		}
@@ -237,22 +237,22 @@ func (m *Model) handleBuiltInKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case "1":
 		targetPane := 0
-		if m.view.FocusedPane == targetPane {
+		if m.state.view.FocusedPane == targetPane {
 			// Already on this pane - toggle zoom
-			if m.view.ZoomedPane >= 0 {
-				m.view.ZoomedPane = -1 // unzoom
+			if m.state.view.ZoomedPane >= 0 {
+				m.state.view.ZoomedPane = -1 // unzoom
 			} else {
-				m.view.ZoomedPane = targetPane // zoom
+				m.state.view.ZoomedPane = targetPane // zoom
 			}
 		} else {
 			// Switching to different pane - exit zoom and switch
-			m.view.ZoomedPane = -1
-			wasPane1 := m.view.FocusedPane == 1
+			m.state.view.ZoomedPane = -1
+			wasPane1 := m.state.view.FocusedPane == 1
 			if wasPane1 {
 				m.ciCheckIndex = -1
 			}
-			m.view.FocusedPane = targetPane
-			m.ui.worktreeTable.Focus()
+			m.state.view.FocusedPane = targetPane
+			m.state.ui.worktreeTable.Focus()
 			if wasPane1 {
 				m.rebuildStatusContentWithHighlight()
 			}
@@ -261,17 +261,17 @@ func (m *Model) handleBuiltInKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case "2":
 		targetPane := 1
-		if m.view.FocusedPane == targetPane {
+		if m.state.view.FocusedPane == targetPane {
 			// Already on this pane - toggle zoom
-			if m.view.ZoomedPane >= 0 {
-				m.view.ZoomedPane = -1 // unzoom
+			if m.state.view.ZoomedPane >= 0 {
+				m.state.view.ZoomedPane = -1 // unzoom
 			} else {
-				m.view.ZoomedPane = targetPane // zoom
+				m.state.view.ZoomedPane = targetPane // zoom
 			}
 		} else {
 			// Switching to different pane - exit zoom and switch
-			m.view.ZoomedPane = -1
-			m.view.FocusedPane = targetPane
+			m.state.view.ZoomedPane = -1
+			m.state.view.FocusedPane = targetPane
 		}
 		// Always rebuild status for pane 1 (important for highlighting)
 		m.rebuildStatusContentWithHighlight()
@@ -279,22 +279,22 @@ func (m *Model) handleBuiltInKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case "3":
 		targetPane := 2
-		if m.view.FocusedPane == targetPane {
+		if m.state.view.FocusedPane == targetPane {
 			// Already on this pane - toggle zoom
-			if m.view.ZoomedPane >= 0 {
-				m.view.ZoomedPane = -1 // unzoom
+			if m.state.view.ZoomedPane >= 0 {
+				m.state.view.ZoomedPane = -1 // unzoom
 			} else {
-				m.view.ZoomedPane = targetPane // zoom
+				m.state.view.ZoomedPane = targetPane // zoom
 			}
 		} else {
 			// Switching to different pane - exit zoom and switch
-			m.view.ZoomedPane = -1
-			wasPane1 := m.view.FocusedPane == 1
+			m.state.view.ZoomedPane = -1
+			wasPane1 := m.state.view.FocusedPane == 1
 			if wasPane1 {
 				m.ciCheckIndex = -1
 			}
-			m.view.FocusedPane = targetPane
-			m.ui.logTable.Focus()
+			m.state.view.FocusedPane = targetPane
+			m.state.ui.logTable.Focus()
 			if wasPane1 {
 				m.rebuildStatusContentWithHighlight()
 			}
@@ -302,37 +302,37 @@ func (m *Model) handleBuiltInKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case keyTab, "]":
-		m.view.ZoomedPane = -1 // exit zoom mode
-		wasPane1 := m.view.FocusedPane == 1
-		m.view.FocusedPane = (m.view.FocusedPane + 1) % 3
-		if wasPane1 && m.view.FocusedPane != 1 {
+		m.state.view.ZoomedPane = -1 // exit zoom mode
+		wasPane1 := m.state.view.FocusedPane == 1
+		m.state.view.FocusedPane = (m.state.view.FocusedPane + 1) % 3
+		if wasPane1 && m.state.view.FocusedPane != 1 {
 			m.ciCheckIndex = -1
 		}
-		switch m.view.FocusedPane {
+		switch m.state.view.FocusedPane {
 		case 0:
-			m.ui.worktreeTable.Focus()
+			m.state.ui.worktreeTable.Focus()
 		case 2:
-			m.ui.logTable.Focus()
+			m.state.ui.logTable.Focus()
 		}
-		if wasPane1 || m.view.FocusedPane == 1 {
+		if wasPane1 || m.state.view.FocusedPane == 1 {
 			m.rebuildStatusContentWithHighlight()
 		}
 		return m, nil
 
 	case "[":
-		m.view.ZoomedPane = -1 // exit zoom mode
-		wasPane1 := m.view.FocusedPane == 1
-		m.view.FocusedPane = (m.view.FocusedPane - 1 + 3) % 3
-		if wasPane1 && m.view.FocusedPane != 1 {
+		m.state.view.ZoomedPane = -1 // exit zoom mode
+		wasPane1 := m.state.view.FocusedPane == 1
+		m.state.view.FocusedPane = (m.state.view.FocusedPane - 1 + 3) % 3
+		if wasPane1 && m.state.view.FocusedPane != 1 {
 			m.ciCheckIndex = -1
 		}
-		switch m.view.FocusedPane {
+		switch m.state.view.FocusedPane {
 		case 0:
-			m.ui.worktreeTable.Focus()
+			m.state.ui.worktreeTable.Focus()
 		case 2:
-			m.ui.logTable.Focus()
+			m.state.ui.logTable.Focus()
 		}
-		if wasPane1 || m.view.FocusedPane == 1 {
+		if wasPane1 || m.state.view.FocusedPane == 1 {
 			m.rebuildStatusContentWithHighlight()
 		}
 		return m, nil
@@ -344,21 +344,21 @@ func (m *Model) handleBuiltInKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleNavigationUp(msg)
 
 	case keyCtrlJ:
-		if m.view.FocusedPane == 1 && len(m.services.statusTree.TreeFlat) > 0 {
-			if m.services.statusTree.Index < len(m.services.statusTree.TreeFlat)-1 {
-				m.services.statusTree.Index++
+		if m.state.view.FocusedPane == 1 && len(m.state.services.statusTree.TreeFlat) > 0 {
+			if m.state.services.statusTree.Index < len(m.state.services.statusTree.TreeFlat)-1 {
+				m.state.services.statusTree.Index++
 			}
 			m.rebuildStatusContentWithHighlight()
-			node := m.services.statusTree.TreeFlat[m.services.statusTree.Index]
+			node := m.state.services.statusTree.TreeFlat[m.state.services.statusTree.Index]
 			if !node.IsDir() {
 				return m, m.showFileDiff(*node.File)
 			}
 			return m, nil
 		}
-		if m.view.FocusedPane == 2 {
-			prevCursor := m.ui.logTable.Cursor()
+		if m.state.view.FocusedPane == 2 {
+			prevCursor := m.state.ui.logTable.Cursor()
 			_, moveCmd := m.handleNavigationDown(tea.KeyMsg{Type: tea.KeyDown})
-			if m.ui.logTable.Cursor() == prevCursor {
+			if m.state.ui.logTable.Cursor() == prevCursor {
 				return m, moveCmd
 			}
 			return m, tea.Batch(moveCmd, m.openCommitView())
@@ -366,12 +366,12 @@ func (m *Model) handleBuiltInKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case keyCtrlK:
-		if m.view.FocusedPane == 1 && len(m.services.statusTree.TreeFlat) > 0 {
-			if m.services.statusTree.Index > 0 {
-				m.services.statusTree.Index--
+		if m.state.view.FocusedPane == 1 && len(m.state.services.statusTree.TreeFlat) > 0 {
+			if m.state.services.statusTree.Index > 0 {
+				m.state.services.statusTree.Index--
 			}
 			m.rebuildStatusContentWithHighlight()
-			node := m.services.statusTree.TreeFlat[m.services.statusTree.Index]
+			node := m.state.services.statusTree.TreeFlat[m.state.services.statusTree.Index]
 			if !node.IsDir() {
 				return m, m.showFileDiff(*node.File)
 			}
@@ -392,10 +392,10 @@ func (m *Model) handleBuiltInKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handlePageUp(msg)
 
 	case "G":
-		if m.view.FocusedPane == 1 {
-			m.ui.statusViewport.GotoBottom()
-			if len(m.services.statusTree.TreeFlat) > 0 {
-				m.services.statusTree.Index = len(m.services.statusTree.TreeFlat) - 1
+		if m.state.view.FocusedPane == 1 {
+			m.state.ui.statusViewport.GotoBottom()
+			if len(m.state.services.statusTree.TreeFlat) > 0 {
+				m.state.services.statusTree.Index = len(m.state.services.statusTree.TreeFlat) - 1
 			}
 			return m, nil
 		}
@@ -410,25 +410,25 @@ func (m *Model) handleBuiltInKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, m.refreshWorktrees()
 
 	case "c":
-		if m.view.FocusedPane == 1 {
+		if m.state.view.FocusedPane == 1 {
 			return m, m.commitStagedChanges()
 		}
 		return m, m.showCreateWorktree()
 
 	case "D":
-		if m.view.FocusedPane == 1 {
+		if m.state.view.FocusedPane == 1 {
 			return m, m.showDeleteFile()
 		}
 		return m, m.showDeleteWorktree()
 
 	case "d":
 		// If in log pane (bottom right), show commit diff
-		if m.view.FocusedPane == 2 {
-			cursor := m.ui.logTable.Cursor()
-			if len(m.data.logEntries) > 0 && cursor >= 0 && cursor < len(m.data.logEntries) {
-				if m.data.selectedIndex >= 0 && m.data.selectedIndex < len(m.data.filteredWts) {
-					commitSHA := m.data.logEntries[cursor].sha
-					wt := m.data.filteredWts[m.data.selectedIndex]
+		if m.state.view.FocusedPane == 2 {
+			cursor := m.state.ui.logTable.Cursor()
+			if len(m.state.data.logEntries) > 0 && cursor >= 0 && cursor < len(m.state.data.logEntries) {
+				if m.state.data.selectedIndex >= 0 && m.state.data.selectedIndex < len(m.state.data.filteredWts) {
+					commitSHA := m.state.data.logEntries[cursor].sha
+					wt := m.state.data.filteredWts[m.state.data.selectedIndex]
 					return m, m.showCommitDiff(commitSHA, wt)
 				}
 			}
@@ -438,8 +438,8 @@ func (m *Model) handleBuiltInKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, m.showDiff()
 
 	case "e":
-		if m.view.FocusedPane == 1 && len(m.services.statusTree.TreeFlat) > 0 && m.services.statusTree.Index >= 0 && m.services.statusTree.Index < len(m.services.statusTree.TreeFlat) {
-			node := m.services.statusTree.TreeFlat[m.services.statusTree.Index]
+		if m.state.view.FocusedPane == 1 && len(m.state.services.statusTree.TreeFlat) > 0 && m.state.services.statusTree.Index >= 0 && m.state.services.statusTree.Index < len(m.state.services.statusTree.TreeFlat) {
+			node := m.state.services.statusTree.TreeFlat[m.state.services.statusTree.Index]
 			if !node.IsDir() {
 				return m, m.openStatusFileInEditor(*node.File)
 			}
@@ -452,7 +452,7 @@ func (m *Model) handleBuiltInKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case "ctrl+v":
 		// View CI check logs in pager when a CI check is selected in status screen
-		if m.view.FocusedPane == 1 {
+		if m.state.view.FocusedPane == 1 {
 			ciChecks, hasCIChecks := m.getCIChecksForCurrentWorktree()
 			if hasCIChecks && m.ciCheckIndex >= 0 && m.ciCheckIndex < len(ciChecks) {
 				check := ciChecks[m.ciCheckIndex]
@@ -487,7 +487,7 @@ func (m *Model) handleBuiltInKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case "f":
 		target := filterTargetWorktrees
-		switch m.view.FocusedPane {
+		switch m.state.view.FocusedPane {
 		case 1:
 			target = filterTargetStatus
 		case 2:
@@ -497,7 +497,7 @@ func (m *Model) handleBuiltInKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case "/":
 		target := searchTargetWorktrees
-		switch m.view.FocusedPane {
+		switch m.state.view.FocusedPane {
 		case 1:
 			target = searchTargetStatus
 		case 2:
@@ -507,8 +507,8 @@ func (m *Model) handleBuiltInKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case "s":
 		// In status pane: stage/unstage selected file or directory
-		if m.view.FocusedPane == 1 && len(m.services.statusTree.TreeFlat) > 0 && m.services.statusTree.Index >= 0 && m.services.statusTree.Index < len(m.services.statusTree.TreeFlat) {
-			node := m.services.statusTree.TreeFlat[m.services.statusTree.Index]
+		if m.state.view.FocusedPane == 1 && len(m.state.services.statusTree.TreeFlat) > 0 && m.state.services.statusTree.Index >= 0 && m.state.services.statusTree.Index < len(m.state.services.statusTree.TreeFlat) {
+			node := m.state.services.statusTree.TreeFlat[m.state.services.statusTree.Index]
 			if node.IsDir() {
 				return m, m.stageDirectory(node)
 			}
@@ -523,8 +523,8 @@ func (m *Model) handleBuiltInKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, m.showCommandPalette()
 
 	case "?":
-		helpScreen := appscreen.NewHelpScreen(m.view.WindowWidth, m.view.WindowHeight, m.config.CustomCommands, m.theme, m.config.IconsEnabled())
-		m.ui.screenManager.Push(helpScreen)
+		helpScreen := appscreen.NewHelpScreen(m.state.view.WindowWidth, m.state.view.WindowHeight, m.config.CustomCommands, m.theme, m.config.IconsEnabled())
+		m.state.ui.screenManager.Push(helpScreen)
 		return m, nil
 
 	case "g":
@@ -546,21 +546,21 @@ func (m *Model) handleBuiltInKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, m.showRunCommand()
 
 	case "C":
-		if m.view.FocusedPane == 1 {
+		if m.state.view.FocusedPane == 1 {
 			return m, m.commitAllChanges()
 		}
 		return m, m.showCherryPick()
 
 	case "=":
-		if m.view.ZoomedPane >= 0 {
-			m.view.ZoomedPane = -1 // unzoom
+		if m.state.view.ZoomedPane >= 0 {
+			m.state.view.ZoomedPane = -1 // unzoom
 		} else {
-			m.view.ZoomedPane = m.view.FocusedPane // zoom current pane
+			m.state.view.ZoomedPane = m.state.view.FocusedPane // zoom current pane
 		}
 		return m, nil
 
 	case keyEsc, keyEscRaw:
-		if m.hasActiveFilterForPane(m.view.FocusedPane) {
+		if m.hasActiveFilterForPane(m.state.view.FocusedPane) {
 			return m.clearCurrentPaneFilter()
 		}
 		return m, nil
@@ -575,7 +575,7 @@ func (m *Model) handleBuiltInKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 
 	// Handle Ctrl+Left/Right for folder navigation in status pane
-	if m.view.FocusedPane == 1 {
+	if m.state.view.FocusedPane == 1 {
 		if msg.Type == tea.KeyCtrlLeft {
 			return m.handlePrevFolder()
 		}
@@ -585,9 +585,9 @@ func (m *Model) handleBuiltInKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 
 	// Handle table input
-	if m.view.FocusedPane == 0 {
+	if m.state.view.FocusedPane == 0 {
 		var cmd tea.Cmd
-		m.ui.worktreeTable, cmd = m.ui.worktreeTable.Update(msg)
+		m.state.ui.worktreeTable, cmd = m.state.ui.worktreeTable.Update(msg)
 		return m, tea.Batch(cmd, m.debouncedUpdateDetailsView())
 	}
 
@@ -600,9 +600,9 @@ func (m *Model) handleNavigationDown(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	var cmds []tea.Cmd
 
-	switch m.view.FocusedPane {
+	switch m.state.view.FocusedPane {
 	case 0:
-		m.ui.worktreeTable, cmd = m.ui.worktreeTable.Update(keyMsg)
+		m.state.ui.worktreeTable, cmd = m.state.ui.worktreeTable.Update(keyMsg)
 		m.updateWorktreeArrows()
 		cmds = append(cmds, cmd)
 		cmds = append(cmds, m.debouncedUpdateDetailsView())
@@ -614,41 +614,41 @@ func (m *Model) handleNavigationDown(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if !hasCIChecks || (hasCIChecks && m.ciCheckIndex >= len(ciChecks)) {
 			if m.ciCheckIndex >= 0 {
 				m.ciCheckIndex = -1
-				m.infoContent = m.buildInfoContent(m.data.filteredWts[m.data.selectedIndex])
+				m.infoContent = m.buildInfoContent(m.state.data.filteredWts[m.state.data.selectedIndex])
 				wasReset = true
 			}
 		}
 
 		switch {
-		case len(m.services.statusTree.TreeFlat) == 0 && hasCIChecks && m.ciCheckIndex == -1 && !wasReset:
+		case len(m.state.services.statusTree.TreeFlat) == 0 && hasCIChecks && m.ciCheckIndex == -1 && !wasReset:
 			// No commit changes but CI checks are available, navigate to first CI check
 			m.ciCheckIndex = 0
-			m.infoContent = m.buildInfoContent(m.data.filteredWts[m.data.selectedIndex])
+			m.infoContent = m.buildInfoContent(m.state.data.filteredWts[m.state.data.selectedIndex])
 		case hasCIChecks && m.ciCheckIndex >= 0:
 			// Navigate CI checks
 			if m.ciCheckIndex < len(ciChecks)-1 {
 				m.ciCheckIndex++
-				m.infoContent = m.buildInfoContent(m.data.filteredWts[m.data.selectedIndex])
+				m.infoContent = m.buildInfoContent(m.state.data.filteredWts[m.state.data.selectedIndex])
 			} else {
 				// At last CI check, wrap to file tree
 				m.ciCheckIndex = -1
-				m.infoContent = m.buildInfoContent(m.data.filteredWts[m.data.selectedIndex])
-				if len(m.services.statusTree.TreeFlat) > 0 {
-					m.services.statusTree.Index = 0
+				m.infoContent = m.buildInfoContent(m.state.data.filteredWts[m.state.data.selectedIndex])
+				if len(m.state.services.statusTree.TreeFlat) > 0 {
+					m.state.services.statusTree.Index = 0
 					m.rebuildStatusContentWithHighlight()
 				}
 			}
 		default:
 			// Navigate through status tree items
-			if len(m.services.statusTree.TreeFlat) > 0 {
-				if m.services.statusTree.Index < len(m.services.statusTree.TreeFlat)-1 {
-					m.services.statusTree.Index++
+			if len(m.state.services.statusTree.TreeFlat) > 0 {
+				if m.state.services.statusTree.Index < len(m.state.services.statusTree.TreeFlat)-1 {
+					m.state.services.statusTree.Index++
 				}
 				m.rebuildStatusContentWithHighlight()
 			}
 		}
 	default:
-		m.ui.logTable, cmd = m.ui.logTable.Update(keyMsg)
+		m.state.ui.logTable, cmd = m.state.ui.logTable.Update(keyMsg)
 		cmds = append(cmds, cmd)
 	}
 	return m, tea.Batch(cmds...)
@@ -659,9 +659,9 @@ func (m *Model) handleNavigationUp(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	cmds := []tea.Cmd{}
 
-	switch m.view.FocusedPane {
+	switch m.state.view.FocusedPane {
 	case 0:
-		m.ui.worktreeTable, cmd = m.ui.worktreeTable.Update(msg)
+		m.state.ui.worktreeTable, cmd = m.state.ui.worktreeTable.Update(msg)
 		m.updateWorktreeArrows()
 		cmds = append(cmds, cmd)
 		cmds = append(cmds, m.debouncedUpdateDetailsView())
@@ -673,7 +673,7 @@ func (m *Model) handleNavigationUp(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if !hasCIChecks || (hasCIChecks && m.ciCheckIndex >= len(ciChecks)) {
 			if m.ciCheckIndex >= 0 {
 				m.ciCheckIndex = -1
-				m.infoContent = m.buildInfoContent(m.data.filteredWts[m.data.selectedIndex])
+				m.infoContent = m.buildInfoContent(m.state.data.filteredWts[m.state.data.selectedIndex])
 				wasReset = true
 			}
 		}
@@ -682,27 +682,27 @@ func (m *Model) handleNavigationUp(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			// Navigate CI checks
 			if m.ciCheckIndex > 0 {
 				m.ciCheckIndex--
-				m.infoContent = m.buildInfoContent(m.data.filteredWts[m.data.selectedIndex])
+				m.infoContent = m.buildInfoContent(m.state.data.filteredWts[m.state.data.selectedIndex])
 			}
-		case hasCIChecks && m.ciCheckIndex == -1 && len(m.services.statusTree.TreeFlat) == 0 && !wasReset:
+		case hasCIChecks && m.ciCheckIndex == -1 && len(m.state.services.statusTree.TreeFlat) == 0 && !wasReset:
 			// No commit changes but CI checks available, wrap to last CI check
 			m.ciCheckIndex = len(ciChecks) - 1
-			m.infoContent = m.buildInfoContent(m.data.filteredWts[m.data.selectedIndex])
-		case hasCIChecks && m.ciCheckIndex == -1 && m.services.statusTree.Index == 0:
+			m.infoContent = m.buildInfoContent(m.state.data.filteredWts[m.state.data.selectedIndex])
+		case hasCIChecks && m.ciCheckIndex == -1 && m.state.services.statusTree.Index == 0:
 			// At top of file tree, wrap to last CI check
 			m.ciCheckIndex = len(ciChecks) - 1
-			m.infoContent = m.buildInfoContent(m.data.filteredWts[m.data.selectedIndex])
+			m.infoContent = m.buildInfoContent(m.state.data.filteredWts[m.state.data.selectedIndex])
 		default:
 			// Navigate through status tree items
-			if len(m.services.statusTree.TreeFlat) > 0 {
-				if m.services.statusTree.Index > 0 {
-					m.services.statusTree.Index--
+			if len(m.state.services.statusTree.TreeFlat) > 0 {
+				if m.state.services.statusTree.Index > 0 {
+					m.state.services.statusTree.Index--
 				}
 				m.rebuildStatusContentWithHighlight()
 			}
 		}
 	default:
-		m.ui.logTable, cmd = m.ui.logTable.Update(msg)
+		m.state.ui.logTable, cmd = m.state.ui.logTable.Update(msg)
 		cmds = append(cmds, cmd)
 	}
 	return m, tea.Batch(cmds...)
@@ -714,8 +714,8 @@ func (m *Model) handleFilterNavigation(keyStr string, fillInput bool) (tea.Model
 	var workList []*models.WorktreeInfo
 	if fillInput {
 		// Alt+n/Alt+p: navigate through all worktrees (sorted)
-		workList = make([]*models.WorktreeInfo, len(m.data.worktrees))
-		copy(workList, m.data.worktrees)
+		workList = make([]*models.WorktreeInfo, len(m.state.data.worktrees))
+		copy(workList, m.state.data.worktrees)
 		switch m.sortMode {
 		case sortModeLastActive:
 			sort.Slice(workList, func(i, j int) bool {
@@ -732,7 +732,7 @@ func (m *Model) handleFilterNavigation(keyStr string, fillInput bool) (tea.Model
 		}
 	} else {
 		// Up/Down: navigate through filtered worktrees
-		workList = m.data.filteredWts
+		workList = m.state.data.filteredWts
 	}
 
 	if len(workList) == 0 {
@@ -743,19 +743,19 @@ func (m *Model) handleFilterNavigation(keyStr string, fillInput bool) (tea.Model
 	currentPath := ""
 	if !fillInput {
 		// For filtered navigation, use table cursor
-		currentIndex := m.ui.worktreeTable.Cursor()
-		if currentIndex >= 0 && currentIndex < len(m.data.filteredWts) {
-			currentPath = m.data.filteredWts[currentIndex].Path
+		currentIndex := m.state.ui.worktreeTable.Cursor()
+		if currentIndex >= 0 && currentIndex < len(m.state.data.filteredWts) {
+			currentPath = m.state.data.filteredWts[currentIndex].Path
 		}
 	} else {
 		// For all-worktree navigation, find current selection
-		if m.data.selectedIndex >= 0 && m.data.selectedIndex < len(m.data.filteredWts) {
-			currentPath = m.data.filteredWts[m.data.selectedIndex].Path
+		if m.state.data.selectedIndex >= 0 && m.state.data.selectedIndex < len(m.state.data.filteredWts) {
+			currentPath = m.state.data.filteredWts[m.state.data.selectedIndex].Path
 		}
 		if currentPath == "" {
-			cursor := m.ui.worktreeTable.Cursor()
-			if cursor >= 0 && cursor < len(m.data.filteredWts) {
-				currentPath = m.data.filteredWts[cursor].Path
+			cursor := m.state.ui.worktreeTable.Cursor()
+			if cursor >= 0 && cursor < len(m.state.data.filteredWts) {
+				currentPath = m.state.data.filteredWts[cursor].Path
 			}
 		}
 	}
@@ -807,9 +807,9 @@ func (m *Model) setFilterToWorktree(wt *models.WorktreeInfo) {
 	if wt.IsMain {
 		name = mainWorktreeName
 	}
-	m.ui.filterInput.SetValue(name)
-	m.ui.filterInput.CursorEnd()
-	m.services.filter.FilterQuery = name
+	m.state.ui.filterInput.SetValue(name)
+	m.state.ui.filterInput.CursorEnd()
+	m.state.services.filter.FilterQuery = name
 	m.updateTable()
 }
 
@@ -817,11 +817,11 @@ func (m *Model) selectFilteredWorktree(path string) {
 	if path == "" {
 		return
 	}
-	for i, wt := range m.data.filteredWts {
+	for i, wt := range m.state.data.filteredWts {
 		if wt.Path == path {
-			m.ui.worktreeTable.SetCursor(i)
+			m.state.ui.worktreeTable.SetCursor(i)
 			m.updateWorktreeArrows()
-			m.data.selectedIndex = i
+			m.state.data.selectedIndex = i
 			return
 		}
 	}
@@ -831,12 +831,12 @@ func (m *Model) selectFilteredWorktree(path string) {
 func (m *Model) handlePageDown(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 
-	switch m.view.FocusedPane {
+	switch m.state.view.FocusedPane {
 	case 1:
-		m.ui.statusViewport.HalfPageDown()
+		m.state.ui.statusViewport.HalfPageDown()
 		return m, nil
 	case 2:
-		m.ui.logTable, cmd = m.ui.logTable.Update(msg)
+		m.state.ui.logTable, cmd = m.state.ui.logTable.Update(msg)
 		return m, cmd
 	}
 	return m, nil
@@ -846,12 +846,12 @@ func (m *Model) handlePageDown(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 func (m *Model) handlePageUp(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 
-	switch m.view.FocusedPane {
+	switch m.state.view.FocusedPane {
 	case 1:
-		m.ui.statusViewport.HalfPageUp()
+		m.state.ui.statusViewport.HalfPageUp()
 		return m, nil
 	case 2:
-		m.ui.logTable, cmd = m.ui.logTable.Update(msg)
+		m.state.ui.logTable, cmd = m.state.ui.logTable.Update(msg)
 		return m, cmd
 	}
 	return m, nil
@@ -859,11 +859,11 @@ func (m *Model) handlePageUp(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 // handleEnterKey processes the Enter key based on focused pane.
 func (m *Model) handleEnterKey() (tea.Model, tea.Cmd) {
-	switch m.view.FocusedPane {
+	switch m.state.view.FocusedPane {
 	case 0:
 		// Jump to worktree
-		if m.data.selectedIndex >= 0 && m.data.selectedIndex < len(m.data.filteredWts) {
-			selectedPath := m.data.filteredWts[m.data.selectedIndex].Path
+		if m.state.data.selectedIndex >= 0 && m.state.data.selectedIndex < len(m.state.data.filteredWts) {
+			selectedPath := m.state.data.filteredWts[m.state.data.selectedIndex].Path
 			m.persistLastSelected(selectedPath)
 			m.selectedPath = selectedPath
 			m.stopGitWatcher()
@@ -880,12 +880,12 @@ func (m *Model) handleEnterKey() (tea.Model, tea.Cmd) {
 				return m, m.openURLInBrowser(check.Link)
 			}
 			return m, nil
-		case len(m.services.statusTree.TreeFlat) > 0 && m.services.statusTree.Index >= 0 && m.services.statusTree.Index < len(m.services.statusTree.TreeFlat):
+		case len(m.state.services.statusTree.TreeFlat) > 0 && m.state.services.statusTree.Index >= 0 && m.state.services.statusTree.Index < len(m.state.services.statusTree.TreeFlat):
 			// Handle Enter on status tree items
-			node := m.services.statusTree.TreeFlat[m.services.statusTree.Index]
+			node := m.state.services.statusTree.TreeFlat[m.state.services.statusTree.Index]
 			if node.IsDir() {
 				// Toggle collapse state for directories
-				m.services.statusTree.ToggleCollapse(node.Path)
+				m.state.services.statusTree.ToggleCollapse(node.Path)
 				m.rebuildStatusContentWithHighlight()
 				return m, nil
 			}
@@ -902,8 +902,8 @@ func (m *Model) handleEnterKey() (tea.Model, tea.Cmd) {
 // handleMouse processes mouse events for scrolling and clicking
 func (m *Model) handleMouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 	// Handle mouse scrolling for CommitScreen via screen manager
-	if m.ui.screenManager.Type() == appscreen.TypeCommit {
-		if cs, ok := m.ui.screenManager.Current().(*appscreen.CommitScreen); ok {
+	if m.state.ui.screenManager.Type() == appscreen.TypeCommit {
+		if cs, ok := m.state.ui.screenManager.Current().(*appscreen.CommitScreen); ok {
 			if msg.Action == tea.MouseActionPress {
 				switch msg.Button {
 				case tea.MouseButtonWheelUp:
@@ -919,7 +919,7 @@ func (m *Model) handleMouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 	}
 
 	// Skip mouse handling when on other modal screens
-	if m.ui.screenManager.IsActive() {
+	if m.state.ui.screenManager.IsActive() {
 		return m, nil
 	}
 
@@ -928,7 +928,7 @@ func (m *Model) handleMouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 
 	// Calculate pane boundaries (accounting for header and filter)
 	headerOffset := 1
-	if m.view.ShowingFilter {
+	if m.state.view.ShowingFilter {
 		headerOffset = 2
 	}
 
@@ -965,38 +965,38 @@ func (m *Model) handleMouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 	switch {
 	case msg.Action == tea.MouseActionPress && msg.Button == tea.MouseButtonLeft:
 		// Click to focus pane and select item
-		if targetPane >= 0 && targetPane != m.view.FocusedPane {
-			m.view.FocusedPane = targetPane
-			switch m.view.FocusedPane {
+		if targetPane >= 0 && targetPane != m.state.view.FocusedPane {
+			m.state.view.FocusedPane = targetPane
+			switch m.state.view.FocusedPane {
 			case 0:
-				m.ui.worktreeTable.Focus()
+				m.state.ui.worktreeTable.Focus()
 			case 2:
-				m.ui.logTable.Focus()
+				m.state.ui.logTable.Focus()
 			}
 		}
 
 		// Handle clicks within the pane to select items
-		if targetPane == 0 && len(m.data.filteredWts) > 0 {
+		if targetPane == 0 && len(m.state.data.filteredWts) > 0 {
 			// Calculate which row was clicked in the worktree table
 			// Account for pane border and title
 			relativeY := mouseY - leftY - 4
-			if relativeY >= 0 && relativeY < len(m.data.filteredWts) {
+			if relativeY >= 0 && relativeY < len(m.state.data.filteredWts) {
 				// Create a key message to move cursor
-				for i := 0; i < len(m.data.filteredWts); i++ {
+				for i := 0; i < len(m.state.data.filteredWts); i++ {
 					if i == relativeY {
-						m.ui.worktreeTable.SetCursor(i)
-						m.data.selectedIndex = i
+						m.state.ui.worktreeTable.SetCursor(i)
+						m.state.data.selectedIndex = i
 						m.updateWorktreeArrows()
 						cmds = append(cmds, m.debouncedUpdateDetailsView())
 						break
 					}
 				}
 			}
-		} else if targetPane == 2 && len(m.data.logEntries) > 0 {
+		} else if targetPane == 2 && len(m.state.data.logEntries) > 0 {
 			// Calculate which row was clicked in the log table
 			relativeY := mouseY - rightBottomY - 4
-			if relativeY >= 0 && relativeY < len(m.data.logEntries) {
-				m.ui.logTable.SetCursor(relativeY)
+			if relativeY >= 0 && relativeY < len(m.state.data.logEntries) {
+				m.state.ui.logTable.SetCursor(relativeY)
 			}
 		}
 
@@ -1004,36 +1004,36 @@ func (m *Model) handleMouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 		switch targetPane {
 		case 0:
 			// Scroll worktree table up
-			m.ui.worktreeTable, _ = m.ui.worktreeTable.Update(tea.KeyMsg{Type: tea.KeyUp})
+			m.state.ui.worktreeTable, _ = m.state.ui.worktreeTable.Update(tea.KeyMsg{Type: tea.KeyUp})
 			m.updateWorktreeArrows()
 			cmds = append(cmds, m.debouncedUpdateDetailsView())
 		case 1:
 			// Navigate up through tree items
-			if len(m.services.statusTree.TreeFlat) > 0 && m.services.statusTree.Index > 0 {
-				m.services.statusTree.Index--
+			if len(m.state.services.statusTree.TreeFlat) > 0 && m.state.services.statusTree.Index > 0 {
+				m.state.services.statusTree.Index--
 				m.rebuildStatusContentWithHighlight()
 			}
 		case 2:
 			// Scroll log table up
-			m.ui.logTable, _ = m.ui.logTable.Update(tea.KeyMsg{Type: tea.KeyUp})
+			m.state.ui.logTable, _ = m.state.ui.logTable.Update(tea.KeyMsg{Type: tea.KeyUp})
 		}
 
 	case msg.Action == tea.MouseActionPress && msg.Button == tea.MouseButtonWheelDown:
 		switch targetPane {
 		case 0:
 			// Scroll worktree table down
-			m.ui.worktreeTable, _ = m.ui.worktreeTable.Update(tea.KeyMsg{Type: tea.KeyDown})
+			m.state.ui.worktreeTable, _ = m.state.ui.worktreeTable.Update(tea.KeyMsg{Type: tea.KeyDown})
 			m.updateWorktreeArrows()
 			cmds = append(cmds, m.debouncedUpdateDetailsView())
 		case 1:
 			// Navigate down through tree items
-			if len(m.services.statusTree.TreeFlat) > 0 && m.services.statusTree.Index < len(m.services.statusTree.TreeFlat)-1 {
-				m.services.statusTree.Index++
+			if len(m.state.services.statusTree.TreeFlat) > 0 && m.state.services.statusTree.Index < len(m.state.services.statusTree.TreeFlat)-1 {
+				m.state.services.statusTree.Index++
 				m.rebuildStatusContentWithHighlight()
 			}
 		case 2:
 			// Scroll log table down
-			m.ui.logTable, _ = m.ui.logTable.Update(tea.KeyMsg{Type: tea.KeyDown})
+			m.state.ui.logTable, _ = m.state.ui.logTable.Update(tea.KeyMsg{Type: tea.KeyDown})
 		}
 	}
 

@@ -245,34 +245,51 @@ const (
 	sortModeLastSwitched = 2 // Sort by last UI access time
 )
 
+type uiState struct {
+	worktreeTable  table.Model
+	statusViewport viewport.Model
+	logTable       table.Model
+	filterInput    textinput.Model
+	spinner        spinner.Model
+	screenManager  *screen.Manager
+}
+
+type dataState struct {
+	worktrees       []*models.WorktreeInfo
+	filteredWts     []*models.WorktreeInfo
+	selectedIndex   int
+	accessHistory   map[string]int64 // worktree path -> last access timestamp
+	statusFiles     []StatusFile     // parsed list of files from git status (kept for compatibility)
+	statusFilesAll  []StatusFile     // full list of files from git status
+	statusFileIndex int              // currently selected file index in status pane
+	logEntries      []commitLogEntry
+	logEntriesAll   []commitLogEntry
+}
+
+type servicesState struct {
+	git          *git.Service
+	worktree     services.WorktreeService
+	trustManager *security.TrustManager
+	statusTree   *services.StatusService
+	watch        *services.GitWatchService
+	filter       *services.FilterService
+}
+
+type modelState struct {
+	ui       uiState
+	data     dataState
+	view     *state.ViewState
+	services servicesState
+}
+
 // Model represents the main application model
 type Model struct {
 	// Configuration
 	config *config.AppConfig
 	theme  *theme.Theme
 
-	// UI Components
-	ui struct {
-		worktreeTable  table.Model
-		statusViewport viewport.Model
-		logTable       table.Model
-		filterInput    textinput.Model
-		spinner        spinner.Model
-		screenManager  *screen.Manager
-	}
-
-	// Data
-	data struct {
-		worktrees       []*models.WorktreeInfo
-		filteredWts     []*models.WorktreeInfo
-		selectedIndex   int
-		accessHistory   map[string]int64 // worktree path -> last access timestamp
-		statusFiles     []StatusFile     // parsed list of files from git status (kept for compatibility)
-		statusFilesAll  []StatusFile     // full list of files from git status
-		statusFileIndex int              // currently selected file index in status pane
-		logEntries      []commitLogEntry
-		logEntriesAll   []commitLogEntry
-	}
+	// State
+	state                     modelState
 	sortMode                  int // sortModePath, sortModeLastActive, or sortModeLastSwitched
 	prDataLoaded              bool
 	checkMergedAfterPRRefresh bool // Flag to trigger merged check after PR data refresh
@@ -281,7 +298,6 @@ type Model struct {
 	currentDetailsPath        string
 	loading                   bool
 	loadingOperation          string // Tracks what operation is loading (push, sync, etc.)
-	view                      *state.ViewState
 	infoContent               string
 	statusContent             string
 
@@ -306,16 +322,6 @@ type Model struct {
 		aiName      string              // AI-generated name (cached)
 		branch      string              // Current branch name
 		inputScreen *screen.InputScreen // Reference for checkbox toggle handling
-	}
-
-	// Services
-	services struct {
-		git          *git.Service
-		worktree     services.WorktreeService
-		trustManager *security.TrustManager
-		statusTree   *services.StatusService
-		watch        *services.GitWatchService
-		filter       *services.FilterService
 	}
 
 	// Context
@@ -467,13 +473,15 @@ func NewModel(cfg *config.AppConfig, initialFilter string) *Model {
 		sortMode: sortMode,
 		ctx:      ctx,
 		cancel:   cancel,
-		view: &state.ViewState{
-			FilterTarget: state.FilterTargetWorktrees,
-			SearchTarget: state.SearchTargetWorktrees,
-			FocusedPane:  0,
-			ZoomedPane:   -1,
-			WindowWidth:  80,
-			WindowHeight: 24,
+		state: modelState{
+			view: &state.ViewState{
+				FilterTarget: state.FilterTargetWorktrees,
+				SearchTarget: state.SearchTargetWorktrees,
+				FocusedPane:  0,
+				ZoomedPane:   -1,
+				WindowWidth:  80,
+				WindowHeight: 24,
+			},
 		},
 		infoContent:   errNoWorktreeSelected,
 		statusContent: "Loading...",
@@ -487,9 +495,9 @@ func NewModel(cfg *config.AppConfig, initialFilter string) *Model {
 		pending: &state.PendingState{},
 	}
 
-	m.data.worktrees = []*models.WorktreeInfo{}
-	m.data.filteredWts = []*models.WorktreeInfo{}
-	m.data.accessHistory = make(map[string]int64)
+	m.state.data.worktrees = []*models.WorktreeInfo{}
+	m.state.data.filteredWts = []*models.WorktreeInfo{}
+	m.state.data.accessHistory = make(map[string]int64)
 
 	m.cache.dataCache = make(map[string]any)
 	m.cache.divergenceCache = make(map[string]string)
@@ -497,33 +505,33 @@ func NewModel(cfg *config.AppConfig, initialFilter string) *Model {
 	m.cache.ciCache = services.NewCICheckCache()
 	m.cache.detailsCache = make(map[string]*detailsCacheEntry)
 
-	m.ui.worktreeTable = t
-	m.ui.statusViewport = statusVp
-	m.ui.logTable = logT
-	m.ui.filterInput = filterInput
-	m.ui.spinner = sp
-	m.ui.screenManager = screen.NewManager()
+	m.state.ui.worktreeTable = t
+	m.state.ui.statusViewport = statusVp
+	m.state.ui.logTable = logT
+	m.state.ui.filterInput = filterInput
+	m.state.ui.spinner = sp
+	m.state.ui.screenManager = screen.NewManager()
 
-	m.services.git = gitService
-	m.services.trustManager = trustManager
-	m.services.worktree = services.NewWorktreeService(gitService)
-	m.services.statusTree = services.NewStatusService()
-	m.services.watch = services.NewGitWatchService(gitService, m.debugf)
-	m.services.filter = services.NewFilterService(initialFilter)
+	m.state.services.git = gitService
+	m.state.services.trustManager = trustManager
+	m.state.services.worktree = services.NewWorktreeService(gitService)
+	m.state.services.statusTree = services.NewStatusService()
+	m.state.services.watch = services.NewGitWatchService(gitService, m.debugf)
+	m.state.services.filter = services.NewFilterService(initialFilter)
 
 	gitService.SetCommandRunner(func(ctx context.Context, name string, args ...string) *exec.Cmd {
 		return m.commandRunner(ctx, name, args...)
 	})
 
 	if initialFilter != "" {
-		m.view.ShowingFilter = true
+		m.state.view.ShowingFilter = true
 	}
-	if cfg.SearchAutoSelect && !m.view.ShowingFilter {
-		m.view.ShowingFilter = true
+	if cfg.SearchAutoSelect && !m.state.view.ShowingFilter {
+		m.state.view.ShowingFilter = true
 	}
-	if m.view.ShowingFilter {
+	if m.state.view.ShowingFilter {
 		m.setFilterTarget(state.FilterTargetWorktrees)
-		m.ui.filterInput.Focus()
+		m.state.ui.filterInput.Focus()
 	}
 
 	return m
@@ -537,9 +545,9 @@ func (m *Model) Init() tea.Cmd {
 	cmds := []tea.Cmd{
 		m.loadCache(),
 		m.refreshWorktrees(),
-		m.ui.spinner.Tick,
+		m.state.ui.spinner.Tick,
 	}
-	if m.view.ShowingFilter {
+	if m.state.view.ShowingFilter {
 		cmds = append(cmds, textinput.Blink)
 	}
 	return tea.Batch(cmds...)
@@ -560,15 +568,15 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.handleMouse(msg)
 
 	case spinner.TickMsg:
-		m.ui.spinner, cmd = m.ui.spinner.Update(msg)
+		m.state.ui.spinner, cmd = m.state.ui.spinner.Update(msg)
 		if loadingScreen := m.loadingScreen(); loadingScreen != nil {
 			loadingScreen.Tick()
 		}
 		return m, cmd
 
 	case tea.KeyMsg:
-		m.debugf("key: %s screen=%s focus=%d filter=%t", msg.String(), m.ui.screenManager.Type().String(), m.view.FocusedPane, m.view.ShowingFilter)
-		if m.ui.screenManager.IsActive() {
+		m.debugf("key: %s screen=%s focus=%d filter=%t", msg.String(), m.state.ui.screenManager.Type().String(), m.state.view.FocusedPane, m.state.view.ShowingFilter)
+		if m.state.ui.screenManager.IsActive() {
 			return m.handleScreenKey(msg)
 		}
 		return m.handleKeyMsg(msg)
@@ -596,10 +604,10 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		)
 		confirmScreen.OnConfirm = m.deleteBranchCmd(msg.branch)
 		confirmScreen.OnCancel = func() tea.Cmd {
-			m.ui.screenManager.Pop()
+			m.state.ui.screenManager.Pop()
 			return nil
 		}
-		m.ui.screenManager.Push(confirmScreen)
+		m.state.ui.screenManager.Push(confirmScreen)
 		return m, nil
 
 	case createFromPRResultMsg:
@@ -613,7 +621,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		env := m.buildCommandEnv(msg.branch, msg.targetPath)
 		initCmds := m.collectInitCommands()
 		after := func() tea.Msg {
-			worktrees, err := m.services.git.GetWorktrees(m.ctx)
+			worktrees, err := m.state.services.git.GetWorktrees(m.ctx)
 			return worktreesLoadedMsg{worktrees: worktrees, err: err}
 		}
 		return m, m.runCommandsWithTrust(initCmds, msg.targetPath, env, after)
@@ -629,7 +637,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		env := m.buildCommandEnv(msg.branch, msg.targetPath)
 		initCmds := m.collectInitCommands()
 		after := func() tea.Msg {
-			worktrees, err := m.services.git.GetWorktrees(m.ctx)
+			worktrees, err := m.state.services.git.GetWorktrees(m.ctx)
 			return worktreesLoadedMsg{worktrees: worktrees, err: err}
 		}
 		return m, m.runCommandsWithTrust(initCmds, msg.targetPath, env, after)
@@ -648,7 +656,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case customPostCommandPendingMsg:
 		if m.pending.CustomMenu == nil || m.pending.CustomMenu.PostCommand == "" {
 			// No post-command, just reload
-			worktrees, err := m.services.git.GetWorktrees(m.ctx)
+			worktrees, err := m.state.services.git.GetWorktrees(m.ctx)
 			return m, func() tea.Msg {
 				return worktreesLoadedMsg{worktrees: worktrees, err: err}
 			}
@@ -679,7 +687,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		// Reload worktrees regardless
-		worktrees, err := m.services.git.GetWorktrees(m.ctx)
+		worktrees, err := m.state.services.git.GetWorktrees(m.ctx)
 		return m, func() tea.Msg {
 			return worktreesLoadedMsg{worktrees: worktrees, err: err}
 		}
@@ -737,8 +745,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case debouncedDetailsMsg:
 		// Only update if the index matches and is still valid
-		if msg.selectedIndex == m.ui.worktreeTable.Cursor() &&
-			msg.selectedIndex >= 0 && msg.selectedIndex < len(m.data.filteredWts) {
+		if msg.selectedIndex == m.state.ui.worktreeTable.Cursor() &&
+			msg.selectedIndex >= 0 && msg.selectedIndex < len(m.state.data.filteredWts) {
 			return m, m.updateDetailsView()
 		}
 		return m, nil
@@ -832,7 +840,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, tea.Batch(cmds...)
 
 	case gitDirChangedMsg:
-		m.services.watch.ResetWaiting()
+		m.state.services.watch.ResetWaiting()
 		cmds = append(cmds, m.waitForGitWatchEvent())
 		if m.shouldRefreshGitEvent(time.Now()) {
 			cmds = append(cmds, m.refreshWorktrees())
@@ -864,8 +872,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			msg.worktreePath,
 			msg.files,
 			screenMeta,
-			m.view.WindowWidth,
-			m.view.WindowHeight,
+			m.state.view.WindowWidth,
+			m.state.view.WindowHeight,
 			m.theme,
 			m.config.IconsEnabled(),
 		)
@@ -876,7 +884,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.showCommitFileDiff(sha, filename, wtPath)
 		}
 		commitFilesScr.OnShowCommitDiff = func() tea.Cmd {
-			for _, w := range m.data.filteredWts {
+			for _, w := range m.state.data.filteredWts {
 				if w.Path == wtPath {
 					return m.showCommitDiff(sha, w)
 				}
@@ -884,10 +892,10 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return nil
 		}
 		commitFilesScr.OnClose = func() tea.Cmd {
-			m.ui.screenManager.Pop()
+			m.state.ui.screenManager.Pop()
 			return nil
 		}
-		m.ui.screenManager.Push(commitFilesScr)
+		m.state.ui.screenManager.Push(commitFilesScr)
 		return m, nil
 
 	case ciRerunResultMsg:

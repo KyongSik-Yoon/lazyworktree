@@ -116,7 +116,7 @@ func maxInt(a, b int) int {
 }
 
 func (m *Model) branchExistsInWorktrees(branch string) bool {
-	for _, wt := range m.data.worktrees {
+	for _, wt := range m.state.data.worktrees {
 		if wt.Branch == branch {
 			return true
 		}

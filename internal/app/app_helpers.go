@@ -35,7 +35,7 @@ func (m *Model) pagerEnv(pager string) string {
 }
 
 func (m *Model) buildCommandEnv(branch, wtPath string) map[string]string {
-	return services.BuildCommandEnv(branch, wtPath, m.repoKey, m.services.git.GetMainWorktreePath(m.ctx))
+	return services.BuildCommandEnv(branch, wtPath, m.repoKey, m.state.services.git.GetMainWorktreePath(m.ctx))
 }
 
 func expandWithEnv(input string, env map[string]string) string {
@@ -152,7 +152,7 @@ func (m *Model) loadCache() tea.Cmd {
 // saveCache saves worktree data to the cache file.
 func (m *Model) saveCache() {
 	repoKey := m.getRepoKey()
-	if err := services.SaveCache(repoKey, m.getWorktreeDir(), m.data.worktrees); err != nil {
+	if err := services.SaveCache(repoKey, m.getWorktreeDir(), m.state.data.worktrees); err != nil {
 		m.showInfo(fmt.Sprintf("Failed to write cache: %v", err), nil)
 	}
 }
@@ -162,7 +162,7 @@ func (m *Model) newLoadingScreen(message string) *appscreen.LoadingScreen {
 }
 
 func (m *Model) setLoadingScreen(message string) {
-	m.ui.screenManager.Set(m.newLoadingScreen(message))
+	m.state.ui.screenManager.Set(m.newLoadingScreen(message))
 }
 
 func (m *Model) updateLoadingMessage(message string) {
@@ -172,16 +172,16 @@ func (m *Model) updateLoadingMessage(message string) {
 }
 
 func (m *Model) loadingScreen() *appscreen.LoadingScreen {
-	if m.ui.screenManager.Type() != appscreen.TypeLoading {
+	if m.state.ui.screenManager.Type() != appscreen.TypeLoading {
 		return nil
 	}
-	loadingScreen, _ := m.ui.screenManager.Current().(*appscreen.LoadingScreen)
+	loadingScreen, _ := m.state.ui.screenManager.Current().(*appscreen.LoadingScreen)
 	return loadingScreen
 }
 
 func (m *Model) clearLoadingScreen() {
-	if m.ui.screenManager.Type() == appscreen.TypeLoading {
-		m.ui.screenManager.Pop()
+	if m.state.ui.screenManager.Type() == appscreen.TypeLoading {
+		m.state.ui.screenManager.Pop()
 	}
 }
 
@@ -239,13 +239,13 @@ func (m *Model) loadAccessHistory() {
 		return
 	}
 	if history != nil {
-		m.data.accessHistory = history
+		m.state.data.accessHistory = history
 	}
 }
 
 // saveAccessHistory saves access history to file.
 func (m *Model) saveAccessHistory() {
-	if err := services.SaveAccessHistory(m.getRepoKey(), m.getWorktreeDir(), m.data.accessHistory); err != nil {
+	if err := services.SaveAccessHistory(m.getRepoKey(), m.getWorktreeDir(), m.state.data.accessHistory); err != nil {
 		m.debugf("failed to write access history: %v", err)
 	}
 }
@@ -316,7 +316,7 @@ func (m *Model) recordAccess(path string) {
 	if path == "" {
 		return
 	}
-	m.data.accessHistory[path] = time.Now().Unix()
+	m.state.data.accessHistory[path] = time.Now().Unix()
 	m.saveAccessHistory()
 }
 
@@ -325,19 +325,19 @@ func (m *Model) getRepoKey() string {
 		return m.repoKey
 	}
 	m.repoKeyOnce.Do(func() {
-		m.repoKey = m.services.git.ResolveRepoName(m.ctx)
+		m.repoKey = m.state.services.git.ResolveRepoName(m.ctx)
 	})
 	return m.repoKey
 }
 
 func (m *Model) getMainWorktreePath() string {
-	for _, wt := range m.data.worktrees {
+	for _, wt := range m.state.data.worktrees {
 		if wt.IsMain {
 			return wt.Path
 		}
 	}
-	if len(m.data.worktrees) > 0 {
-		return m.data.worktrees[0].Path
+	if len(m.state.data.worktrees) > 0 {
+		return m.state.data.worktrees[0].Path
 	}
 	return ""
 }

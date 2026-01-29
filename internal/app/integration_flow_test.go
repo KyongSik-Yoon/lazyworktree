@@ -166,8 +166,8 @@ func TestIntegrationPaletteSelectsCustomCommand(t *testing.T) {
 	}
 
 	m := NewModel(cfg, "")
-	m.data.filteredWts = []*models.WorktreeInfo{{Path: cfg.WorktreeDir + "/wt", Branch: "feat"}}
-	m.data.selectedIndex = 0
+	m.state.data.filteredWts = []*models.WorktreeInfo{{Path: cfg.WorktreeDir + "/wt", Branch: "feat"}}
+	m.state.data.selectedIndex = 0
 
 	recorder := &commandRecorder{}
 	m.commandRunner = recorder.runner
@@ -179,11 +179,11 @@ func TestIntegrationPaletteSelectsCustomCommand(t *testing.T) {
 		_, _ = m.handleScreenKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
 	}
 
-	if !m.ui.screenManager.IsActive() || m.ui.screenManager.Type() != appscreen.TypePalette {
+	if !m.state.ui.screenManager.IsActive() || m.state.ui.screenManager.Type() != appscreen.TypePalette {
 		t.Fatal("expected palette screen to be active")
 	}
 
-	paletteScreen := m.ui.screenManager.Current().(*appscreen.CommandPaletteScreen)
+	paletteScreen := m.state.ui.screenManager.Current().(*appscreen.CommandPaletteScreen)
 	if paletteScreen.Cursor >= len(paletteScreen.Filtered) {
 		t.Fatal("expected valid palette selection after filtering")
 	}
@@ -193,8 +193,8 @@ func TestIntegrationPaletteSelectsCustomCommand(t *testing.T) {
 		_ = cmd()
 	}
 
-	if m.ui.screenManager.IsActive() {
-		t.Fatalf("expected palette to close, screen manager still active with type %v", m.ui.screenManager.Type())
+	if m.state.ui.screenManager.IsActive() {
+		t.Fatalf("expected palette to close, screen manager still active with type %v", m.state.ui.screenManager.Type())
 	}
 	if !containsCommand(recorder.execs, "bash") {
 		t.Fatalf("expected bash command to be executed, got %+v", recorder.execs)
@@ -348,8 +348,8 @@ func TestIntegrationPaletteSelectsActiveTmuxSession(t *testing.T) {
 	}
 
 	m := NewModel(cfg, "")
-	m.data.filteredWts = []*models.WorktreeInfo{{Path: cfg.WorktreeDir + "/wt", Branch: "feat"}}
-	m.data.selectedIndex = 0
+	m.state.data.filteredWts = []*models.WorktreeInfo{{Path: cfg.WorktreeDir + "/wt", Branch: "feat"}}
+	m.state.data.selectedIndex = 0
 
 	// Mock commandRunner to return active tmux sessions
 	m.commandRunner = func(_ context.Context, name string, args ...string) *exec.Cmd {
@@ -378,11 +378,11 @@ func TestIntegrationPaletteSelectsActiveTmuxSession(t *testing.T) {
 	}
 
 	// Verify item is selected
-	if !m.ui.screenManager.IsActive() || m.ui.screenManager.Type() != appscreen.TypePalette {
+	if !m.state.ui.screenManager.IsActive() || m.state.ui.screenManager.Type() != appscreen.TypePalette {
 		t.Skip("palette screen not active after filtering")
 	}
 
-	paletteScreen := m.ui.screenManager.Current().(*appscreen.CommandPaletteScreen)
+	paletteScreen := m.state.ui.screenManager.Current().(*appscreen.CommandPaletteScreen)
 	if paletteScreen.Cursor >= len(paletteScreen.Filtered) {
 		t.Skip("palette filtering did not select any item (may vary by test environment)")
 	}
@@ -401,8 +401,8 @@ func TestIntegrationPaletteSelectsActiveTmuxSession(t *testing.T) {
 	}
 
 	// Verify palette is closed
-	if m.ui.screenManager.IsActive() {
-		t.Fatalf("expected palette to close, screen manager still active with type %v", m.ui.screenManager.Type())
+	if m.state.ui.screenManager.IsActive() {
+		t.Fatalf("expected palette to close, screen manager still active with type %v", m.state.ui.screenManager.Type())
 	}
 
 	// Verify tmux command was executed
@@ -481,10 +481,10 @@ func TestIntegrationDiffViewerModesWithNoChanges(t *testing.T) {
 			m = updated.(*Model)
 
 			// Verify info screen is shown
-			if !m.ui.screenManager.IsActive() || m.ui.screenManager.Type() != appscreen.TypeInfo {
-				t.Fatalf("expected info screen, got active=%v type=%v", m.ui.screenManager.IsActive(), m.ui.screenManager.Type())
+			if !m.state.ui.screenManager.IsActive() || m.state.ui.screenManager.Type() != appscreen.TypeInfo {
+				t.Fatalf("expected info screen, got active=%v type=%v", m.state.ui.screenManager.IsActive(), m.state.ui.screenManager.Type())
 			}
-			infoScr := m.ui.screenManager.Current().(*appscreen.InfoScreen)
+			infoScr := m.state.ui.screenManager.Current().(*appscreen.InfoScreen)
 			if infoScr.Message != testNoDiffMessage {
 				t.Fatalf("expected message 'No diff to show.', got %q", infoScr.Message)
 			}
@@ -550,7 +550,7 @@ func TestIntegrationDiffViewerModesWithChanges(t *testing.T) {
 			m = updated.(*Model)
 
 			// Simulate having changes
-			m.data.statusFilesAll = []StatusFile{
+			m.state.data.statusFilesAll = []StatusFile{
 				{Filename: "test.go", Status: ".M", IsUntracked: false},
 			}
 
@@ -601,7 +601,7 @@ func TestIntegrationDiffViewerModesWithChanges(t *testing.T) {
 			}
 
 			// Verify no info screen is shown
-			if m.ui.screenManager.IsActive() && m.ui.screenManager.Type() == appscreen.TypeInfo {
+			if m.state.ui.screenManager.IsActive() && m.state.ui.screenManager.Type() == appscreen.TypeInfo {
 				t.Fatal("expected no info screen when there are changes")
 			}
 		})

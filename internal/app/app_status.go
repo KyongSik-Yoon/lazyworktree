@@ -14,7 +14,7 @@ func (m *Model) updateWorktreeStatus(path string, files []StatusFile) {
 		return
 	}
 	var target *models.WorktreeInfo
-	for _, wt := range m.data.worktrees {
+	for _, wt := range m.state.data.worktrees {
 		if wt.Path == path {
 			target = wt
 			break
@@ -112,17 +112,17 @@ func statusCounts(files []StatusFile) (staged, modified, untracked int) {
 }
 
 func (m *Model) setStatusFiles(files []StatusFile) {
-	m.data.statusFilesAll = files
+	m.state.data.statusFilesAll = files
 
 	m.applyStatusFilter()
 }
 
 func (m *Model) applyStatusFilter() {
-	query := strings.ToLower(strings.TrimSpace(m.services.filter.StatusFilterQuery))
-	filtered := m.data.statusFilesAll
+	query := strings.ToLower(strings.TrimSpace(m.state.services.filter.StatusFilterQuery))
+	filtered := m.state.data.statusFilesAll
 	if query != "" {
-		filtered = make([]StatusFile, 0, len(m.data.statusFilesAll))
-		for _, sf := range m.data.statusFilesAll {
+		filtered = make([]StatusFile, 0, len(m.state.data.statusFilesAll))
+		for _, sf := range m.state.data.statusFilesAll {
 			if strings.Contains(strings.ToLower(sf.Filename), query) {
 				filtered = append(filtered, sf)
 			}
@@ -130,62 +130,62 @@ func (m *Model) applyStatusFilter() {
 	}
 
 	// Remember current selection (by path)
-	selectedPath := m.services.statusTree.SelectedPath()
+	selectedPath := m.state.services.statusTree.SelectedPath()
 
 	// Keep statusFiles for compatibility
-	m.data.statusFiles = filtered
+	m.state.data.statusFiles = filtered
 
 	// Build tree from filtered files
-	m.services.statusTree.Tree = services.BuildStatusTree(filtered)
-	m.services.statusTree.RebuildFlat()
+	m.state.services.statusTree.Tree = services.BuildStatusTree(filtered)
+	m.state.services.statusTree.RebuildFlat()
 
 	// Try to restore selection
-	m.services.statusTree.RestoreSelection(selectedPath)
+	m.state.services.statusTree.RestoreSelection(selectedPath)
 
 	// Clamp tree index
-	m.services.statusTree.ClampIndex()
+	m.state.services.statusTree.ClampIndex()
 
 	// Keep old statusFileIndex in sync for compatibility
-	m.data.statusFileIndex = m.services.statusTree.Index
+	m.state.data.statusFileIndex = m.state.services.statusTree.Index
 
 	m.rebuildStatusContentWithHighlight()
 }
 
 func (m *Model) rebuildStatusTreeFlat() {
-	m.services.statusTree.RebuildFlat()
+	m.state.services.statusTree.RebuildFlat()
 }
 
 func (m *Model) rebuildStatusContentWithHighlight() {
 	m.statusContent = m.renderStatusFiles()
-	m.ui.statusViewport.SetContent(m.statusContent)
+	m.state.ui.statusViewport.SetContent(m.statusContent)
 
-	if len(m.services.statusTree.TreeFlat) == 0 {
+	if len(m.state.services.statusTree.TreeFlat) == 0 {
 		return
 	}
 
 	// Auto-scroll to keep selected item visible
-	viewportHeight := m.ui.statusViewport.Height
-	if viewportHeight > 0 && m.services.statusTree.Index >= 0 {
-		currentOffset := m.ui.statusViewport.YOffset
-		if m.services.statusTree.Index < currentOffset {
-			m.ui.statusViewport.SetYOffset(m.services.statusTree.Index)
-		} else if m.services.statusTree.Index >= currentOffset+viewportHeight {
-			m.ui.statusViewport.SetYOffset(m.services.statusTree.Index - viewportHeight + 1)
+	viewportHeight := m.state.ui.statusViewport.Height
+	if viewportHeight > 0 && m.state.services.statusTree.Index >= 0 {
+		currentOffset := m.state.ui.statusViewport.YOffset
+		if m.state.services.statusTree.Index < currentOffset {
+			m.state.ui.statusViewport.SetYOffset(m.state.services.statusTree.Index)
+		} else if m.state.services.statusTree.Index >= currentOffset+viewportHeight {
+			m.state.ui.statusViewport.SetYOffset(m.state.services.statusTree.Index - viewportHeight + 1)
 		}
 	}
 }
 
 func (m *Model) setLogEntries(entries []commitLogEntry, reset bool) {
-	m.data.logEntriesAll = entries
+	m.state.data.logEntriesAll = entries
 	m.applyLogFilter(reset)
 }
 
 func (m *Model) applyLogFilter(reset bool) {
-	query := strings.ToLower(strings.TrimSpace(m.services.filter.LogFilterQuery))
-	filtered := m.data.logEntriesAll
+	query := strings.ToLower(strings.TrimSpace(m.state.services.filter.LogFilterQuery))
+	filtered := m.state.data.logEntriesAll
 	if query != "" {
-		filtered = make([]commitLogEntry, 0, len(m.data.logEntriesAll))
-		for _, entry := range m.data.logEntriesAll {
+		filtered = make([]commitLogEntry, 0, len(m.state.data.logEntriesAll))
+		for _, entry := range m.state.data.logEntriesAll {
 			if strings.Contains(strings.ToLower(entry.message), query) {
 				filtered = append(filtered, entry)
 			}
@@ -194,13 +194,13 @@ func (m *Model) applyLogFilter(reset bool) {
 
 	selectedSHA := ""
 	if !reset {
-		cursor := m.ui.logTable.Cursor()
-		if cursor >= 0 && cursor < len(m.data.logEntries) {
-			selectedSHA = m.data.logEntries[cursor].sha
+		cursor := m.state.ui.logTable.Cursor()
+		if cursor >= 0 && cursor < len(m.state.data.logEntries) {
+			selectedSHA = m.state.data.logEntries[cursor].sha
 		}
 	}
 
-	m.data.logEntries = filtered
+	m.state.data.logEntries = filtered
 	rows := make([]table.Row, 0, len(filtered))
 	for _, entry := range filtered {
 		sha := entry.sha
@@ -219,22 +219,22 @@ func (m *Model) applyLogFilter(reset bool) {
 
 		rows = append(rows, table.Row{sha, initials, msg})
 	}
-	m.ui.logTable.SetRows(rows)
+	m.state.ui.logTable.SetRows(rows)
 
 	if selectedSHA != "" {
-		for i, entry := range m.data.logEntries {
+		for i, entry := range m.state.data.logEntries {
 			if entry.sha == selectedSHA {
-				m.ui.logTable.SetCursor(i)
+				m.state.ui.logTable.SetCursor(i)
 				return
 			}
 		}
 	}
-	if len(m.data.logEntries) > 0 {
-		if m.ui.logTable.Cursor() < 0 || m.ui.logTable.Cursor() >= len(m.data.logEntries) || reset {
-			m.ui.logTable.SetCursor(0)
+	if len(m.state.data.logEntries) > 0 {
+		if m.state.ui.logTable.Cursor() < 0 || m.state.ui.logTable.Cursor() >= len(m.state.data.logEntries) || reset {
+			m.state.ui.logTable.SetCursor(0)
 		}
 	} else {
-		m.ui.logTable.SetCursor(0)
+		m.state.ui.logTable.SetCursor(0)
 	}
 }
 
@@ -279,12 +279,12 @@ func (m *Model) getCachedDetails(wt *models.WorktreeInfo) (string, string, map[s
 	}
 
 	// Get status (using porcelain format for reliable machine parsing)
-	statusRaw := m.services.git.RunGit(m.ctx, []string{"git", "status", "--porcelain=v2"}, wt.Path, []int{0}, true, false)
+	statusRaw := m.state.services.git.RunGit(m.ctx, []string{"git", "status", "--porcelain=v2"}, wt.Path, []int{0}, true, false)
 	// Use %H for full SHA to ensure reliable matching
-	logRaw := m.services.git.RunGit(m.ctx, []string{"git", "log", "-50", "--pretty=format:%H%x09%an%x09%s"}, wt.Path, []int{0}, true, false)
+	logRaw := m.state.services.git.RunGit(m.ctx, []string{"git", "log", "-50", "--pretty=format:%H%x09%an%x09%s"}, wt.Path, []int{0}, true, false)
 
 	// Get unpushed SHAs (commits not on any remote)
-	unpushedRaw := m.services.git.RunGit(m.ctx, []string{"git", "rev-list", "-100", "HEAD", "--not", "--remotes"}, wt.Path, []int{0}, true, false)
+	unpushedRaw := m.state.services.git.RunGit(m.ctx, []string{"git", "rev-list", "-100", "HEAD", "--not", "--remotes"}, wt.Path, []int{0}, true, false)
 	unpushedSHAs := make(map[string]bool)
 	for sha := range strings.SplitSeq(unpushedRaw, "\n") {
 		if s := strings.TrimSpace(sha); s != "" {
@@ -293,10 +293,10 @@ func (m *Model) getCachedDetails(wt *models.WorktreeInfo) (string, string, map[s
 	}
 
 	// Get unmerged SHAs (commits not in main branch)
-	mainBranch := m.services.git.GetMainBranch(m.ctx)
+	mainBranch := m.state.services.git.GetMainBranch(m.ctx)
 	unmergedSHAs := make(map[string]bool)
 	if mainBranch != "" {
-		unmergedRaw := m.services.git.RunGit(m.ctx, []string{"git", "rev-list", "-100", "HEAD", "^" + mainBranch}, wt.Path, []int{0}, true, false)
+		unmergedRaw := m.state.services.git.RunGit(m.ctx, []string{"git", "rev-list", "-100", "HEAD", "^" + mainBranch}, wt.Path, []int{0}, true, false)
 		for sha := range strings.SplitSeq(unmergedRaw, "\n") {
 			if s := strings.TrimSpace(sha); s != "" {
 				unmergedSHAs[s] = true

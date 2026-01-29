@@ -149,9 +149,9 @@ func TestRenderPaneTitleWithFilter(t *testing.T) {
 	}
 	m := NewModel(cfg, "")
 	m.theme = theme.Dracula()
-	m.services.filter.FilterQuery = testNavFilterQuery // Activate filter for pane 0
-	m.view.ShowingFilter = false
-	m.view.ShowingSearch = false
+	m.state.services.filter.FilterQuery = testNavFilterQuery // Activate filter for pane 0
+	m.state.view.ShowingFilter = false
+	m.state.view.ShowingSearch = false
 
 	title := m.renderPaneTitle(1, "Worktrees", true, 100)
 
@@ -172,7 +172,7 @@ func TestRenderPaneTitleWithZoom(t *testing.T) {
 	}
 	m := NewModel(cfg, "")
 	m.theme = theme.Dracula()
-	m.view.ZoomedPane = 0 // Zoom pane 0
+	m.state.view.ZoomedPane = 0 // Zoom pane 0
 
 	title := m.renderPaneTitle(1, "Worktrees", true, 100)
 
@@ -193,10 +193,10 @@ func TestRenderPaneTitleWithFilterAndZoom(t *testing.T) {
 	}
 	m := NewModel(cfg, "")
 	m.theme = theme.Dracula()
-	m.services.filter.FilterQuery = testNavFilterQuery // Activate filter for pane 0
-	m.view.ShowingFilter = false
-	m.view.ShowingSearch = false
-	m.view.ZoomedPane = 0 // Zoom pane 0
+	m.state.services.filter.FilterQuery = testNavFilterQuery // Activate filter for pane 0
+	m.state.view.ShowingFilter = false
+	m.state.view.ShowingSearch = false
+	m.state.view.ZoomedPane = 0 // Zoom pane 0
 
 	title := m.renderPaneTitle(1, "Worktrees", true, 100)
 
@@ -215,7 +215,7 @@ func TestRenderPaneTitleNoZoomWhenDifferentPane(t *testing.T) {
 	}
 	m := NewModel(cfg, "")
 	m.theme = theme.Dracula()
-	m.view.ZoomedPane = 1 // Zoom pane 1 (status)
+	m.state.view.ZoomedPane = 1 // Zoom pane 1 (status)
 
 	// Render title for pane 0 (worktrees)
 	title := m.renderPaneTitle(1, "Worktrees", true, 100)
@@ -232,7 +232,7 @@ func TestRenderPaneTitleUsesAccentFg(t *testing.T) {
 	}
 	m := NewModel(cfg, "")
 	m.theme = theme.CleanLight()
-	m.view.ZoomedPane = 0
+	m.state.view.ZoomedPane = 0
 
 	title := m.renderPaneTitle(1, "Worktrees", true, 100)
 
@@ -243,9 +243,9 @@ func TestRenderPaneTitleUsesAccentFg(t *testing.T) {
 	}
 
 	// Test with filter too
-	m.services.filter.FilterQuery = "test"
-	m.view.ShowingFilter = false
-	m.view.ShowingSearch = false
+	m.state.services.filter.FilterQuery = "test"
+	m.state.view.ShowingFilter = false
+	m.state.view.ShowingSearch = false
 
 	title = m.renderPaneTitle(1, "Worktrees", true, 100)
 
@@ -257,18 +257,18 @@ func TestRenderPaneTitleUsesAccentFg(t *testing.T) {
 func TestRenderZoomedLeftPane(t *testing.T) {
 	cfg := &config.AppConfig{WorktreeDir: t.TempDir()}
 	m := NewModel(cfg, "")
-	m.view.WindowWidth = 100
-	m.view.WindowHeight = 40
-	m.view.ZoomedPane = 0
+	m.state.view.WindowWidth = 100
+	m.state.view.WindowHeight = 40
+	m.state.view.ZoomedPane = 0
 
 	// Set up worktree table
-	m.data.worktrees = []*models.WorktreeInfo{
+	m.state.data.worktrees = []*models.WorktreeInfo{
 		{Path: filepath.Join(cfg.WorktreeDir, "wt1"), Branch: "branch1"},
 	}
-	m.data.filteredWts = m.data.worktrees
-	m.ui.worktreeTable.SetWidth(80)
+	m.state.data.filteredWts = m.state.data.worktrees
+	m.state.ui.worktreeTable.SetWidth(80)
 	m.updateTable()
-	m.updateTableColumns(m.ui.worktreeTable.Width())
+	m.updateTableColumns(m.state.ui.worktreeTable.Width())
 
 	layout := layoutDims{
 		leftWidth:      80,
@@ -288,13 +288,13 @@ func TestRenderZoomedLeftPane(t *testing.T) {
 func TestRenderZoomedRightTopPane(t *testing.T) {
 	cfg := &config.AppConfig{WorktreeDir: t.TempDir()}
 	m := NewModel(cfg, "")
-	m.view.WindowWidth = 100
-	m.view.WindowHeight = 40
-	m.view.ZoomedPane = 1
+	m.state.view.WindowWidth = 100
+	m.state.view.WindowHeight = 40
+	m.state.view.ZoomedPane = 1
 
 	m.infoContent = "Test info"
 	m.statusContent = "Test status content"
-	m.ui.statusViewport = viewport.New(50, 20)
+	m.state.ui.statusViewport = viewport.New(50, 20)
 
 	layout := layoutDims{
 		rightWidth:          80,
@@ -315,17 +315,17 @@ func TestRenderZoomedRightTopPane(t *testing.T) {
 func TestRenderZoomedRightBottomPane(t *testing.T) {
 	cfg := &config.AppConfig{WorktreeDir: t.TempDir()}
 	m := NewModel(cfg, "")
-	m.view.WindowWidth = 100
-	m.view.WindowHeight = 40
-	m.view.ZoomedPane = 2
+	m.state.view.WindowWidth = 100
+	m.state.view.WindowHeight = 40
+	m.state.view.ZoomedPane = 2
 
-	m.data.logEntries = []commitLogEntry{
+	m.state.data.logEntries = []commitLogEntry{
 		{sha: "abc123", message: "commit 1"},
 		{sha: "def456", message: "commit 2"},
 	}
-	m.setLogEntries(m.data.logEntries, false)
-	m.ui.logTable.SetWidth(80)
-	m.updateLogColumns(m.ui.logTable.Width())
+	m.setLogEntries(m.state.data.logEntries, false)
+	m.state.ui.logTable.SetWidth(80)
+	m.updateLogColumns(m.state.ui.logTable.Width())
 
 	layout := layoutDims{
 		rightWidth:      80,

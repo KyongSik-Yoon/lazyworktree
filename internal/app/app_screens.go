@@ -22,22 +22,22 @@ import (
 func (m *Model) showInfo(message string, action tea.Cmd) {
 	infoScreen := appscreen.NewInfoScreen(message, m.theme)
 	infoScreen.OnClose = func() tea.Cmd { return action }
-	m.ui.screenManager.Push(infoScreen)
+	m.state.ui.screenManager.Push(infoScreen)
 }
 
 func (m *Model) handleScreenKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	if !m.ui.screenManager.IsActive() {
+	if !m.state.ui.screenManager.IsActive() {
 		return m, nil
 	}
-	current := m.ui.screenManager.Current()
+	current := m.state.ui.screenManager.Current()
 	scr, cmd := current.Update(msg)
 	if scr == nil {
 		// Only pop if the current screen hasn't already changed.
-		if m.ui.screenManager.Current() == current {
-			m.ui.screenManager.Pop()
+		if m.state.ui.screenManager.Current() == current {
+			m.state.ui.screenManager.Pop()
 		}
 	} else {
-		m.ui.screenManager.Set(scr)
+		m.state.ui.screenManager.Set(scr)
 	}
 	return m, cmd
 }
@@ -80,8 +80,8 @@ func (m *Model) showCommandPalette() tea.Cmd {
 	// Create screen with callbacks
 	paletteScreen := appscreen.NewCommandPaletteScreen(
 		items,
-		m.view.WindowWidth,
-		m.view.WindowHeight,
+		m.state.view.WindowWidth,
+		m.state.view.WindowHeight,
 		m.theme,
 	)
 
@@ -121,7 +121,7 @@ func (m *Model) showCommandPalette() tea.Cmd {
 	}
 
 	// Push to screen manager
-	m.ui.screenManager.Push(paletteScreen)
+	m.state.ui.screenManager.Push(paletteScreen)
 	return textinput.Blink
 }
 
@@ -134,7 +134,7 @@ func (m *Model) registerPaletteActions(registry *commands.Registry) {
 		Prune:             m.showPruneMerged,
 		CreateFromCurrent: m.showCreateFromCurrent,
 		CreateFromBranch: func() tea.Cmd {
-			defaultBase := m.services.git.GetMainBranch(m.ctx)
+			defaultBase := m.state.services.git.GetMainBranch(m.ctx)
 			return m.showBranchSelection(
 				"Select base branch",
 				"Filter branches...",
@@ -147,13 +147,13 @@ func (m *Model) registerPaletteActions(registry *commands.Registry) {
 			)
 		},
 		CreateFromCommit: func() tea.Cmd {
-			defaultBase := m.services.git.GetMainBranch(m.ctx)
+			defaultBase := m.state.services.git.GetMainBranch(m.ctx)
 			return m.showCommitSelection(defaultBase)
 		},
 		CreateFromPR:    m.showCreateFromPR,
 		CreateFromIssue: m.showCreateFromIssue,
 		CreateFreeform: func() tea.Cmd {
-			defaultBase := m.services.git.GetMainBranch(m.ctx)
+			defaultBase := m.state.services.git.GetMainBranch(m.ctx)
 			return m.showFreeformBaseInput(defaultBase)
 		},
 	})
@@ -169,7 +169,7 @@ func (m *Model) registerPaletteActions(registry *commands.Registry) {
 			return m.openCICheckSelection()
 		},
 		CIChecksAvailable: func() bool {
-			return m.services.git != nil && m.services.git.IsGitHub(m.ctx)
+			return m.state.services.git != nil && m.state.services.git.IsGitHub(m.ctx)
 		},
 		OpenPR:      m.openPR,
 		OpenLazyGit: m.openLazyGit,
@@ -178,8 +178,8 @@ func (m *Model) registerPaletteActions(registry *commands.Registry) {
 
 	commands.RegisterStatusPaneActions(registry, commands.StatusHandlers{
 		StageFile: func() tea.Cmd {
-			if len(m.services.statusTree.TreeFlat) > 0 && m.services.statusTree.Index >= 0 && m.services.statusTree.Index < len(m.services.statusTree.TreeFlat) {
-				node := m.services.statusTree.TreeFlat[m.services.statusTree.Index]
+			if len(m.state.services.statusTree.TreeFlat) > 0 && m.state.services.statusTree.Index >= 0 && m.state.services.statusTree.Index < len(m.state.services.statusTree.TreeFlat) {
+				node := m.state.services.statusTree.TreeFlat[m.state.services.statusTree.Index]
 				if node.IsDir() {
 					return m.stageDirectory(node)
 				}
@@ -190,8 +190,8 @@ func (m *Model) registerPaletteActions(registry *commands.Registry) {
 		CommitStaged: m.commitStagedChanges,
 		CommitAll:    m.commitAllChanges,
 		EditFile: func() tea.Cmd {
-			if len(m.services.statusTree.TreeFlat) > 0 && m.services.statusTree.Index >= 0 && m.services.statusTree.Index < len(m.services.statusTree.TreeFlat) {
-				node := m.services.statusTree.TreeFlat[m.services.statusTree.Index]
+			if len(m.state.services.statusTree.TreeFlat) > 0 && m.state.services.statusTree.Index >= 0 && m.state.services.statusTree.Index < len(m.state.services.statusTree.TreeFlat) {
+				node := m.state.services.statusTree.TreeFlat[m.state.services.statusTree.Index]
 				if !node.IsDir() {
 					return m.openStatusFileInEditor(*node.File)
 				}
@@ -208,16 +208,16 @@ func (m *Model) registerPaletteActions(registry *commands.Registry) {
 
 	commands.RegisterNavigationActions(registry, commands.NavigationHandlers{
 		ToggleZoom: func() tea.Cmd {
-			if m.view.ZoomedPane >= 0 {
-				m.view.ZoomedPane = -1
+			if m.state.view.ZoomedPane >= 0 {
+				m.state.view.ZoomedPane = -1
 			} else {
-				m.view.ZoomedPane = m.view.FocusedPane
+				m.state.view.ZoomedPane = m.state.view.FocusedPane
 			}
 			return nil
 		},
 		Filter: func() tea.Cmd {
 			target := filterTargetWorktrees
-			switch m.view.FocusedPane {
+			switch m.state.view.FocusedPane {
 			case 1:
 				target = filterTargetStatus
 			case 2:
@@ -227,7 +227,7 @@ func (m *Model) registerPaletteActions(registry *commands.Registry) {
 		},
 		Search: func() tea.Cmd {
 			target := searchTargetWorktrees
-			switch m.view.FocusedPane {
+			switch m.state.view.FocusedPane {
 			case 1:
 				target = searchTargetStatus
 			case 2:
@@ -236,21 +236,21 @@ func (m *Model) registerPaletteActions(registry *commands.Registry) {
 			return m.startSearch(target)
 		},
 		FocusWorktree: func() tea.Cmd {
-			m.view.ZoomedPane = -1
-			m.view.FocusedPane = 0
-			m.ui.worktreeTable.Focus()
+			m.state.view.ZoomedPane = -1
+			m.state.view.FocusedPane = 0
+			m.state.ui.worktreeTable.Focus()
 			return nil
 		},
 		FocusStatus: func() tea.Cmd {
-			m.view.ZoomedPane = -1
-			m.view.FocusedPane = 1
+			m.state.view.ZoomedPane = -1
+			m.state.view.FocusedPane = 1
 			m.rebuildStatusContentWithHighlight()
 			return nil
 		},
 		FocusLog: func() tea.Cmd {
-			m.view.ZoomedPane = -1
-			m.view.FocusedPane = 2
-			m.ui.logTable.Focus()
+			m.state.view.ZoomedPane = -1
+			m.state.view.FocusedPane = 2
+			m.state.ui.logTable.Focus()
 			return nil
 		},
 		SortCycle: func() tea.Cmd {
@@ -263,8 +263,8 @@ func (m *Model) registerPaletteActions(registry *commands.Registry) {
 	commands.RegisterSettingsActions(registry, commands.SettingsHandlers{
 		Theme: m.showThemeSelection,
 		Help: func() tea.Cmd {
-			helpScreen := appscreen.NewHelpScreen(m.view.WindowWidth, m.view.WindowHeight, m.config.CustomCommands, m.theme, m.config.IconsEnabled())
-			m.ui.screenManager.Push(helpScreen)
+			helpScreen := appscreen.NewHelpScreen(m.state.view.WindowWidth, m.state.view.WindowHeight, m.config.CustomCommands, m.theme, m.config.IconsEnabled())
+			m.state.ui.screenManager.Push(helpScreen)
 			return nil
 		},
 	})
@@ -274,7 +274,7 @@ func (m *Model) fetchPRDataWithState() tea.Cmd {
 	m.cache.ciCache.Clear()
 	m.prDataLoaded = false
 	m.updateTable()
-	m.updateTableColumns(m.ui.worktreeTable.Width())
+	m.updateTableColumns(m.state.ui.worktreeTable.Width())
 	m.loading = true
 	m.statusContent = "Fetching PR data..."
 	m.setLoadingScreen("Fetching PR data...")
@@ -295,8 +295,8 @@ func (m *Model) showThemeSelection() tea.Cmd {
 		labelWithIcon(UIIconThemeSelect, "Select Theme", m.config.IconsEnabled()),
 		"Filter themes...",
 		"",
-		m.view.WindowWidth,
-		m.view.WindowHeight,
+		m.state.view.WindowWidth,
+		m.state.view.WindowHeight,
 		m.originalTheme,
 		m.theme,
 	)
@@ -315,7 +315,7 @@ func (m *Model) showThemeSelection() tea.Cmd {
 			m.originalTheme = ""
 			return nil
 		}
-		m.ui.screenManager.Push(confirmScreen)
+		m.state.ui.screenManager.Push(confirmScreen)
 		return nil
 	}
 
@@ -328,7 +328,7 @@ func (m *Model) showThemeSelection() tea.Cmd {
 		return nil
 	}
 
-	m.ui.screenManager.Push(listScreen)
+	m.state.ui.screenManager.Push(listScreen)
 	return textinput.Blink
 }
 
@@ -349,22 +349,22 @@ func (m *Model) UpdateTheme(themeName string) {
 		Background(thm.AccentDim)
 	s.Selected = s.Selected.Bold(true) // Arrow indicator shows selection, no background
 
-	m.ui.worktreeTable.SetStyles(s)
-	m.ui.logTable.SetStyles(s)
+	m.state.ui.worktreeTable.SetStyles(s)
+	m.state.ui.logTable.SetStyles(s)
 
 	// Update spinner style
-	m.ui.spinner.Style = lipgloss.NewStyle().Foreground(thm.Accent)
+	m.state.ui.spinner.Style = lipgloss.NewStyle().Foreground(thm.Accent)
 
 	// Update filter input styles
-	m.ui.filterInput.PromptStyle = lipgloss.NewStyle().Foreground(thm.Accent)
-	m.ui.filterInput.TextStyle = lipgloss.NewStyle().Foreground(thm.TextFg)
+	m.state.ui.filterInput.PromptStyle = lipgloss.NewStyle().Foreground(thm.Accent)
+	m.state.ui.filterInput.TextStyle = lipgloss.NewStyle().Foreground(thm.TextFg)
 
 	// Update other screens if they exist
 	if loadingScreen := m.loadingScreen(); loadingScreen != nil {
 		loadingScreen.SetTheme(thm)
 	}
-	if m.ui.screenManager.IsActive() {
-		switch scr := m.ui.screenManager.Current().(type) {
+	if m.state.ui.screenManager.IsActive() {
+		switch scr := m.state.ui.screenManager.Current().(type) {
 		case *appscreen.InputScreen:
 			scr.Thm = thm
 		case *appscreen.PRSelectionScreen:
@@ -383,13 +383,13 @@ func (m *Model) UpdateTheme(themeName string) {
 	}
 
 	// Re-render info content with new theme
-	if m.data.selectedIndex >= 0 && m.data.selectedIndex < len(m.data.filteredWts) {
-		m.infoContent = m.buildInfoContent(m.data.filteredWts[m.data.selectedIndex])
+	if m.state.data.selectedIndex >= 0 && m.state.data.selectedIndex < len(m.state.data.filteredWts) {
+		m.infoContent = m.buildInfoContent(m.state.data.filteredWts[m.state.data.selectedIndex])
 	}
 }
 
 func (m *Model) showRunCommand() tea.Cmd {
-	if m.data.selectedIndex < 0 || m.data.selectedIndex >= len(m.data.filteredWts) {
+	if m.state.data.selectedIndex < 0 || m.state.data.selectedIndex >= len(m.state.data.filteredWts) {
 		return nil
 	}
 
@@ -418,7 +418,7 @@ func (m *Model) showRunCommand() tea.Cmd {
 		return nil
 	}
 
-	m.ui.screenManager.Push(inputScr)
+	m.state.ui.screenManager.Push(inputScr)
 	return textinput.Blink
 }
 
@@ -448,30 +448,30 @@ func (m *Model) customFooterHints() []string {
 
 func (m *Model) showCherryPick() tea.Cmd {
 	// Validate: log pane must be focused
-	if m.view.FocusedPane != 2 {
+	if m.state.view.FocusedPane != 2 {
 		return nil
 	}
 
 	// Validate: commit must be selected
-	if len(m.data.logEntries) == 0 {
+	if len(m.state.data.logEntries) == 0 {
 		return nil
 	}
 
-	cursor := m.ui.logTable.Cursor()
-	if cursor < 0 || cursor >= len(m.data.logEntries) {
+	cursor := m.state.ui.logTable.Cursor()
+	if cursor < 0 || cursor >= len(m.state.data.logEntries) {
 		return nil
 	}
 
 	// Get source worktree and commit
-	if m.data.selectedIndex < 0 || m.data.selectedIndex >= len(m.data.filteredWts) {
+	if m.state.data.selectedIndex < 0 || m.state.data.selectedIndex >= len(m.state.data.filteredWts) {
 		return nil
 	}
-	sourceWorktree := m.data.filteredWts[m.data.selectedIndex]
-	selectedCommit := m.data.logEntries[cursor]
+	sourceWorktree := m.state.data.filteredWts[m.state.data.selectedIndex]
+	selectedCommit := m.state.data.logEntries[cursor]
 
 	// Build worktree selection items (exclude source worktree)
-	items := make([]selectionItem, 0, len(m.data.worktrees)-1)
-	for _, wt := range m.data.worktrees {
+	items := make([]selectionItem, 0, len(m.state.data.worktrees)-1)
+	for _, wt := range m.state.data.worktrees {
 		if wt.Path == sourceWorktree.Path {
 			continue // Skip source worktree
 		}
@@ -513,15 +513,15 @@ func (m *Model) showCherryPick() tea.Cmd {
 		title,
 		filterWorktreesPlaceholder,
 		"No worktrees found.",
-		m.view.WindowWidth,
-		m.view.WindowHeight,
+		m.state.view.WindowWidth,
+		m.state.view.WindowHeight,
 		"",
 		m.theme,
 	)
 
 	listScreen.OnSelect = func(item appscreen.SelectionItem) tea.Cmd {
 		var targetWorktree *models.WorktreeInfo
-		for _, wt := range m.data.worktrees {
+		for _, wt := range m.state.data.worktrees {
 			if wt.Path == item.ID {
 				targetWorktree = wt
 				break
@@ -541,18 +541,18 @@ func (m *Model) showCherryPick() tea.Cmd {
 		return nil
 	}
 
-	m.ui.screenManager.Push(listScreen)
+	m.state.ui.screenManager.Push(listScreen)
 	return textinput.Blink
 }
 
 func (m *Model) showCommitFilesScreen(commitSHA, worktreePath string) tea.Cmd {
 	return func() tea.Msg {
-		files, err := m.services.git.GetCommitFiles(m.ctx, commitSHA, worktreePath)
+		files, err := m.state.services.git.GetCommitFiles(m.ctx, commitSHA, worktreePath)
 		if err != nil {
 			return errMsg{err: err}
 		}
 		// Fetch commit metadata
-		metaRaw := m.services.git.RunGit(
+		metaRaw := m.state.services.git.RunGit(
 			m.ctx,
 			[]string{
 				"git", "log", "-1",
@@ -579,32 +579,32 @@ func (m *Model) showCommitFilesScreen(commitSHA, worktreePath string) tea.Cmd {
 }
 
 func (m *Model) openCommitView() tea.Cmd {
-	if m.data.selectedIndex < 0 || m.data.selectedIndex >= len(m.data.filteredWts) {
+	if m.state.data.selectedIndex < 0 || m.state.data.selectedIndex >= len(m.state.data.filteredWts) {
 		return nil
 	}
-	if len(m.data.logEntries) == 0 {
+	if len(m.state.data.logEntries) == 0 {
 		return nil
 	}
 
-	cursor := m.ui.logTable.Cursor()
-	if cursor < 0 || cursor >= len(m.data.logEntries) {
+	cursor := m.state.ui.logTable.Cursor()
+	if cursor < 0 || cursor >= len(m.state.data.logEntries) {
 		return nil
 	}
-	entry := m.data.logEntries[cursor]
-	wt := m.data.filteredWts[m.data.selectedIndex]
+	entry := m.state.data.logEntries[cursor]
+	wt := m.state.data.filteredWts[m.state.data.selectedIndex]
 
 	return m.showCommitFilesScreen(entry.sha, wt.Path)
 }
 
 func (m *Model) persistCurrentSelection() {
-	idx := m.data.selectedIndex
-	if idx < 0 || idx >= len(m.data.filteredWts) {
-		idx = m.ui.worktreeTable.Cursor()
+	idx := m.state.data.selectedIndex
+	if idx < 0 || idx >= len(m.state.data.filteredWts) {
+		idx = m.state.ui.worktreeTable.Cursor()
 	}
-	if idx < 0 || idx >= len(m.data.filteredWts) {
+	if idx < 0 || idx >= len(m.state.data.filteredWts) {
 		return
 	}
-	m.persistLastSelected(m.data.filteredWts[idx].Path)
+	m.persistLastSelected(m.state.data.filteredWts[idx].Path)
 }
 
 func (m *Model) persistLastSelected(path string) {

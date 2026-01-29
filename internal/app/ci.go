@@ -22,10 +22,10 @@ var ciDataSvc = services.NewCIDataService()
 
 // openCICheckSelection opens a selection screen for CI checks on the current worktree.
 func (m *Model) openCICheckSelection() tea.Cmd {
-	if m.data.selectedIndex < 0 || m.data.selectedIndex >= len(m.data.filteredWts) {
+	if m.state.data.selectedIndex < 0 || m.state.data.selectedIndex >= len(m.state.data.filteredWts) {
 		return nil
 	}
-	wt := m.data.filteredWts[m.data.selectedIndex]
+	wt := m.state.data.filteredWts[m.state.data.selectedIndex]
 
 	// Get CI checks from cache
 	checks, _, ok := m.cache.ciCache.Get(wt.Branch)
@@ -74,8 +74,8 @@ func (m *Model) openCICheckSelection() tea.Cmd {
 		labelWithIcon(UIIconCICheck, "Select CI Check", m.config.IconsEnabled()),
 		"Filter checks...",
 		"No CI checks found.",
-		m.view.WindowWidth,
-		m.view.WindowHeight,
+		m.state.view.WindowWidth,
+		m.state.view.WindowHeight,
 		"",
 		m.theme,
 	)
@@ -109,17 +109,17 @@ func (m *Model) openCICheckSelection() tea.Cmd {
 		return nil
 	}
 
-	m.ui.screenManager.Push(ciScreen)
+	m.state.ui.screenManager.Push(ciScreen)
 	return textinput.Blink
 }
 
 // showCICheckLog opens the CI check log in a pager using gh run view.
 // For external CI systems (non-GitHub Actions), it opens the check link in the browser.
 func (m *Model) showCICheckLog(check *models.CICheck) tea.Cmd {
-	if m.data.selectedIndex < 0 || m.data.selectedIndex >= len(m.data.filteredWts) {
+	if m.state.data.selectedIndex < 0 || m.state.data.selectedIndex >= len(m.state.data.filteredWts) {
 		return nil
 	}
-	wt := m.data.filteredWts[m.data.selectedIndex]
+	wt := m.state.data.filteredWts[m.state.data.selectedIndex]
 
 	// Extract run ID from the check link
 	runID := extractRunIDFromLink(check.Link)
@@ -209,10 +209,10 @@ func extractRepoFromLink(link string) string {
 
 // rerunCICheck restarts a CI job and returns the run URL.
 func (m *Model) rerunCICheck(check *models.CICheck) tea.Cmd {
-	if m.data.selectedIndex < 0 || m.data.selectedIndex >= len(m.data.filteredWts) {
+	if m.state.data.selectedIndex < 0 || m.state.data.selectedIndex >= len(m.state.data.filteredWts) {
 		return nil
 	}
-	wt := m.data.filteredWts[m.data.selectedIndex]
+	wt := m.state.data.filteredWts[m.state.data.selectedIndex]
 
 	// Extract run ID and job ID from the check link
 	runID := extractRunIDFromLink(check.Link)
@@ -246,7 +246,7 @@ func (m *Model) rerunCICheck(check *models.CICheck) tea.Cmd {
 
 		// gh run rerun produces no stdout on success, so we can't check output.
 		// RunGit with silent=false sends a notification on failure.
-		m.services.git.RunGit(ctx, append([]string{"gh"}, args...), wt.Path, []int{0}, true, false)
+		m.state.services.git.RunGit(ctx, append([]string{"gh"}, args...), wt.Path, []int{0}, true, false)
 
 		// Construct the run URL
 		runURL := fmt.Sprintf("https://github.com/%s/actions/runs/%s", repo, runID)
@@ -257,10 +257,10 @@ func (m *Model) rerunCICheck(check *models.CICheck) tea.Cmd {
 
 // getCIChecksForCurrentWorktree returns CI checks for the current worktree and whether they're visible.
 func (m *Model) getCIChecksForCurrentWorktree() ([]*models.CICheck, bool) {
-	if m.data.selectedIndex < 0 || m.data.selectedIndex >= len(m.data.filteredWts) {
+	if m.state.data.selectedIndex < 0 || m.state.data.selectedIndex >= len(m.state.data.filteredWts) {
 		return nil, false
 	}
-	wt := m.data.filteredWts[m.data.selectedIndex]
+	wt := m.state.data.filteredWts[m.state.data.selectedIndex]
 	checks, _, ok := m.cache.ciCache.Get(wt.Branch)
 	if !ok || len(checks) == 0 {
 		return nil, false
@@ -276,7 +276,7 @@ func sortCIChecks(checks []*models.CICheck) []*models.CICheck {
 
 func (m *Model) fetchCIStatus(prNumber int, branch string) tea.Cmd {
 	return func() tea.Msg {
-		checks, err := m.services.git.FetchCIStatus(m.ctx, prNumber, branch)
+		checks, err := m.state.services.git.FetchCIStatus(m.ctx, prNumber, branch)
 		return ciStatusLoadedMsg{
 			branch: branch,
 			checks: checks,
@@ -288,21 +288,21 @@ func (m *Model) fetchCIStatus(prNumber int, branch string) tea.Cmd {
 // fetchCIStatusByCommit fetches CI status for a commit SHA (non-PR branches on GitHub).
 func (m *Model) fetchCIStatusByCommit(worktreePath, branch string) tea.Cmd {
 	return func() tea.Msg {
-		commitSHA := m.services.git.GetHeadSHA(m.ctx, worktreePath)
+		commitSHA := m.state.services.git.GetHeadSHA(m.ctx, worktreePath)
 		if commitSHA == "" {
 			return ciStatusLoadedMsg{branch: branch, checks: nil, err: nil}
 		}
-		checks, err := m.services.git.FetchCIStatusByCommit(m.ctx, commitSHA, worktreePath)
+		checks, err := m.state.services.git.FetchCIStatusByCommit(m.ctx, commitSHA, worktreePath)
 		return ciStatusLoadedMsg{branch: branch, checks: checks, err: err}
 	}
 }
 
 // maybeFetchCIStatus triggers CI fetch for current worktree if it has a PR or commit and cache is stale.
 func (m *Model) maybeFetchCIStatus() tea.Cmd {
-	if m.data.selectedIndex < 0 || m.data.selectedIndex >= len(m.data.filteredWts) {
+	if m.state.data.selectedIndex < 0 || m.state.data.selectedIndex >= len(m.state.data.filteredWts) {
 		return nil
 	}
-	wt := m.data.filteredWts[m.data.selectedIndex]
+	wt := m.state.data.filteredWts[m.state.data.selectedIndex]
 
 	// Check cache - skip if fresh (within ciCacheTTL)
 	if m.cache.ciCache.IsFresh(wt.Branch, ciCacheTTL) {
@@ -316,7 +316,7 @@ func (m *Model) maybeFetchCIStatus() tea.Cmd {
 	}
 
 	// For non-PR branches on GitHub, use commit-based CI fetch
-	if m.services.git.IsGitHub(m.ctx) {
+	if m.state.services.git.IsGitHub(m.ctx) {
 		return m.fetchCIStatusByCommit(wt.Path, wt.Branch)
 	}
 

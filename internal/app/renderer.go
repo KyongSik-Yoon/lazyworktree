@@ -14,7 +14,7 @@ func (m *Model) View() string {
 	}
 
 	// Wait for window size before rendering full UI
-	if m.view.WindowWidth == 0 || m.view.WindowHeight == 0 {
+	if m.state.view.WindowWidth == 0 || m.state.view.WindowHeight == 0 {
 		return "Loading..."
 	}
 
@@ -27,7 +27,7 @@ func (m *Model) View() string {
 	body := m.renderBody(layout)
 
 	// Truncate body to fit, leaving room for header and footer
-	maxBodyLines := m.view.WindowHeight - 2 // 1 for header, 1 for footer
+	maxBodyLines := m.state.view.WindowHeight - 2 // 1 for header, 1 for footer
 	if layout.filterHeight > 0 {
 		maxBodyLines--
 	}
@@ -42,21 +42,21 @@ func (m *Model) View() string {
 	baseView := lipgloss.JoinVertical(lipgloss.Left, sections...)
 
 	// New path: render screens from screen manager
-	if m.ui.screenManager.IsActive() {
-		scr := m.ui.screenManager.Current()
+	if m.state.ui.screenManager.IsActive() {
+		scr := m.state.ui.screenManager.Current()
 		switch scr.Type() {
 		case screen.TypeWelcome, screen.TypeTrust:
 			// Full-screen replacement for welcome/trust screens
 			content := scr.View()
-			if m.view.WindowWidth > 0 && m.view.WindowHeight > 0 {
-				return lipgloss.Place(m.view.WindowWidth, m.view.WindowHeight, lipgloss.Center, lipgloss.Center, content)
+			if m.state.view.WindowWidth > 0 && m.state.view.WindowHeight > 0 {
+				return lipgloss.Place(m.state.view.WindowWidth, m.state.view.WindowHeight, lipgloss.Center, lipgloss.Center, content)
 			}
 			return content
 		case screen.TypeCommit:
 			// Resize viewport to fit window
 			if cs, ok := scr.(*screen.CommitScreen); ok {
-				vpWidth := max(80, int(float64(m.view.WindowWidth)*0.95))
-				vpHeight := max(20, int(float64(m.view.WindowHeight)*0.85))
+				vpWidth := max(80, int(float64(m.state.view.WindowWidth)*0.95))
+				vpHeight := max(20, int(float64(m.state.view.WindowHeight)*0.85))
 				cs.Viewport.Width = vpWidth
 				cs.Viewport.Height = vpHeight
 			}

@@ -123,8 +123,8 @@ func TestTmuxSessionReadyAttachesDirectly(t *testing.T) {
 
 	updated, cmd := m.Update(tmuxSessionReadyMsg{sessionName: "wt_test", attach: true, insideTmux: false})
 	model := updated.(*Model)
-	if model.ui.screenManager.IsActive() {
-		t.Fatalf("expected no screen change, got %v", model.ui.screenManager.Type())
+	if model.state.ui.screenManager.IsActive() {
+		t.Fatalf("expected no screen change, got %v", model.state.ui.screenManager.Type())
 	}
 	if cmd == nil {
 		t.Fatal("expected attach command to be returned")
@@ -140,10 +140,10 @@ func TestTmuxSessionReadyShowsInfoWhenNotAttaching(t *testing.T) {
 
 	updated, cmd := m.Update(tmuxSessionReadyMsg{sessionName: "wt_test", attach: false, insideTmux: false})
 	model := updated.(*Model)
-	if !model.ui.screenManager.IsActive() || model.ui.screenManager.Type() != appscreen.TypeInfo {
-		t.Fatalf("expected info screen, got active=%v type=%v", model.ui.screenManager.IsActive(), model.ui.screenManager.Type())
+	if !model.state.ui.screenManager.IsActive() || model.state.ui.screenManager.Type() != appscreen.TypeInfo {
+		t.Fatalf("expected info screen, got active=%v type=%v", model.state.ui.screenManager.IsActive(), model.state.ui.screenManager.Type())
 	}
-	infoScr := model.ui.screenManager.Current().(*appscreen.InfoScreen)
+	infoScr := model.state.ui.screenManager.Current().(*appscreen.InfoScreen)
 	if cmd != nil {
 		t.Fatal("expected no command when not attaching")
 	}
@@ -161,8 +161,8 @@ func TestZellijSessionReadyAttachesDirectly(t *testing.T) {
 
 	updated, cmd := m.Update(zellijSessionReadyMsg{sessionName: "wt_test", attach: true, insideZellij: false})
 	model := updated.(*Model)
-	if model.ui.screenManager.IsActive() {
-		t.Fatalf("expected no screen change, got %v", model.ui.screenManager.Type())
+	if model.state.ui.screenManager.IsActive() {
+		t.Fatalf("expected no screen change, got %v", model.state.ui.screenManager.Type())
 	}
 	if cmd == nil {
 		t.Fatal("expected attach command to be returned")
@@ -178,10 +178,10 @@ func TestZellijSessionReadyShowsInfoWhenInsideZellij(t *testing.T) {
 
 	updated, cmd := m.Update(zellijSessionReadyMsg{sessionName: "wt_test", attach: true, insideZellij: true})
 	model := updated.(*Model)
-	if !model.ui.screenManager.IsActive() || model.ui.screenManager.Type() != appscreen.TypeInfo {
-		t.Fatalf("expected info screen, got active=%v type=%v", model.ui.screenManager.IsActive(), model.ui.screenManager.Type())
+	if !model.state.ui.screenManager.IsActive() || model.state.ui.screenManager.Type() != appscreen.TypeInfo {
+		t.Fatalf("expected info screen, got active=%v type=%v", model.state.ui.screenManager.IsActive(), model.state.ui.screenManager.Type())
 	}
-	infoScr := model.ui.screenManager.Current().(*appscreen.InfoScreen)
+	infoScr := model.state.ui.screenManager.Current().(*appscreen.InfoScreen)
 	if cmd != nil {
 		t.Fatal("expected no command when inside zellij")
 	}

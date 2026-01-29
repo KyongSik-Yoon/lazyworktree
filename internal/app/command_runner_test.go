@@ -63,8 +63,8 @@ func TestOpenLazyGitUsesCommandRunner(t *testing.T) {
 		WorktreeDir: t.TempDir(),
 	}
 	m := NewModel(cfg, "")
-	m.data.filteredWts = []*models.WorktreeInfo{{Path: testWorktreePath}}
-	m.data.selectedIndex = 0
+	m.state.data.filteredWts = []*models.WorktreeInfo{{Path: testWorktreePath}}
+	m.state.data.selectedIndex = 0
 
 	capture := &commandCapture{}
 	m.commandRunner = capture.runner
@@ -97,8 +97,8 @@ func TestExecuteCustomCommandUsesCommandRunner(t *testing.T) {
 		},
 	}
 	m := NewModel(cfg, "")
-	m.data.filteredWts = []*models.WorktreeInfo{{Path: testWorktreePath, Branch: "feat"}}
-	m.data.selectedIndex = 0
+	m.state.data.filteredWts = []*models.WorktreeInfo{{Path: testWorktreePath, Branch: "feat"}}
+	m.state.data.selectedIndex = 0
 
 	capture := &commandCapture{}
 	m.commandRunner = capture.runner
@@ -142,8 +142,8 @@ func TestExecuteCustomCommandShowsOutput(t *testing.T) {
 		},
 	}
 	m := NewModel(cfg, "")
-	m.data.filteredWts = []*models.WorktreeInfo{{Path: testWorktreePath, Branch: "feat"}}
-	m.data.selectedIndex = 0
+	m.state.data.filteredWts = []*models.WorktreeInfo{{Path: testWorktreePath, Branch: "feat"}}
+	m.state.data.selectedIndex = 0
 
 	capture := &commandCapture{}
 	m.commandRunner = capture.runner
@@ -185,7 +185,7 @@ func TestOpenPRUsesCommandRunner(t *testing.T) {
 		WorktreeDir: t.TempDir(),
 	}
 	m := NewModel(cfg, "")
-	m.data.filteredWts = []*models.WorktreeInfo{
+	m.state.data.filteredWts = []*models.WorktreeInfo{
 		{
 			Path:   testWorktreePath,
 			Branch: "feat",
@@ -194,7 +194,7 @@ func TestOpenPRUsesCommandRunner(t *testing.T) {
 			},
 		},
 	}
-	m.data.selectedIndex = 0
+	m.state.data.selectedIndex = 0
 
 	capture := &commandCapture{}
 	m.commandRunner = capture.runner
@@ -337,8 +337,8 @@ func TestExecuteArbitraryCommand(t *testing.T) {
 		Pager:       "less -R",
 	}
 	m := NewModel(cfg, "")
-	m.data.filteredWts = []*models.WorktreeInfo{{Path: testWorktreePath, Branch: "feat"}}
-	m.data.selectedIndex = 0
+	m.state.data.filteredWts = []*models.WorktreeInfo{{Path: testWorktreePath, Branch: "feat"}}
+	m.state.data.selectedIndex = 0
 
 	capture := &commandCapture{}
 	m.commandRunner = capture.runner
@@ -380,8 +380,8 @@ func TestExecuteArbitraryCommandNoSelection(t *testing.T) {
 		WorktreeDir: t.TempDir(),
 	}
 	m := NewModel(cfg, "")
-	m.data.filteredWts = []*models.WorktreeInfo{}
-	m.data.selectedIndex = -1
+	m.state.data.filteredWts = []*models.WorktreeInfo{}
+	m.state.data.selectedIndex = -1
 
 	cmd := m.executeArbitraryCommand("make test")
 	if cmd != nil {
@@ -621,13 +621,13 @@ func TestShowCICheckLogExternalCIOpensInBrowser(t *testing.T) {
 		WorktreeDir: t.TempDir(),
 	}
 	m := NewModel(cfg, "")
-	m.data.filteredWts = []*models.WorktreeInfo{
+	m.state.data.filteredWts = []*models.WorktreeInfo{
 		{
 			Path:   testWorktreePath,
 			Branch: "feat",
 		},
 	}
-	m.data.selectedIndex = 0
+	m.state.data.selectedIndex = 0
 
 	capture := &commandCapture{}
 	m.commandRunner = capture.runner
@@ -673,13 +673,13 @@ func TestShowCICheckLogEmptyLinkShowsInfo(t *testing.T) {
 		WorktreeDir: t.TempDir(),
 	}
 	m := NewModel(cfg, "")
-	m.data.filteredWts = []*models.WorktreeInfo{
+	m.state.data.filteredWts = []*models.WorktreeInfo{
 		{
 			Path:   testWorktreePath,
 			Branch: "feat",
 		},
 	}
-	m.data.selectedIndex = 0
+	m.state.data.selectedIndex = 0
 
 	check := &models.CICheck{
 		Name: "some-check",
@@ -690,10 +690,10 @@ func TestShowCICheckLogEmptyLinkShowsInfo(t *testing.T) {
 	if cmd != nil {
 		t.Fatal("expected nil command for empty link")
 	}
-	if !m.ui.screenManager.IsActive() || m.ui.screenManager.Type() != appscreen.TypeInfo {
-		t.Fatalf("expected info screen, got active=%v type=%v", m.ui.screenManager.IsActive(), m.ui.screenManager.Type())
+	if !m.state.ui.screenManager.IsActive() || m.state.ui.screenManager.Type() != appscreen.TypeInfo {
+		t.Fatalf("expected info screen, got active=%v type=%v", m.state.ui.screenManager.IsActive(), m.state.ui.screenManager.Type())
 	}
-	infoScr := m.ui.screenManager.Current().(*appscreen.InfoScreen)
+	infoScr := m.state.ui.screenManager.Current().(*appscreen.InfoScreen)
 	if !strings.Contains(infoScr.Message, "No link available") {
 		t.Fatalf("expected info message about no link, got %q", infoScr.Message)
 	}
@@ -752,23 +752,23 @@ func TestOpenCICheckSelectionNoChecks(t *testing.T) {
 		WorktreeDir: t.TempDir(),
 	}
 	m := NewModel(cfg, "")
-	m.data.filteredWts = []*models.WorktreeInfo{
+	m.state.data.filteredWts = []*models.WorktreeInfo{
 		{
 			Path:   testWorktreePath,
 			Branch: "feat",
 		},
 	}
-	m.data.selectedIndex = 0
+	m.state.data.selectedIndex = 0
 
 	// No CI checks in cache
 	cmd := m.openCICheckSelection()
 	if cmd != nil {
 		t.Fatal("expected nil command when no CI checks available")
 	}
-	if !m.ui.screenManager.IsActive() || m.ui.screenManager.Type() != appscreen.TypeInfo {
-		t.Fatalf("expected info screen, got active=%v type=%v", m.ui.screenManager.IsActive(), m.ui.screenManager.Type())
+	if !m.state.ui.screenManager.IsActive() || m.state.ui.screenManager.Type() != appscreen.TypeInfo {
+		t.Fatalf("expected info screen, got active=%v type=%v", m.state.ui.screenManager.IsActive(), m.state.ui.screenManager.Type())
 	}
-	infoScr := m.ui.screenManager.Current().(*appscreen.InfoScreen)
+	infoScr := m.state.ui.screenManager.Current().(*appscreen.InfoScreen)
 	if !strings.Contains(infoScr.Message, "No CI checks available") {
 		t.Fatalf("expected info message about no CI checks, got %q", infoScr.Message)
 	}
@@ -779,13 +779,13 @@ func TestOpenCICheckSelectionWithChecks(t *testing.T) {
 		WorktreeDir: t.TempDir(),
 	}
 	m := NewModel(cfg, "")
-	m.data.filteredWts = []*models.WorktreeInfo{
+	m.state.data.filteredWts = []*models.WorktreeInfo{
 		{
 			Path:   testWorktreePath,
 			Branch: "feat",
 		},
 	}
-	m.data.selectedIndex = 0
+	m.state.data.selectedIndex = 0
 	m.setWindowSize(120, 40)
 
 	// Add CI checks to cache
@@ -799,10 +799,10 @@ func TestOpenCICheckSelectionWithChecks(t *testing.T) {
 		t.Fatal("expected command to be returned")
 	}
 
-	if !m.ui.screenManager.IsActive() || m.ui.screenManager.Type() != appscreen.TypeListSelect {
+	if !m.state.ui.screenManager.IsActive() || m.state.ui.screenManager.Type() != appscreen.TypeListSelect {
 		t.Fatalf("expected list screen to be active")
 	}
-	listScreen := m.ui.screenManager.Current().(*appscreen.ListSelectionScreen)
+	listScreen := m.state.ui.screenManager.Current().(*appscreen.ListSelectionScreen)
 	if listScreen == nil {
 		t.Fatal("expected listScreen to be set")
 	}
@@ -814,10 +814,10 @@ func TestCICheckSelectionColouredIcons(t *testing.T) {
 	}
 	m := NewModel(cfg, "")
 	m.theme = theme.Dracula()
-	m.data.filteredWts = []*models.WorktreeInfo{
+	m.state.data.filteredWts = []*models.WorktreeInfo{
 		{Path: testWorktreePath, Branch: "feat"},
 	}
-	m.data.selectedIndex = 0
+	m.state.data.selectedIndex = 0
 	m.setWindowSize(120, 40)
 
 	m.cache.ciCache.Set("feat", []*models.CICheck{
@@ -829,10 +829,10 @@ func TestCICheckSelectionColouredIcons(t *testing.T) {
 
 	m.openCICheckSelection()
 
-	if !m.ui.screenManager.IsActive() || m.ui.screenManager.Type() != appscreen.TypeListSelect {
+	if !m.state.ui.screenManager.IsActive() || m.state.ui.screenManager.Type() != appscreen.TypeListSelect {
 		t.Fatal("expected list screen to be active")
 	}
-	listScreen := m.ui.screenManager.Current().(*appscreen.ListSelectionScreen)
+	listScreen := m.state.ui.screenManager.Current().(*appscreen.ListSelectionScreen)
 	if len(listScreen.Items) != 4 {
 		t.Fatalf("expected 4 items, got %d", len(listScreen.Items))
 	}
@@ -946,10 +946,10 @@ func TestOpenCICheckSelectionStoresChecks(t *testing.T) {
 		WorktreeDir: t.TempDir(),
 	}
 	m := NewModel(cfg, "")
-	m.data.filteredWts = []*models.WorktreeInfo{
+	m.state.data.filteredWts = []*models.WorktreeInfo{
 		{Path: testWorktreePath, Branch: "feat"},
 	}
-	m.data.selectedIndex = 0
+	m.state.data.selectedIndex = 0
 	m.setWindowSize(120, 40)
 
 	checks := []*models.CICheck{
@@ -960,10 +960,10 @@ func TestOpenCICheckSelectionStoresChecks(t *testing.T) {
 
 	m.openCICheckSelection()
 
-	if !m.ui.screenManager.IsActive() || m.ui.screenManager.Type() != appscreen.TypeListSelect {
+	if !m.state.ui.screenManager.IsActive() || m.state.ui.screenManager.Type() != appscreen.TypeListSelect {
 		t.Fatal("expected list screen to be active")
 	}
-	listScreen := m.ui.screenManager.Current().(*appscreen.ListSelectionScreen)
+	listScreen := m.state.ui.screenManager.Current().(*appscreen.ListSelectionScreen)
 	if len(listScreen.Items) != 2 {
 		t.Fatalf("expected 2 items, got %d", len(listScreen.Items))
 	}
@@ -983,7 +983,7 @@ func TestClearListSelectionClearsCIChecks(t *testing.T) {
 
 	m.clearListSelection()
 
-	if m.ui.screenManager.IsActive() {
-		t.Fatalf("expected no screen, got %v", m.ui.screenManager.Type())
+	if m.state.ui.screenManager.IsActive() {
+		t.Fatalf("expected no screen, got %v", m.state.ui.screenManager.Type())
 	}
 }

@@ -101,7 +101,7 @@ func (m *Model) isBehindBase(wt *models.WorktreeInfo) bool {
 	}
 	// Check if current branch is behind the base branch
 	// Use git merge-base to find common ancestor, then check if we're behind
-	mergeBase := m.services.git.RunGit(m.ctx, []string{
+	mergeBase := m.state.services.git.RunGit(m.ctx, []string{
 		"git", "merge-base", "HEAD", wt.PR.BaseBranch,
 	}, wt.Path, []int{0, 1}, true, false)
 
@@ -110,7 +110,7 @@ func (m *Model) isBehindBase(wt *models.WorktreeInfo) bool {
 	}
 
 	// Check if there are commits in base that aren't in HEAD
-	behindCount := m.services.git.RunGit(m.ctx, []string{
+	behindCount := m.state.services.git.RunGit(m.ctx, []string{
 		"git", "rev-list", "--count", fmt.Sprintf("HEAD..%s", wt.PR.BaseBranch),
 	}, wt.Path, []int{0}, true, false)
 
@@ -145,7 +145,7 @@ func (m *Model) showSyncChoice(wt *models.WorktreeInfo) tea.Cmd {
 			return m.beginSync(savedWt, []string{remote, branch}, []string{"-u", remote, fmt.Sprintf("HEAD:%s", branch)})
 		})
 	}
-	m.ui.screenManager.Push(confirmScreen)
+	m.state.ui.screenManager.Push(confirmScreen)
 	return nil
 }
 
@@ -207,7 +207,7 @@ func (m *Model) showUpstreamInput(wt *models.WorktreeInfo, onSubmit func(remote,
 		return nil
 	}
 
-	m.ui.screenManager.Push(inputScr)
+	m.state.ui.screenManager.Push(inputScr)
 	return textinput.Blink
 }
 

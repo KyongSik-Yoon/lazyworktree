@@ -18,7 +18,7 @@ import (
 func (m *Model) fetchPRData() tea.Cmd {
 	return func() tea.Msg {
 		// First try the traditional approach (matches by headRefName)
-		prMap, err := m.services.git.FetchPRMap(m.ctx)
+		prMap, err := m.state.services.git.FetchPRMap(m.ctx)
 		if err != nil {
 			return prDataLoadedMsg{prMap: nil, err: err}
 		}
@@ -31,7 +31,7 @@ func (m *Model) fetchPRData() tea.Cmd {
 		// This handles fork PRs where local branch name doesn't match headRefName
 		worktreePRs := make(map[string]*models.PRInfo)
 		worktreeErrors := make(map[string]string)
-		for _, wt := range m.data.worktrees {
+		for _, wt := range m.state.data.worktrees {
 			log.Printf("Checking worktree: Branch=%q Path=%q", wt.Branch, wt.Path)
 			if pr, ok := prMap[wt.Branch]; ok {
 				log.Printf("  Found in prMap: PR#%d", pr.Number)
@@ -44,7 +44,7 @@ func (m *Model) fetchPRData() tea.Cmd {
 				continue
 			}
 			// Try to fetch PR for this worktree directly
-			pr, fetchErr := m.services.git.FetchPRForWorktreeWithError(m.ctx, wt.Path)
+			pr, fetchErr := m.state.services.git.FetchPRForWorktreeWithError(m.ctx, wt.Path)
 			if pr != nil {
 				worktreePRs[wt.Path] = pr
 				log.Printf("  FetchPRForWorktree returned PR#%d", pr.Number)
@@ -69,20 +69,20 @@ func (m *Model) fetchPRData() tea.Cmd {
 
 func (m *Model) fetchRemotes() tea.Cmd {
 	return func() tea.Msg {
-		m.services.git.RunGit(m.ctx, []string{"git", "fetch", "--all", "--quiet"}, "", []int{0}, false, false)
+		m.state.services.git.RunGit(m.ctx, []string{"git", "fetch", "--all", "--quiet"}, "", []int{0}, false, false)
 		return fetchRemotesCompleteMsg{}
 	}
 }
 
 func (m *Model) showDeleteFile() tea.Cmd {
-	if m.data.selectedIndex < 0 || m.data.selectedIndex >= len(m.data.filteredWts) {
+	if m.state.data.selectedIndex < 0 || m.state.data.selectedIndex >= len(m.state.data.filteredWts) {
 		return nil
 	}
-	if len(m.services.statusTree.TreeFlat) == 0 || m.services.statusTree.Index < 0 || m.services.statusTree.Index >= len(m.services.statusTree.TreeFlat) {
+	if len(m.state.services.statusTree.TreeFlat) == 0 || m.state.services.statusTree.Index < 0 || m.state.services.statusTree.Index >= len(m.state.services.statusTree.TreeFlat) {
 		return nil
 	}
-	node := m.services.statusTree.TreeFlat[m.services.statusTree.Index]
-	wt := m.data.filteredWts[m.data.selectedIndex]
+	node := m.state.services.statusTree.TreeFlat[m.state.services.statusTree.Index]
+	wt := m.state.data.filteredWts[m.state.data.selectedIndex]
 
 	var confirmScreen *screen.ConfirmScreen
 	if node.IsDir() {
@@ -96,7 +96,7 @@ func (m *Model) showDeleteFile() tea.Cmd {
 		confirmScreen = screen.NewConfirmScreen(fmt.Sprintf("Delete file?\n\nFile: %s", node.File.Filename), m.theme)
 		confirmScreen.OnConfirm = m.deleteFilesCmd(wt, []*StatusFile{node.File})
 	}
-	m.ui.screenManager.Push(confirmScreen)
+	m.state.ui.screenManager.Push(confirmScreen)
 	return nil
 }
 
@@ -141,10 +141,10 @@ func (m *Model) deleteFilesCmd(wt *models.WorktreeInfo, files []*StatusFile) fun
 }
 
 func (m *Model) commitAllChanges() tea.Cmd {
-	if m.data.selectedIndex < 0 || m.data.selectedIndex >= len(m.data.filteredWts) {
+	if m.state.data.selectedIndex < 0 || m.state.data.selectedIndex >= len(m.state.data.filteredWts) {
 		return nil
 	}
-	wt := m.data.filteredWts[m.data.selectedIndex]
+	wt := m.state.data.filteredWts[m.state.data.selectedIndex]
 
 	env := m.buildCommandEnv(wt.Branch, wt.Path)
 	envVars := os.Environ()
@@ -169,14 +169,14 @@ func (m *Model) commitAllChanges() tea.Cmd {
 }
 
 func (m *Model) commitStagedChanges() tea.Cmd {
-	if m.data.selectedIndex < 0 || m.data.selectedIndex >= len(m.data.filteredWts) {
+	if m.state.data.selectedIndex < 0 || m.state.data.selectedIndex >= len(m.state.data.filteredWts) {
 		return nil
 	}
-	wt := m.data.filteredWts[m.data.selectedIndex]
+	wt := m.state.data.filteredWts[m.state.data.selectedIndex]
 
 	// Check if there are any staged changes
 	hasStagedChanges := false
-	for _, sf := range m.data.statusFilesAll {
+	for _, sf := range m.state.data.statusFilesAll {
 		if len(sf.Status) >= 2 {
 			x := sf.Status[0] // Staged status
 			if x != '.' && x != ' ' {
@@ -214,10 +214,10 @@ func (m *Model) commitStagedChanges() tea.Cmd {
 }
 
 func (m *Model) stageCurrentFile(sf StatusFile) tea.Cmd {
-	if m.data.selectedIndex < 0 || m.data.selectedIndex >= len(m.data.filteredWts) {
+	if m.state.data.selectedIndex < 0 || m.state.data.selectedIndex >= len(m.state.data.filteredWts) {
 		return nil
 	}
-	wt := m.data.filteredWts[m.data.selectedIndex]
+	wt := m.state.data.filteredWts[m.state.data.selectedIndex]
 
 	// Status is XY format: X=staged, Y=unstaged
 	// Examples: "M " = staged, " M" = unstaged, "MM" = both
@@ -269,10 +269,10 @@ func (m *Model) stageCurrentFile(sf StatusFile) tea.Cmd {
 }
 
 func (m *Model) stageDirectory(node *StatusTreeNode) tea.Cmd {
-	if m.data.selectedIndex < 0 || m.data.selectedIndex >= len(m.data.filteredWts) {
+	if m.state.data.selectedIndex < 0 || m.state.data.selectedIndex >= len(m.state.data.filteredWts) {
 		return nil
 	}
-	wt := m.data.filteredWts[m.data.selectedIndex]
+	wt := m.state.data.filteredWts[m.state.data.selectedIndex]
 
 	files := node.CollectFiles()
 	if len(files) == 0 {
@@ -333,7 +333,7 @@ func (m *Model) stageDirectory(node *StatusTreeNode) tea.Cmd {
 
 func (m *Model) executeCherryPick(commitSHA string, targetWorktree *models.WorktreeInfo) tea.Cmd {
 	return func() tea.Msg {
-		_, err := m.services.git.CherryPickCommit(m.ctx, commitSHA, targetWorktree.Path)
+		_, err := m.state.services.git.CherryPickCommit(m.ctx, commitSHA, targetWorktree.Path)
 		return cherryPickResultMsg{
 			commitSHA:      commitSHA,
 			targetWorktree: targetWorktree,
@@ -381,7 +381,7 @@ func (m *Model) runCommandsWithTrust(cmds []string, cwd string, env map[string]s
 	trustPath := m.repoConfigPath
 	status := security.TrustStatusTrusted
 	if m.repoConfig != nil && trustPath != "" {
-		status = m.services.trustManager.CheckTrust(trustPath)
+		status = m.state.services.trustManager.CheckTrust(trustPath)
 	}
 
 	if trustMode == "always" || status == security.TrustStatusTrusted {
@@ -398,7 +398,7 @@ func (m *Model) runCommandsWithTrust(cmds []string, cwd string, env map[string]s
 		ts := screen.NewTrustScreen(trustPath, cmds, m.theme)
 		ts.OnTrust = func() tea.Cmd {
 			if m.pending.TrustPath != "" {
-				_ = m.services.trustManager.TrustFile(m.pending.TrustPath)
+				_ = m.state.services.trustManager.TrustFile(m.pending.TrustPath)
 			}
 			cmd := m.runCommands(m.pending.Commands, m.pending.CommandCwd, m.pending.CommandEnv, m.pending.After)
 			m.clearPendingTrust()
@@ -416,14 +416,14 @@ func (m *Model) runCommandsWithTrust(cmds []string, cwd string, env map[string]s
 			m.clearPendingTrust()
 			return nil
 		}
-		m.ui.screenManager.Push(ts)
+		m.state.ui.screenManager.Push(ts)
 	}
 	return nil
 }
 
 func (m *Model) runCommands(cmds []string, cwd string, env map[string]string, after func() tea.Msg) tea.Cmd {
 	return func() tea.Msg {
-		if err := m.services.git.ExecuteCommands(m.ctx, cmds, cwd, env); err != nil {
+		if err := m.state.services.git.ExecuteCommands(m.ctx, cmds, cwd, env); err != nil {
 			// Still refresh UI even if commands failed, so user sees current state
 			if after != nil {
 				return after()
@@ -451,7 +451,7 @@ func (m *Model) ensureRepoConfig() {
 	}
 	mainPath := m.getMainWorktreePath()
 	if mainPath == "" {
-		mainPath = m.services.git.GetMainWorktreePath(m.ctx)
+		mainPath = m.state.services.git.GetMainWorktreePath(m.ctx)
 	}
 	repoCfg, cfgPath, err := config.LoadRepoConfig(mainPath)
 	if err != nil {

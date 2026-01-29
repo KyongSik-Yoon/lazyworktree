@@ -44,13 +44,13 @@ func (m *Model) handleWorktreesLoaded(msg worktreesLoadedMsg) (tea.Model, tea.Cm
 	}
 
 	// Preserve PR state across worktree reload to prevent race condition
-	prStateMap := extractPRState(m.data.worktrees)
-	m.data.worktrees = msg.worktrees
-	restorePRState(m.data.worktrees, prStateMap)
+	prStateMap := extractPRState(m.state.data.worktrees)
+	m.state.data.worktrees = msg.worktrees
+	restorePRState(m.state.data.worktrees, prStateMap)
 
 	// Populate LastSwitchedTS from access history
-	for _, wt := range m.data.worktrees {
-		if ts, ok := m.data.accessHistory[wt.Path]; ok {
+	for _, wt := range m.state.data.worktrees {
+		if ts, ok := m.state.data.accessHistory[wt.Path]; ok {
 			wt.LastSwitchedTS = ts
 		}
 	}
@@ -61,9 +61,9 @@ func (m *Model) handleWorktreesLoaded(msg worktreesLoadedMsg) (tea.Model, tea.Cm
 	if m.pendingSelectWorktreePath != "" {
 		m.recordAccess(m.pendingSelectWorktreePath)
 		// Update the LastSwitchedTS for this worktree before sorting
-		for _, wt := range m.data.worktrees {
+		for _, wt := range m.state.data.worktrees {
 			if wt.Path == m.pendingSelectWorktreePath {
-				wt.LastSwitchedTS = m.data.accessHistory[wt.Path]
+				wt.LastSwitchedTS = m.state.data.accessHistory[wt.Path]
 				break
 			}
 		}
@@ -74,17 +74,17 @@ func (m *Model) handleWorktreesLoaded(msg worktreesLoadedMsg) (tea.Model, tea.Cm
 
 	if m.pendingSelectWorktreePath != "" {
 		// Find and select the worktree in the filtered list
-		for i, wt := range m.data.filteredWts {
+		for i, wt := range m.state.data.filteredWts {
 			if wt.Path == m.pendingSelectWorktreePath {
-				m.ui.worktreeTable.SetCursor(i)
-				m.data.selectedIndex = i
+				m.state.ui.worktreeTable.SetCursor(i)
+				m.state.data.selectedIndex = i
 				break
 			}
 		}
 		m.pendingSelectWorktreePath = ""
 	}
 	m.saveCache()
-	if len(m.data.worktrees) == 0 {
+	if len(m.state.data.worktrees) == 0 {
 		cwd, _ := os.Getwd()
 		ws := screen.NewWelcomeScreen(cwd, m.getRepoWorktreeDir(), m.theme)
 		ws.OnRefresh = func() tea.Cmd {
@@ -95,12 +95,12 @@ func (m *Model) handleWorktreesLoaded(msg worktreesLoadedMsg) (tea.Model, tea.Cm
 			m.stopGitWatcher()
 			return tea.Quit
 		}
-		m.ui.screenManager.Push(ws)
+		m.state.ui.screenManager.Push(ws)
 		return m, nil
 	}
 	// Clear welcome screen if worktrees were found
-	if m.ui.screenManager.Type() == screen.TypeWelcome {
-		m.ui.screenManager.Pop()
+	if m.state.ui.screenManager.Type() == screen.TypeWelcome {
+		m.state.ui.screenManager.Pop()
 	}
 	cmds := []tea.Cmd{}
 	if m.config.AutoFetchPRs && !m.prDataLoaded {
@@ -125,18 +125,18 @@ func (m *Model) handleCachedWorktrees(msg cachedWorktreesMsg) (tea.Model, tea.Cm
 		return m, nil
 	}
 	// Preserve PR state across worktree reload to prevent race condition
-	prStateMap := extractPRState(m.data.worktrees)
-	m.data.worktrees = msg.worktrees
-	restorePRState(m.data.worktrees, prStateMap)
+	prStateMap := extractPRState(m.state.data.worktrees)
+	m.state.data.worktrees = msg.worktrees
+	restorePRState(m.state.data.worktrees, prStateMap)
 	// Populate LastSwitchedTS from access history
-	for _, wt := range m.data.worktrees {
-		if ts, ok := m.data.accessHistory[wt.Path]; ok {
+	for _, wt := range m.state.data.worktrees {
+		if ts, ok := m.state.data.accessHistory[wt.Path]; ok {
 			wt.LastSwitchedTS = ts
 		}
 	}
 	m.updateTable()
-	if m.data.selectedIndex >= 0 && m.data.selectedIndex < len(m.data.filteredWts) {
-		m.infoContent = m.buildInfoContent(m.data.filteredWts[m.data.selectedIndex])
+	if m.state.data.selectedIndex >= 0 && m.state.data.selectedIndex < len(m.state.data.filteredWts) {
+		m.infoContent = m.buildInfoContent(m.state.data.filteredWts[m.state.data.selectedIndex])
 	}
 	m.statusContent = loadingRefreshWorktrees
 	return m, nil
@@ -147,9 +147,9 @@ func (m *Model) handlePruneResult(msg pruneResultMsg) (tea.Model, tea.Cmd) {
 	m.loading = false
 	if msg.err == nil && msg.worktrees != nil {
 		// Preserve PR state across worktree reload to prevent race condition
-		prStateMap := extractPRState(m.data.worktrees)
-		m.data.worktrees = msg.worktrees
-		restorePRState(m.data.worktrees, prStateMap)
+		prStateMap := extractPRState(m.state.data.worktrees)
+		m.state.data.worktrees = msg.worktrees
+		restorePRState(m.state.data.worktrees, prStateMap)
 		m.updateTable()
 		m.saveCache()
 	}
@@ -194,7 +194,7 @@ func (m *Model) handlePRDataLoaded(msg prDataLoadedMsg) (tea.Model, tea.Cmd) {
 		log.Printf("handlePRDataLoaded: prMap has %d entries, worktreePRs has %d entries, worktreeErrors has %d entries",
 			len(msg.prMap), len(msg.worktreePRs), len(msg.worktreeErrors))
 
-		for _, wt := range m.data.worktrees {
+		for _, wt := range m.state.data.worktrees {
 			// Clear previous status
 			wt.PRFetchError = ""
 			wt.PRFetchStatus = models.PRFetchStatusNoPR
@@ -249,7 +249,7 @@ func (m *Model) handlePRDataLoaded(msg prDataLoadedMsg) (tea.Model, tea.Cmd) {
 		}
 		m.prDataLoaded = true
 		// Update columns before rows to include the PR column
-		m.updateTableColumns(m.ui.worktreeTable.Width())
+		m.updateTableColumns(m.state.ui.worktreeTable.Width())
 		m.updateTable()
 
 		// If we were triggered from showPruneMerged, run the merged check now
@@ -273,8 +273,8 @@ func (m *Model) handleCIStatusLoaded(msg ciStatusLoadedMsg) (tea.Model, tea.Cmd)
 	if msg.err == nil && msg.checks != nil {
 		m.cache.ciCache.Set(msg.branch, msg.checks)
 		// Refresh info content to show CI status
-		if m.data.selectedIndex >= 0 && m.data.selectedIndex < len(m.data.filteredWts) {
-			wt := m.data.filteredWts[m.data.selectedIndex]
+		if m.state.data.selectedIndex >= 0 && m.state.data.selectedIndex < len(m.state.data.filteredWts) {
+			wt := m.state.data.filteredWts[m.state.data.selectedIndex]
 			if wt.Branch == msg.branch {
 				m.infoContent = m.buildInfoContent(wt)
 			}
@@ -296,7 +296,7 @@ func (m *Model) handleOpenPRsLoaded(msg openPRsLoadedMsg) tea.Cmd {
 	}
 
 	// Show PR selection screen
-	prScr := screen.NewPRSelectionScreen(msg.prs, m.view.WindowWidth, m.view.WindowHeight, m.theme, m.config.IconsEnabled())
+	prScr := screen.NewPRSelectionScreen(msg.prs, m.state.view.WindowWidth, m.state.view.WindowHeight, m.theme, m.config.IconsEnabled())
 	prScr.OnSelect = func(pr *models.PRInfo) tea.Cmd {
 		// Get AI-generated title (if configured)
 		generatedTitle := ""
@@ -381,7 +381,7 @@ func (m *Model) handleOpenPRsLoaded(msg openPRsLoadedMsg) tea.Cmd {
 					m.setLoadingScreen(m.statusContent)
 					m.pendingSelectWorktreePath = targetPath
 					return func() tea.Msg {
-						ok := m.services.git.CreateWorktreeFromPR(m.ctx, pr.Number, pr.Branch, newBranch, targetPath)
+						ok := m.state.services.git.CreateWorktreeFromPR(m.ctx, pr.Number, pr.Branch, newBranch, targetPath)
 						if !ok {
 							return createFromPRResultMsg{
 								prNumber:   pr.Number,
@@ -403,7 +403,7 @@ func (m *Model) handleOpenPRsLoaded(msg openPRsLoadedMsg) tea.Cmd {
 					return nil
 				}
 
-				m.ui.screenManager.Push(inputScr)
+				m.state.ui.screenManager.Push(inputScr)
 				return nil
 			})
 			return nil
@@ -449,7 +449,7 @@ func (m *Model) handleOpenPRsLoaded(msg openPRsLoadedMsg) tea.Cmd {
 			m.setLoadingScreen(m.statusContent)
 			m.pendingSelectWorktreePath = targetPath
 			return func() tea.Msg {
-				ok := m.services.git.CreateWorktreeFromPR(m.ctx, pr.Number, pr.Branch, pr.Branch, targetPath)
+				ok := m.state.services.git.CreateWorktreeFromPR(m.ctx, pr.Number, pr.Branch, pr.Branch, targetPath)
 				if !ok {
 					return createFromPRResultMsg{
 						prNumber:   pr.Number,
@@ -466,13 +466,13 @@ func (m *Model) handleOpenPRsLoaded(msg openPRsLoadedMsg) tea.Cmd {
 			return nil
 		}
 
-		m.ui.screenManager.Push(inputScr)
+		m.state.ui.screenManager.Push(inputScr)
 		return textinput.Blink
 	}
 	prScr.OnCancel = func() tea.Cmd {
 		return nil
 	}
-	m.ui.screenManager.Push(prScr)
+	m.state.ui.screenManager.Push(prScr)
 	return textinput.Blink
 }
 
@@ -488,9 +488,9 @@ func (m *Model) handleOpenIssuesLoaded(msg openIssuesLoadedMsg) tea.Cmd {
 		return nil
 	}
 
-	issueScr := screen.NewIssueSelectionScreen(msg.issues, m.view.WindowWidth, m.view.WindowHeight, m.theme, m.config.IconsEnabled())
+	issueScr := screen.NewIssueSelectionScreen(msg.issues, m.state.view.WindowWidth, m.state.view.WindowHeight, m.theme, m.config.IconsEnabled())
 	issueScr.OnSelect = func(issue *models.IssueInfo) tea.Cmd {
-		defaultBase := m.services.git.GetMainBranch(m.ctx)
+		defaultBase := m.state.services.git.GetMainBranch(m.ctx)
 		return m.showBranchSelection(
 			fmt.Sprintf("Select base branch for issue #%d", issue.Number),
 			"Filter branches...",
@@ -579,7 +579,7 @@ func (m *Model) handleOpenIssuesLoaded(msg openIssuesLoadedMsg) tea.Cmd {
 					m.setLoadingScreen(m.statusContent)
 					m.pendingSelectWorktreePath = targetPath
 					return func() tea.Msg {
-						ok := m.services.git.RunCommandChecked(
+						ok := m.state.services.git.RunCommandChecked(
 							m.ctx,
 							[]string{"git", "worktree", "add", "-b", newBranch, targetPath, baseBranch},
 							"",
@@ -601,12 +601,12 @@ func (m *Model) handleOpenIssuesLoaded(msg openIssuesLoadedMsg) tea.Cmd {
 					return nil
 				}
 
-				m.ui.screenManager.Push(inputScr)
+				m.state.ui.screenManager.Push(inputScr)
 				return textinput.Blink
 			},
 		)
 	}
-	m.ui.screenManager.Push(issueScr)
+	m.state.ui.screenManager.Push(issueScr)
 	return textinput.Blink
 }
 

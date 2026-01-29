@@ -15,7 +15,7 @@ import (
 )
 
 func (m *Model) inputLabel() string {
-	if m.view.ShowingSearch {
+	if m.state.view.ShowingSearch {
 		return m.searchLabel()
 	}
 	return m.filterLabel()
@@ -23,7 +23,7 @@ func (m *Model) inputLabel() string {
 
 func (m *Model) searchLabel() string {
 	showIcons := m.config.IconsEnabled()
-	switch m.view.SearchTarget {
+	switch m.state.view.SearchTarget {
 	case searchTargetStatus:
 		return labelWithIcon(UIIconSearch, "Search Files", showIcons)
 	case searchTargetLog:
@@ -35,7 +35,7 @@ func (m *Model) searchLabel() string {
 
 func (m *Model) filterLabel() string {
 	showIcons := m.config.IconsEnabled()
-	switch m.view.FilterTarget {
+	switch m.state.view.FilterTarget {
 	case filterTargetStatus:
 		return labelWithIcon(UIIconFilter, "Filter Files", showIcons)
 	case filterTargetLog:
@@ -57,22 +57,22 @@ func (m *Model) filterPlaceholder(target filterTarget) string {
 }
 
 func (m *Model) filterQueryForTarget(target filterTarget) string {
-	return m.services.filter.FilterQueryForTarget(target)
+	return m.state.services.filter.FilterQueryForTarget(target)
 }
 
 func (m *Model) setFilterQuery(target filterTarget, query string) {
-	m.services.filter.SetFilterQuery(target, query)
+	m.state.services.filter.SetFilterQuery(target, query)
 }
 
 func (m *Model) hasActiveFilterForPane(paneIndex int) bool {
-	return m.services.filter.HasActiveFilterForPane(paneIndex)
+	return m.state.services.filter.HasActiveFilterForPane(paneIndex)
 }
 
 func (m *Model) setFilterTarget(target filterTarget) {
-	m.view.FilterTarget = target
-	m.ui.filterInput.Placeholder = m.filterPlaceholder(target)
-	m.ui.filterInput.SetValue(m.filterQueryForTarget(target))
-	m.ui.filterInput.CursorEnd()
+	m.state.view.FilterTarget = target
+	m.state.ui.filterInput.Placeholder = m.filterPlaceholder(target)
+	m.state.ui.filterInput.SetValue(m.filterQueryForTarget(target))
+	m.state.ui.filterInput.CursorEnd()
 }
 
 func (m *Model) searchPlaceholder(target searchTarget) string {
@@ -87,46 +87,46 @@ func (m *Model) searchPlaceholder(target searchTarget) string {
 }
 
 func (m *Model) searchQueryForTarget(target searchTarget) string {
-	return m.services.filter.SearchQueryForTarget(target)
+	return m.state.services.filter.SearchQueryForTarget(target)
 }
 
 func (m *Model) setSearchQuery(target searchTarget, query string) {
-	m.services.filter.SetSearchQuery(target, query)
+	m.state.services.filter.SetSearchQuery(target, query)
 }
 
 func (m *Model) setSearchTarget(target searchTarget) {
-	m.view.SearchTarget = target
-	m.ui.filterInput.Placeholder = m.searchPlaceholder(target)
-	m.ui.filterInput.SetValue(m.searchQueryForTarget(target))
-	m.ui.filterInput.CursorEnd()
+	m.state.view.SearchTarget = target
+	m.state.ui.filterInput.Placeholder = m.searchPlaceholder(target)
+	m.state.ui.filterInput.SetValue(m.searchQueryForTarget(target))
+	m.state.ui.filterInput.CursorEnd()
 }
 
 func (m *Model) startSearch(target searchTarget) tea.Cmd {
-	m.view.ShowingSearch = true
-	m.view.ShowingFilter = false
+	m.state.view.ShowingSearch = true
+	m.state.view.ShowingFilter = false
 	m.setSearchTarget(target)
-	m.ui.filterInput.Focus()
+	m.state.ui.filterInput.Focus()
 	return textinput.Blink
 }
 
 func (m *Model) startFilter(target filterTarget) tea.Cmd {
-	m.view.ShowingFilter = true
-	m.view.ShowingSearch = false
+	m.state.view.ShowingFilter = true
+	m.state.view.ShowingSearch = false
 	m.setFilterTarget(target)
-	m.ui.filterInput.Focus()
+	m.state.ui.filterInput.Focus()
 	return textinput.Blink
 }
 
 func (m *Model) updateTable() {
 	// Filter worktrees
-	query := strings.ToLower(strings.TrimSpace(m.services.filter.FilterQuery))
-	m.data.filteredWts = []*models.WorktreeInfo{}
+	query := strings.ToLower(strings.TrimSpace(m.state.services.filter.FilterQuery))
+	m.state.data.filteredWts = []*models.WorktreeInfo{}
 
 	if query == "" {
-		m.data.filteredWts = m.data.worktrees
+		m.state.data.filteredWts = m.state.data.worktrees
 	} else {
 		hasPathSep := strings.Contains(query, "/")
-		for _, wt := range m.data.worktrees {
+		for _, wt := range m.state.data.worktrees {
 			name := filepath.Base(wt.Path)
 			if wt.IsMain {
 				name = mainWorktreeName
@@ -137,7 +137,7 @@ func (m *Model) updateTable() {
 			}
 			for _, haystack := range haystacks {
 				if strings.Contains(haystack, query) {
-					m.data.filteredWts = append(m.data.filteredWts, wt)
+					m.state.data.filteredWts = append(m.state.data.filteredWts, wt)
 					break
 				}
 			}
@@ -147,23 +147,23 @@ func (m *Model) updateTable() {
 	// Sort based on current sort mode
 	switch m.sortMode {
 	case sortModeLastActive:
-		sort.Slice(m.data.filteredWts, func(i, j int) bool {
-			return m.data.filteredWts[i].LastActiveTS > m.data.filteredWts[j].LastActiveTS
+		sort.Slice(m.state.data.filteredWts, func(i, j int) bool {
+			return m.state.data.filteredWts[i].LastActiveTS > m.state.data.filteredWts[j].LastActiveTS
 		})
 	case sortModeLastSwitched:
-		sort.Slice(m.data.filteredWts, func(i, j int) bool {
-			return m.data.filteredWts[i].LastSwitchedTS > m.data.filteredWts[j].LastSwitchedTS
+		sort.Slice(m.state.data.filteredWts, func(i, j int) bool {
+			return m.state.data.filteredWts[i].LastSwitchedTS > m.state.data.filteredWts[j].LastSwitchedTS
 		})
 	default: // sortModePath
-		sort.Slice(m.data.filteredWts, func(i, j int) bool {
-			return m.data.filteredWts[i].Path < m.data.filteredWts[j].Path
+		sort.Slice(m.state.data.filteredWts, func(i, j int) bool {
+			return m.state.data.filteredWts[i].Path < m.state.data.filteredWts[j].Path
 		})
 	}
 
 	// Update table rows
 	showIcons := m.config.IconsEnabled()
-	rows := make([]table.Row, 0, len(m.data.filteredWts))
-	for _, wt := range m.data.filteredWts {
+	rows := make([]table.Row, 0, len(m.state.data.filteredWts))
+	for _, wt := range m.state.data.filteredWts {
 		name := filepath.Base(wt.Path)
 		worktreeIcon := UIIconWorktree
 		if wt.IsMain {
@@ -210,25 +210,25 @@ func (m *Model) updateTable() {
 		rows = append(rows, row)
 	}
 
-	m.ui.worktreeTable.SetRows(rows)
-	if len(m.data.filteredWts) > 0 && m.data.selectedIndex >= len(m.data.filteredWts) {
-		m.data.selectedIndex = len(m.data.filteredWts) - 1
+	m.state.ui.worktreeTable.SetRows(rows)
+	if len(m.state.data.filteredWts) > 0 && m.state.data.selectedIndex >= len(m.state.data.filteredWts) {
+		m.state.data.selectedIndex = len(m.state.data.filteredWts) - 1
 	}
-	if len(m.data.filteredWts) > 0 {
-		cursor := max(m.ui.worktreeTable.Cursor(), 0)
-		if cursor >= len(m.data.filteredWts) {
-			cursor = len(m.data.filteredWts) - 1
+	if len(m.state.data.filteredWts) > 0 {
+		cursor := max(m.state.ui.worktreeTable.Cursor(), 0)
+		if cursor >= len(m.state.data.filteredWts) {
+			cursor = len(m.state.data.filteredWts) - 1
 		}
-		m.data.selectedIndex = cursor
-		m.ui.worktreeTable.SetCursor(cursor)
+		m.state.data.selectedIndex = cursor
+		m.state.ui.worktreeTable.SetCursor(cursor)
 	}
 	m.updateWorktreeArrows()
 }
 
 // updateWorktreeArrows updates the arrow indicator on the selected row.
 func (m *Model) updateWorktreeArrows() {
-	rows := m.ui.worktreeTable.Rows()
-	cursor := m.ui.worktreeTable.Cursor()
+	rows := m.state.ui.worktreeTable.Rows()
+	cursor := m.state.ui.worktreeTable.Cursor()
 	for i, row := range rows {
 		if len(row) > 0 && row[0] != "" {
 			runes := []rune(row[0])
@@ -243,19 +243,19 @@ func (m *Model) updateWorktreeArrows() {
 			}
 		}
 	}
-	m.ui.worktreeTable.SetRows(rows)
+	m.state.ui.worktreeTable.SetRows(rows)
 }
 
 func (m *Model) updateDetailsView() tea.Cmd {
-	m.data.selectedIndex = m.ui.worktreeTable.Cursor()
-	if m.data.selectedIndex < 0 || m.data.selectedIndex >= len(m.data.filteredWts) {
+	m.state.data.selectedIndex = m.state.ui.worktreeTable.Cursor()
+	if m.state.data.selectedIndex < 0 || m.state.data.selectedIndex >= len(m.state.data.filteredWts) {
 		return nil
 	}
 
 	// Reset CI check selection when worktree changes
 	m.ciCheckIndex = -1
 
-	wt := m.data.filteredWts[m.data.selectedIndex]
+	wt := m.state.data.filteredWts[m.state.data.selectedIndex]
 	if !m.worktreesLoaded {
 		m.infoContent = m.buildInfoContent(wt)
 		if m.statusContent == "" || m.statusContent == "Loading..." {
@@ -304,7 +304,7 @@ func (m *Model) debouncedUpdateDetailsView() tea.Cmd {
 	}
 
 	// Get current selected index
-	m.pendingDetailsIndex = m.ui.worktreeTable.Cursor()
+	m.pendingDetailsIndex = m.state.ui.worktreeTable.Cursor()
 	selectedIndex := m.pendingDetailsIndex
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -327,7 +327,7 @@ func (m *Model) debouncedUpdateDetailsView() tea.Cmd {
 
 func (m *Model) refreshWorktrees() tea.Cmd {
 	return func() tea.Msg {
-		worktrees, err := m.services.git.GetWorktrees(m.ctx)
+		worktrees, err := m.state.services.git.GetWorktrees(m.ctx)
 		return worktreesLoadedMsg{
 			worktrees: worktrees,
 			err:       err,
@@ -368,8 +368,8 @@ func (m *Model) findWorktreeMatchIndex(query string, start int, forward bool) in
 		return -1
 	}
 	hasPathSep := strings.Contains(lowerQuery, "/")
-	return findMatchIndex(len(m.data.filteredWts), start, forward, func(i int) bool {
-		wt := m.data.filteredWts[i]
+	return findMatchIndex(len(m.state.data.filteredWts), start, forward, func(i int) bool {
+		wt := m.state.data.filteredWts[i]
 		name := filepath.Base(wt.Path)
 		if wt.IsMain {
 			name = mainWorktreeName
@@ -389,8 +389,8 @@ func (m *Model) findStatusMatchIndex(query string, start int, forward bool) int 
 	if lowerQuery == "" {
 		return -1
 	}
-	return findMatchIndex(len(m.services.statusTree.TreeFlat), start, forward, func(i int) bool {
-		return strings.Contains(strings.ToLower(m.services.statusTree.TreeFlat[i].Path), lowerQuery)
+	return findMatchIndex(len(m.state.services.statusTree.TreeFlat), start, forward, func(i int) bool {
+		return strings.Contains(strings.ToLower(m.state.services.statusTree.TreeFlat[i].Path), lowerQuery)
 	})
 }
 
@@ -399,26 +399,26 @@ func (m *Model) findLogMatchIndex(query string, start int, forward bool) int {
 	if lowerQuery == "" {
 		return -1
 	}
-	return findMatchIndex(len(m.data.logEntries), start, forward, func(i int) bool {
-		return strings.Contains(strings.ToLower(m.data.logEntries[i].message), lowerQuery)
+	return findMatchIndex(len(m.state.data.logEntries), start, forward, func(i int) bool {
+		return strings.Contains(strings.ToLower(m.state.data.logEntries[i].message), lowerQuery)
 	})
 }
 
 func (m *Model) applySearchQuery(query string) tea.Cmd {
-	switch m.view.SearchTarget {
+	switch m.state.view.SearchTarget {
 	case searchTargetStatus:
 		if idx := m.findStatusMatchIndex(query, 0, true); idx >= 0 {
-			m.services.statusTree.Index = idx
+			m.state.services.statusTree.Index = idx
 			m.rebuildStatusContentWithHighlight()
 		}
 	case searchTargetLog:
 		if idx := m.findLogMatchIndex(query, 0, true); idx >= 0 {
-			m.ui.logTable.SetCursor(idx)
+			m.state.ui.logTable.SetCursor(idx)
 		}
 	default:
 		if idx := m.findWorktreeMatchIndex(query, 0, true); idx >= 0 {
-			m.ui.worktreeTable.SetCursor(idx)
-			m.data.selectedIndex = idx
+			m.state.ui.worktreeTable.SetCursor(idx)
+			m.state.data.selectedIndex = idx
 			return m.debouncedUpdateDetailsView()
 		}
 	}
@@ -426,42 +426,42 @@ func (m *Model) applySearchQuery(query string) tea.Cmd {
 }
 
 func (m *Model) advanceSearchMatch(forward bool) tea.Cmd {
-	query := strings.TrimSpace(m.searchQueryForTarget(m.view.SearchTarget))
+	query := strings.TrimSpace(m.searchQueryForTarget(m.state.view.SearchTarget))
 	if query == "" {
 		return nil
 	}
-	switch m.view.SearchTarget {
+	switch m.state.view.SearchTarget {
 	case searchTargetStatus:
-		start := m.services.statusTree.Index
+		start := m.state.services.statusTree.Index
 		if forward {
 			start++
 		} else {
 			start--
 		}
 		if idx := m.findStatusMatchIndex(query, start, forward); idx >= 0 {
-			m.services.statusTree.Index = idx
+			m.state.services.statusTree.Index = idx
 			m.rebuildStatusContentWithHighlight()
 		}
 	case searchTargetLog:
-		start := m.ui.logTable.Cursor()
+		start := m.state.ui.logTable.Cursor()
 		if forward {
 			start++
 		} else {
 			start--
 		}
 		if idx := m.findLogMatchIndex(query, start, forward); idx >= 0 {
-			m.ui.logTable.SetCursor(idx)
+			m.state.ui.logTable.SetCursor(idx)
 		}
 	default:
-		start := m.ui.worktreeTable.Cursor()
+		start := m.state.ui.worktreeTable.Cursor()
 		if forward {
 			start++
 		} else {
 			start--
 		}
 		if idx := m.findWorktreeMatchIndex(query, start, forward); idx >= 0 {
-			m.ui.worktreeTable.SetCursor(idx)
-			m.data.selectedIndex = idx
+			m.state.ui.worktreeTable.SetCursor(idx)
+			m.state.data.selectedIndex = idx
 			return m.debouncedUpdateDetailsView()
 		}
 	}

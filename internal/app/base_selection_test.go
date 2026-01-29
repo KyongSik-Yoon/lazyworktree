@@ -510,28 +510,28 @@ func withCwd(t *testing.T, dir string) {
 func TestShowBaseSelection(t *testing.T) {
 	cfg := &config.AppConfig{WorktreeDir: t.TempDir()}
 	m := NewModel(cfg, "")
-	m.view.WindowWidth = 120
-	m.view.WindowHeight = 40
+	m.state.view.WindowWidth = 120
+	m.state.view.WindowHeight = 40
 
 	cmd := m.showBaseSelection(mainWorktreeName)
 	if cmd == nil {
 		t.Fatal("expected command to be returned")
 	}
-	if !m.ui.screenManager.IsActive() || m.ui.screenManager.Type() != appscreen.TypeListSelect {
+	if !m.state.ui.screenManager.IsActive() || m.state.ui.screenManager.Type() != appscreen.TypeListSelect {
 		t.Fatal("expected list screen to be active")
 	}
 
-	listScreen := m.ui.screenManager.Current().(*appscreen.ListSelectionScreen)
+	listScreen := m.state.ui.screenManager.Current().(*appscreen.ListSelectionScreen)
 	if listScreen.OnSelect == nil {
 		t.Fatal("expected OnSelect callback to be set")
 	}
 	listScreen.OnSelect(appscreen.SelectionItem{ID: "freeform"})
 
 	// Input screen should now be pushed to screen manager
-	if !m.ui.screenManager.IsActive() || m.ui.screenManager.Type() != appscreen.TypeInput {
-		t.Fatalf("expected input screen to be active, got type %v", m.ui.screenManager.Type())
+	if !m.state.ui.screenManager.IsActive() || m.state.ui.screenManager.Type() != appscreen.TypeInput {
+		t.Fatalf("expected input screen to be active, got type %v", m.state.ui.screenManager.Type())
 	}
-	inputScr := m.ui.screenManager.Current().(*appscreen.InputScreen)
+	inputScr := m.state.ui.screenManager.Current().(*appscreen.InputScreen)
 	if inputScr.Prompt != "Base ref" {
 		t.Fatalf("expected base ref prompt, got %q", inputScr.Prompt)
 	}
@@ -543,18 +543,18 @@ func TestHandleScreenKeyKeepsNewScreenOnSelection(t *testing.T) {
 
 	cfg := &config.AppConfig{WorktreeDir: t.TempDir()}
 	m := NewModel(cfg, "")
-	m.view.WindowWidth = 120
-	m.view.WindowHeight = 40
+	m.state.view.WindowWidth = 120
+	m.state.view.WindowHeight = 40
 
 	cmd := m.showBaseSelection(repo.branch)
 	if cmd == nil {
 		t.Fatal("expected command to be returned")
 	}
-	if !m.ui.screenManager.IsActive() || m.ui.screenManager.Type() != appscreen.TypeListSelect {
+	if !m.state.ui.screenManager.IsActive() || m.state.ui.screenManager.Type() != appscreen.TypeListSelect {
 		t.Fatal("expected list screen to be active")
 	}
 
-	baseScreen := m.ui.screenManager.Current().(*appscreen.ListSelectionScreen)
+	baseScreen := m.state.ui.screenManager.Current().(*appscreen.ListSelectionScreen)
 	idx := -1
 	for i, item := range baseScreen.Items {
 		if item.ID == "branch-list" {
@@ -569,13 +569,13 @@ func TestHandleScreenKeyKeepsNewScreenOnSelection(t *testing.T) {
 
 	_, _ = m.handleScreenKey(tea.KeyMsg{Type: tea.KeyEnter})
 
-	if !m.ui.screenManager.IsActive() {
+	if !m.state.ui.screenManager.IsActive() {
 		t.Fatal("expected a screen to remain active after selection")
 	}
-	if m.ui.screenManager.Current() == baseScreen {
+	if m.state.ui.screenManager.Current() == baseScreen {
 		t.Fatal("expected selection to open a new screen")
 	}
-	if m.ui.screenManager.StackDepth() == 0 {
+	if m.state.ui.screenManager.StackDepth() == 0 {
 		t.Fatal("expected previous screen to remain on the stack")
 	}
 }
@@ -583,18 +583,18 @@ func TestHandleScreenKeyKeepsNewScreenOnSelection(t *testing.T) {
 func TestShowBaseSelectionFromPROption(t *testing.T) {
 	cfg := &config.AppConfig{WorktreeDir: t.TempDir()}
 	m := NewModel(cfg, "")
-	m.view.WindowWidth = 120
-	m.view.WindowHeight = 40
+	m.state.view.WindowWidth = 120
+	m.state.view.WindowHeight = 40
 
 	cmd := m.showBaseSelection(mainWorktreeName)
 	if cmd == nil {
 		t.Fatal("expected command to be returned")
 	}
-	if !m.ui.screenManager.IsActive() || m.ui.screenManager.Type() != appscreen.TypeListSelect {
+	if !m.state.ui.screenManager.IsActive() || m.state.ui.screenManager.Type() != appscreen.TypeListSelect {
 		t.Fatal("expected list screen to be active")
 	}
 
-	listScreen := m.ui.screenManager.Current().(*appscreen.ListSelectionScreen)
+	listScreen := m.state.ui.screenManager.Current().(*appscreen.ListSelectionScreen)
 
 	// Verify the from-pr option exists
 	found := false
@@ -626,10 +626,10 @@ func TestShowFreeformBaseInputValidation(t *testing.T) {
 	m := NewModel(cfg, "")
 
 	m.showFreeformBaseInput(repo.branch)
-	if !m.ui.screenManager.IsActive() || m.ui.screenManager.Type() != appscreen.TypeInput {
+	if !m.state.ui.screenManager.IsActive() || m.state.ui.screenManager.Type() != appscreen.TypeInput {
 		t.Fatal("expected input screen to be active")
 	}
-	inputScr := m.ui.screenManager.Current().(*appscreen.InputScreen)
+	inputScr := m.state.ui.screenManager.Current().(*appscreen.InputScreen)
 
 	// Test empty base ref validation
 	inputScr.OnSubmit(" ", false)
@@ -646,10 +646,10 @@ func TestShowFreeformBaseInputValidation(t *testing.T) {
 	// Test valid base ref - should push branch name input
 	inputScr.OnSubmit(repo.branch, false)
 	// A new input screen should be pushed for branch name
-	if !m.ui.screenManager.IsActive() || m.ui.screenManager.Type() != appscreen.TypeInput {
+	if !m.state.ui.screenManager.IsActive() || m.state.ui.screenManager.Type() != appscreen.TypeInput {
 		t.Fatal("expected branch name input screen to be shown")
 	}
-	branchInputScr := m.ui.screenManager.Current().(*appscreen.InputScreen)
+	branchInputScr := m.state.ui.screenManager.Current().(*appscreen.InputScreen)
 	if branchInputScr.Prompt != "Create worktree: branch name" {
 		t.Fatalf("expected branch name prompt, got %q", branchInputScr.Prompt)
 	}
@@ -661,8 +661,8 @@ func TestShowBranchSelection(t *testing.T) {
 
 	cfg := &config.AppConfig{WorktreeDir: t.TempDir()}
 	m := NewModel(cfg, "")
-	m.view.WindowWidth = 120
-	m.view.WindowHeight = 40
+	m.state.view.WindowWidth = 120
+	m.state.view.WindowHeight = 40
 
 	selected := ""
 	cmd := m.showBranchSelection("Pick", "Filter...", "None", repo.branch, func(branch string) tea.Cmd {
@@ -674,11 +674,11 @@ func TestShowBranchSelection(t *testing.T) {
 		t.Fatal("expected command to be returned")
 	}
 
-	if !m.ui.screenManager.IsActive() || m.ui.screenManager.Type() != appscreen.TypeListSelect {
+	if !m.state.ui.screenManager.IsActive() || m.state.ui.screenManager.Type() != appscreen.TypeListSelect {
 		t.Fatal("expected list screen to be active")
 	}
 
-	listScreen := m.ui.screenManager.Current().(*appscreen.ListSelectionScreen)
+	listScreen := m.state.ui.screenManager.Current().(*appscreen.ListSelectionScreen)
 	if len(listScreen.Items) == 0 {
 		t.Fatal("expected branch list to be populated")
 	}
@@ -709,19 +709,19 @@ func TestShowCommitSelection(t *testing.T) {
 
 	cfg := &config.AppConfig{WorktreeDir: t.TempDir()}
 	m := NewModel(cfg, "")
-	m.view.WindowWidth = 120
-	m.view.WindowHeight = 40
+	m.state.view.WindowWidth = 120
+	m.state.view.WindowHeight = 40
 
 	cmd := m.showCommitSelection(repo.branch)
 	if cmd == nil {
 		t.Fatal("expected command to be returned")
 	}
 
-	if !m.ui.screenManager.IsActive() || m.ui.screenManager.Type() != appscreen.TypeListSelect {
+	if !m.state.ui.screenManager.IsActive() || m.state.ui.screenManager.Type() != appscreen.TypeListSelect {
 		t.Fatal("expected list screen to be active")
 	}
 
-	listScreen := m.ui.screenManager.Current().(*appscreen.ListSelectionScreen)
+	listScreen := m.state.ui.screenManager.Current().(*appscreen.ListSelectionScreen)
 	if len(listScreen.Items) == 0 {
 		t.Fatal("expected commit list to be populated")
 	}
@@ -732,10 +732,10 @@ func TestShowCommitSelection(t *testing.T) {
 	}
 
 	listScreen.OnSelect(item)
-	if !m.ui.screenManager.IsActive() || m.ui.screenManager.Type() != appscreen.TypeInput {
+	if !m.state.ui.screenManager.IsActive() || m.state.ui.screenManager.Type() != appscreen.TypeInput {
 		t.Fatal("expected branch name input to be shown")
 	}
-	inputScr := m.ui.screenManager.Current().(*appscreen.InputScreen)
+	inputScr := m.state.ui.screenManager.Current().(*appscreen.InputScreen)
 	if inputScr.Prompt != "Create worktree: branch name" {
 		t.Fatalf("expected branch name prompt, got %q", inputScr.Prompt)
 	}
@@ -755,19 +755,19 @@ func TestShowCommitSelectionShowsInfoOnBranchNameScriptError(t *testing.T) {
 		BranchNameScript: "false",
 	}
 	m := NewModel(cfg, "")
-	m.view.WindowWidth = 120
-	m.view.WindowHeight = 40
+	m.state.view.WindowWidth = 120
+	m.state.view.WindowHeight = 40
 
 	cmd := m.showCommitSelection(repo.branch)
 	if cmd == nil {
 		t.Fatal("expected command to be returned")
 	}
 
-	if !m.ui.screenManager.IsActive() || m.ui.screenManager.Type() != appscreen.TypeListSelect {
+	if !m.state.ui.screenManager.IsActive() || m.state.ui.screenManager.Type() != appscreen.TypeListSelect {
 		t.Fatal("expected list screen to be active")
 	}
 
-	listScreen := m.ui.screenManager.Current().(*appscreen.ListSelectionScreen)
+	listScreen := m.state.ui.screenManager.Current().(*appscreen.ListSelectionScreen)
 	if len(listScreen.Items) == 0 {
 		t.Fatal("expected commit list to be populated")
 	}
@@ -777,18 +777,18 @@ func TestShowCommitSelectionShowsInfoOnBranchNameScriptError(t *testing.T) {
 		t.Fatal("expected nil command on script error")
 	}
 
-	if !m.ui.screenManager.IsActive() || m.ui.screenManager.Type() != appscreen.TypeInfo {
-		t.Fatalf("expected info screen, got active=%v type=%v", m.ui.screenManager.IsActive(), m.ui.screenManager.Type())
+	if !m.state.ui.screenManager.IsActive() || m.state.ui.screenManager.Type() != appscreen.TypeInfo {
+		t.Fatalf("expected info screen, got active=%v type=%v", m.state.ui.screenManager.IsActive(), m.state.ui.screenManager.Type())
 	}
-	infoScr := m.ui.screenManager.Current().(*appscreen.InfoScreen)
+	infoScr := m.state.ui.screenManager.Current().(*appscreen.InfoScreen)
 	if !strings.Contains(infoScr.Message, "Branch name script error") {
 		t.Fatalf("expected branch name script error modal, got %q", infoScr.Message)
 	}
 
 	// After dismissing the info screen, we should be back at the list selection
-	m.ui.screenManager.Pop()
-	if !m.ui.screenManager.IsActive() || m.ui.screenManager.Type() != appscreen.TypeListSelect {
-		t.Fatalf("expected list screen after dismissing error, got %v", m.ui.screenManager.Type())
+	m.state.ui.screenManager.Pop()
+	if !m.state.ui.screenManager.IsActive() || m.state.ui.screenManager.Type() != appscreen.TypeListSelect {
+		t.Fatalf("expected list screen after dismissing error, got %v", m.state.ui.screenManager.Type())
 	}
 }
 
@@ -798,13 +798,13 @@ func TestShowBranchNameInputValidation(t *testing.T) {
 
 	cfg := &config.AppConfig{WorktreeDir: t.TempDir()}
 	m := NewModel(cfg, "")
-	m.data.worktrees = []*models.WorktreeInfo{{Branch: "demo"}}
+	m.state.data.worktrees = []*models.WorktreeInfo{{Branch: "demo"}}
 
 	m.showBranchNameInput(repo.branch, "demo")
-	if !m.ui.screenManager.IsActive() || m.ui.screenManager.Type() != appscreen.TypeInput {
+	if !m.state.ui.screenManager.IsActive() || m.state.ui.screenManager.Type() != appscreen.TypeInput {
 		t.Fatal("expected input screen to be active")
 	}
-	inputScr := m.ui.screenManager.Current().(*appscreen.InputScreen)
+	inputScr := m.state.ui.screenManager.Current().(*appscreen.InputScreen)
 
 	if got := inputScr.Input.Value(); got != "demo-1" {
 		t.Fatalf("expected suggested branch name, got %q", got)
@@ -833,7 +833,7 @@ func TestSuggestBranchName(t *testing.T) {
 
 	cfg := &config.AppConfig{WorktreeDir: t.TempDir()}
 	m := NewModel(cfg, "")
-	m.data.worktrees = []*models.WorktreeInfo{{Branch: "demo"}}
+	m.state.data.worktrees = []*models.WorktreeInfo{{Branch: "demo"}}
 
 	if got := m.suggestBranchName("demo"); got != "demo-1" {
 		t.Fatalf("expected demo-1, got %q", got)
@@ -900,8 +900,8 @@ func TestClearListSelection(t *testing.T) {
 	m := NewModel(cfg, "")
 
 	m.clearListSelection()
-	if m.ui.screenManager.IsActive() {
-		t.Fatalf("expected no screen, got %v", m.ui.screenManager.Type())
+	if m.state.ui.screenManager.IsActive() {
+		t.Fatalf("expected no screen, got %v", m.state.ui.screenManager.Type())
 	}
 }
 
@@ -930,8 +930,8 @@ func TestShowBaseBranchForCustomCreateMenu(t *testing.T) {
 
 	cfg := &config.AppConfig{WorktreeDir: t.TempDir()}
 	m := NewModel(cfg, "")
-	m.view.WindowWidth = 120
-	m.view.WindowHeight = 40
+	m.state.view.WindowWidth = 120
+	m.state.view.WindowHeight = 40
 
 	menu := &config.CustomCreateMenu{
 		Label:       "Test Menu",
@@ -945,11 +945,11 @@ func TestShowBaseBranchForCustomCreateMenu(t *testing.T) {
 		t.Fatal("expected command to be returned")
 	}
 
-	if !m.ui.screenManager.IsActive() || m.ui.screenManager.Type() != appscreen.TypeListSelect {
+	if !m.state.ui.screenManager.IsActive() || m.state.ui.screenManager.Type() != appscreen.TypeListSelect {
 		t.Fatal("expected list screen to be set")
 	}
 
-	listScreen := m.ui.screenManager.Current().(*appscreen.ListSelectionScreen)
+	listScreen := m.state.ui.screenManager.Current().(*appscreen.ListSelectionScreen)
 
 	if len(listScreen.Items) > 0 {
 		listScreen.OnSelect(listScreen.Items[0])
@@ -968,7 +968,7 @@ func TestExecuteCustomCreateCommand(t *testing.T) {
 
 	cfg := &config.AppConfig{WorktreeDir: t.TempDir()}
 	m := NewModel(cfg, "")
-	m.data.worktrees = []*models.WorktreeInfo{
+	m.state.data.worktrees = []*models.WorktreeInfo{
 		{Path: repo.dir, Branch: repo.branch, IsMain: true},
 	}
 
@@ -983,8 +983,8 @@ func TestExecuteCustomCreateCommand(t *testing.T) {
 	if cmd == nil {
 		t.Fatal("expected command to be returned")
 	}
-	if m.ui.screenManager.Type() != appscreen.TypeLoading {
-		t.Errorf("expected loading screen, got %v", m.ui.screenManager.Type())
+	if m.state.ui.screenManager.Type() != appscreen.TypeLoading {
+		t.Errorf("expected loading screen, got %v", m.state.ui.screenManager.Type())
 	}
 	if m.loadingScreen() == nil {
 		t.Error("expected loading screen to be set")
@@ -1010,7 +1010,7 @@ func TestExecuteCustomCreateCommandError(t *testing.T) {
 
 	cfg := &config.AppConfig{WorktreeDir: t.TempDir()}
 	m := NewModel(cfg, "")
-	m.data.worktrees = []*models.WorktreeInfo{
+	m.state.data.worktrees = []*models.WorktreeInfo{
 		{Path: repo.dir, Branch: repo.branch, IsMain: true},
 	}
 
@@ -1038,7 +1038,7 @@ func TestExecuteCustomCreateCommandNoOutput(t *testing.T) {
 
 	cfg := &config.AppConfig{WorktreeDir: t.TempDir()}
 	m := NewModel(cfg, "")
-	m.data.worktrees = []*models.WorktreeInfo{
+	m.state.data.worktrees = []*models.WorktreeInfo{
 		{Path: repo.dir, Branch: repo.branch, IsMain: true},
 	}
 
@@ -1077,8 +1077,8 @@ func TestExecuteCustomPostCommand(t *testing.T) {
 	if cmd == nil {
 		t.Fatal("expected command to be returned")
 	}
-	if m.ui.screenManager.Type() != appscreen.TypeLoading {
-		t.Errorf("expected loading screen, got %v", m.ui.screenManager.Type())
+	if m.state.ui.screenManager.Type() != appscreen.TypeLoading {
+		t.Errorf("expected loading screen, got %v", m.state.ui.screenManager.Type())
 	}
 	if m.loadingScreen() == nil {
 		t.Error("expected loading screen to be set")
@@ -1148,19 +1148,19 @@ func TestShowCheckoutOrCreatePrompt(t *testing.T) {
 
 	cfg := &config.AppConfig{WorktreeDir: t.TempDir()}
 	m := NewModel(cfg, "")
-	m.view.WindowWidth = 120
-	m.view.WindowHeight = 40
+	m.state.view.WindowWidth = 120
+	m.state.view.WindowHeight = 40
 
 	cmd := m.showCheckoutOrCreatePrompt(repo.branch)
 	if cmd == nil {
 		t.Fatal("expected command to be returned")
 	}
 
-	if !m.ui.screenManager.IsActive() || m.ui.screenManager.Type() != appscreen.TypeListSelect {
+	if !m.state.ui.screenManager.IsActive() || m.state.ui.screenManager.Type() != appscreen.TypeListSelect {
 		t.Fatal("expected list screen to be active")
 	}
 
-	listScreen := m.ui.screenManager.Current().(*appscreen.ListSelectionScreen)
+	listScreen := m.state.ui.screenManager.Current().(*appscreen.ListSelectionScreen)
 
 	if len(listScreen.Items) != 2 {
 		t.Fatalf("expected 2 options, got %d", len(listScreen.Items))
@@ -1190,10 +1190,10 @@ func TestShowCheckoutOrCreatePrompt(t *testing.T) {
 	}
 
 	listScreen.OnSelect(appscreen.SelectionItem{ID: "create"})
-	if !m.ui.screenManager.IsActive() || m.ui.screenManager.Type() != appscreen.TypeInput {
+	if !m.state.ui.screenManager.IsActive() || m.state.ui.screenManager.Type() != appscreen.TypeInput {
 		t.Fatal("expected input screen for branch name")
 	}
-	inputScr := m.ui.screenManager.Current().(*appscreen.InputScreen)
+	inputScr := m.state.ui.screenManager.Current().(*appscreen.InputScreen)
 	if inputScr.Prompt != "Create worktree: branch name" {
 		t.Fatalf("expected branch name prompt, got %q", inputScr.Prompt)
 	}
@@ -1206,18 +1206,18 @@ func TestShowWorktreeNameForExistingBranch(t *testing.T) {
 	worktreeDir := t.TempDir()
 	cfg := &config.AppConfig{WorktreeDir: worktreeDir}
 	m := NewModel(cfg, "")
-	m.view.WindowWidth = 120
-	m.view.WindowHeight = 40
+	m.state.view.WindowWidth = 120
+	m.state.view.WindowHeight = 40
 
 	// Show the worktree name input for an existing branch
 	cmd := m.showWorktreeNameForExistingBranch(featureBranch)
 	if cmd == nil {
 		t.Fatal("expected command to be returned")
 	}
-	if !m.ui.screenManager.IsActive() || m.ui.screenManager.Type() != appscreen.TypeInput {
+	if !m.state.ui.screenManager.IsActive() || m.state.ui.screenManager.Type() != appscreen.TypeInput {
 		t.Fatal("expected input screen to be active")
 	}
-	inputScr := m.ui.screenManager.Current().(*appscreen.InputScreen)
+	inputScr := m.state.ui.screenManager.Current().(*appscreen.InputScreen)
 
 	// Verify suggested name format
 	expected := featureBranch + "-wt"
@@ -1292,22 +1292,22 @@ func TestBranchSelectionWithLocalBranch(t *testing.T) {
 
 	cfg := &config.AppConfig{WorktreeDir: t.TempDir()}
 	m := NewModel(cfg, "")
-	m.view.WindowWidth = 120
-	m.view.WindowHeight = 40
+	m.state.view.WindowWidth = 120
+	m.state.view.WindowHeight = 40
 
 	m.showBaseSelection(repo.branch)
 
-	listScreen := m.ui.screenManager.Current().(*appscreen.ListSelectionScreen)
+	listScreen := m.state.ui.screenManager.Current().(*appscreen.ListSelectionScreen)
 	cmd := listScreen.OnSelect(appscreen.SelectionItem{ID: "branch-list"})
 	if cmd == nil {
 		t.Fatal("expected command from branch-list selection")
 	}
 
-	if !m.ui.screenManager.IsActive() || m.ui.screenManager.Type() != appscreen.TypeListSelect {
+	if !m.state.ui.screenManager.IsActive() || m.state.ui.screenManager.Type() != appscreen.TypeListSelect {
 		t.Fatal("expected branch list screen")
 	}
 
-	listScreen = m.ui.screenManager.Current().(*appscreen.ListSelectionScreen)
+	listScreen = m.state.ui.screenManager.Current().(*appscreen.ListSelectionScreen)
 
 	var featureItem *appscreen.SelectionItem
 	for i := range listScreen.Items {
@@ -1321,11 +1321,11 @@ func TestBranchSelectionWithLocalBranch(t *testing.T) {
 	}
 
 	listScreen.OnSelect(*featureItem)
-	if !m.ui.screenManager.IsActive() || m.ui.screenManager.Type() != appscreen.TypeListSelect {
+	if !m.state.ui.screenManager.IsActive() || m.state.ui.screenManager.Type() != appscreen.TypeListSelect {
 		t.Fatal("expected checkout/create prompt screen")
 	}
 
-	listScreen = m.ui.screenManager.Current().(*appscreen.ListSelectionScreen)
+	listScreen = m.state.ui.screenManager.Current().(*appscreen.ListSelectionScreen)
 	checkoutFound := false
 	for _, item := range listScreen.Items {
 		if item.ID == "checkout" {
@@ -1347,18 +1347,18 @@ func TestBranchSelectionWithSlashLocalBranch(t *testing.T) {
 
 	cfg := &config.AppConfig{WorktreeDir: t.TempDir()}
 	m := NewModel(cfg, "")
-	m.view.WindowWidth = 120
-	m.view.WindowHeight = 40
+	m.state.view.WindowWidth = 120
+	m.state.view.WindowHeight = 40
 
 	m.showBaseSelection(repo.branch)
 
-	listScreen := m.ui.screenManager.Current().(*appscreen.ListSelectionScreen)
+	listScreen := m.state.ui.screenManager.Current().(*appscreen.ListSelectionScreen)
 	cmd := listScreen.OnSelect(appscreen.SelectionItem{ID: "branch-list"})
 	if cmd == nil {
 		t.Fatal("expected command from branch-list selection")
 	}
 
-	listScreen = m.ui.screenManager.Current().(*appscreen.ListSelectionScreen)
+	listScreen = m.state.ui.screenManager.Current().(*appscreen.ListSelectionScreen)
 
 	var slashItem *appscreen.SelectionItem
 	for i := range listScreen.Items {
@@ -1372,11 +1372,11 @@ func TestBranchSelectionWithSlashLocalBranch(t *testing.T) {
 	}
 
 	listScreen.OnSelect(*slashItem)
-	if !m.ui.screenManager.IsActive() || m.ui.screenManager.Type() != appscreen.TypeListSelect {
+	if !m.state.ui.screenManager.IsActive() || m.state.ui.screenManager.Type() != appscreen.TypeListSelect {
 		t.Fatal("expected checkout/create prompt screen")
 	}
 
-	listScreen = m.ui.screenManager.Current().(*appscreen.ListSelectionScreen)
+	listScreen = m.state.ui.screenManager.Current().(*appscreen.ListSelectionScreen)
 	checkoutFound := false
 	for _, item := range listScreen.Items {
 		if item.ID == "checkout" {
@@ -1395,21 +1395,21 @@ func TestBranchSelectionSkipsCheckoutForCheckedOutBranch(t *testing.T) {
 
 	cfg := &config.AppConfig{WorktreeDir: t.TempDir()}
 	m := NewModel(cfg, "")
-	m.view.WindowWidth = 120
-	m.view.WindowHeight = 40
-	m.data.worktrees = []*models.WorktreeInfo{
+	m.state.view.WindowWidth = 120
+	m.state.view.WindowHeight = 40
+	m.state.data.worktrees = []*models.WorktreeInfo{
 		{Path: repo.dir, Branch: repo.branch},
 	}
 
 	m.showBaseSelection(repo.branch)
 
-	listScreen := m.ui.screenManager.Current().(*appscreen.ListSelectionScreen)
+	listScreen := m.state.ui.screenManager.Current().(*appscreen.ListSelectionScreen)
 	cmd := listScreen.OnSelect(appscreen.SelectionItem{ID: "branch-list"})
 	if cmd == nil {
 		t.Fatal("expected command from branch-list selection")
 	}
 
-	listScreen = m.ui.screenManager.Current().(*appscreen.ListSelectionScreen)
+	listScreen = m.state.ui.screenManager.Current().(*appscreen.ListSelectionScreen)
 
 	var mainItem *appscreen.SelectionItem
 	for i := range listScreen.Items {
@@ -1423,10 +1423,10 @@ func TestBranchSelectionSkipsCheckoutForCheckedOutBranch(t *testing.T) {
 	}
 
 	listScreen.OnSelect(*mainItem)
-	if !m.ui.screenManager.IsActive() || m.ui.screenManager.Type() != appscreen.TypeInput {
+	if !m.state.ui.screenManager.IsActive() || m.state.ui.screenManager.Type() != appscreen.TypeInput {
 		t.Fatal("expected input screen for branch name")
 	}
-	inputScr := m.ui.screenManager.Current().(*appscreen.InputScreen)
+	inputScr := m.state.ui.screenManager.Current().(*appscreen.InputScreen)
 	if inputScr.Prompt != "Create worktree: branch name" {
 		t.Fatalf("expected branch name prompt, got %q", inputScr.Prompt)
 	}

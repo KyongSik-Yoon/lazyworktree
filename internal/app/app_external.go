@@ -37,10 +37,10 @@ func (m *Model) openURLInBrowser(urlStr string) tea.Cmd {
 }
 
 func (m *Model) openPR() tea.Cmd {
-	if m.data.selectedIndex < 0 || m.data.selectedIndex >= len(m.data.filteredWts) {
+	if m.state.data.selectedIndex < 0 || m.state.data.selectedIndex >= len(m.state.data.filteredWts) {
 		return nil
 	}
-	wt := m.data.filteredWts[m.data.selectedIndex]
+	wt := m.state.data.filteredWts[m.state.data.selectedIndex]
 
 	// On main branch with merged/closed/no PR: open root repo in browser
 	shouldOpenRepo := wt.IsMain && (wt.PR == nil || wt.PR.State == prStateMerged || wt.PR.State == prStateClosed)
@@ -62,7 +62,7 @@ func (m *Model) openPR() tea.Cmd {
 
 func (m *Model) openRepoInBrowser() tea.Cmd {
 	// Get remote URL
-	remoteURL := strings.TrimSpace(m.services.git.RunGit(m.ctx, []string{"git", "remote", "get-url", "origin"}, "", []int{0}, true, false))
+	remoteURL := strings.TrimSpace(m.state.services.git.RunGit(m.ctx, []string{"git", "remote", "get-url", "origin"}, "", []int{0}, true, false))
 	if remoteURL == "" {
 		return func() tea.Msg {
 			return errMsg{err: fmt.Errorf("could not determine repository remote URL")}
@@ -81,10 +81,10 @@ func (m *Model) openRepoInBrowser() tea.Cmd {
 }
 
 func (m *Model) openLazyGit() tea.Cmd {
-	if m.data.selectedIndex < 0 || m.data.selectedIndex >= len(m.data.filteredWts) {
+	if m.state.data.selectedIndex < 0 || m.state.data.selectedIndex >= len(m.state.data.filteredWts) {
 		return nil
 	}
-	wt := m.data.filteredWts[m.data.selectedIndex]
+	wt := m.state.data.filteredWts[m.state.data.selectedIndex]
 
 	c := m.commandRunner(m.ctx, "lazygit")
 	c.Dir = wt.Path
@@ -98,10 +98,10 @@ func (m *Model) openLazyGit() tea.Cmd {
 }
 
 func (m *Model) openStatusFileInEditor(sf StatusFile) tea.Cmd {
-	if m.data.selectedIndex < 0 || m.data.selectedIndex >= len(m.data.filteredWts) {
+	if m.state.data.selectedIndex < 0 || m.state.data.selectedIndex >= len(m.state.data.filteredWts) {
 		return nil
 	}
-	wt := m.data.filteredWts[m.data.selectedIndex]
+	wt := m.state.data.filteredWts[m.state.data.selectedIndex]
 
 	editor := m.editorCommand()
 	if strings.TrimSpace(editor) == "" {
@@ -141,11 +141,11 @@ func (m *Model) executeCustomCommand(key string) tea.Cmd {
 		return nil
 	}
 
-	if m.data.selectedIndex < 0 || m.data.selectedIndex >= len(m.data.filteredWts) {
+	if m.state.data.selectedIndex < 0 || m.state.data.selectedIndex >= len(m.state.data.filteredWts) {
 		return nil
 	}
 
-	wt := m.data.filteredWts[m.data.selectedIndex]
+	wt := m.state.data.filteredWts[m.state.data.selectedIndex]
 
 	if customCmd.Zellij != nil {
 		return m.openZellijSession(customCmd.Zellij, wt)
@@ -222,11 +222,11 @@ func (m *Model) executeCustomCommandWithPager(customCmd *config.CustomCommand, w
 }
 
 func (m *Model) executeArbitraryCommand(cmdStr string) tea.Cmd {
-	if m.data.selectedIndex < 0 || m.data.selectedIndex >= len(m.data.filteredWts) {
+	if m.state.data.selectedIndex < 0 || m.state.data.selectedIndex >= len(m.state.data.filteredWts) {
 		return nil
 	}
 
-	wt := m.data.filteredWts[m.data.selectedIndex]
+	wt := m.state.data.filteredWts[m.state.data.selectedIndex]
 
 	// Build environment variables (same as custom commands)
 	env := m.buildCommandEnv(wt.Branch, wt.Path)

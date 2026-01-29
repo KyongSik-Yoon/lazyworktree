@@ -49,7 +49,7 @@ func (m *Model) showBaseSelection(defaultBase string) tea.Cmd {
 	hasChanges := false
 	currentWt := m.determineCurrentWorktree()
 	if currentWt != nil {
-		statusRaw := m.services.git.RunGit(m.ctx, []string{"git", "status", "--porcelain"}, currentWt.Path, []int{0}, true, false)
+		statusRaw := m.state.services.git.RunGit(m.ctx, []string{"git", "status", "--porcelain"}, currentWt.Path, []int{0}, true, false)
 		hasChanges = strings.TrimSpace(statusRaw) != ""
 	}
 
@@ -93,8 +93,8 @@ func (m *Model) showBaseSelection(defaultBase string) tea.Cmd {
 		title,
 		"Filter options...",
 		"No base options available.",
-		m.view.WindowWidth,
-		m.view.WindowHeight,
+		m.state.view.WindowWidth,
+		m.state.view.WindowHeight,
 		"",
 		m.theme,
 	)
@@ -149,7 +149,7 @@ func (m *Model) showBaseSelection(defaultBase string) tea.Cmd {
 		return nil
 	}
 
-	m.ui.screenManager.Push(listScreen)
+	m.state.ui.screenManager.Push(listScreen)
 	return textinput.Blink
 }
 
@@ -176,7 +176,7 @@ func (m *Model) showFreeformBaseInput(defaultBase string) tea.Cmd {
 		return nil
 	}
 
-	m.ui.screenManager.Push(inputScr)
+	m.state.ui.screenManager.Push(inputScr)
 	return textinput.Blink
 }
 
@@ -197,8 +197,8 @@ func (m *Model) showBranchSelection(title, placeholder, noResults, preferred str
 		title,
 		placeholder,
 		noResults,
-		m.view.WindowWidth,
-		m.view.WindowHeight,
+		m.state.view.WindowWidth,
+		m.state.view.WindowHeight,
 		preferred,
 		m.theme,
 	)
@@ -211,7 +211,7 @@ func (m *Model) showBranchSelection(title, placeholder, noResults, preferred str
 		return nil
 	}
 
-	m.ui.screenManager.Push(listScreen)
+	m.state.ui.screenManager.Push(listScreen)
 	return textinput.Blink
 }
 
@@ -223,7 +223,7 @@ func stripRemotePrefix(branch string) string {
 }
 
 func (m *Model) showCommitSelection(baseBranch string) tea.Cmd {
-	raw := m.services.git.RunGit(
+	raw := m.state.services.git.RunGit(
 		m.ctx,
 		[]string{
 			"git", "log",
@@ -260,8 +260,8 @@ func (m *Model) showCommitSelection(baseBranch string) tea.Cmd {
 		title,
 		"Filter commits...",
 		noResults,
-		m.view.WindowWidth,
-		m.view.WindowHeight,
+		m.state.view.WindowWidth,
+		m.state.view.WindowHeight,
 		"",
 		m.theme,
 	)
@@ -312,7 +312,7 @@ func (m *Model) showCommitSelection(baseBranch string) tea.Cmd {
 		return nil
 	}
 
-	m.ui.screenManager.Push(listScreen)
+	m.state.ui.screenManager.Push(listScreen)
 	return textinput.Blink
 }
 
@@ -354,20 +354,20 @@ func (m *Model) showBranchNameInput(baseRef, defaultName string) tea.Cmd {
 		return nil
 	}
 
-	m.ui.screenManager.Push(inputScr)
+	m.state.ui.screenManager.Push(inputScr)
 	return textinput.Blink
 }
 
 func (m *Model) suggestBranchName(baseName string) string {
 	existing := make(map[string]struct{})
-	for _, wt := range m.data.worktrees {
+	for _, wt := range m.state.data.worktrees {
 		if wt.Branch == "" || wt.Branch == "(detached)" {
 			continue
 		}
 		existing[wt.Branch] = struct{}{}
 	}
 
-	raw := m.services.git.RunGit(
+	raw := m.state.services.git.RunGit(
 		m.ctx,
 		[]string{
 			"git", "for-each-ref",
@@ -407,7 +407,7 @@ func suggestBranchNameWithExisting(baseName string, existing map[string]struct{}
 }
 
 func (m *Model) commitLog(hash string) string {
-	return m.services.git.RunGit(
+	return m.state.services.git.RunGit(
 		m.ctx,
 		[]string{"git", "show", "--quiet", "--pretty=format:%s%n%b", hash},
 		"",
@@ -423,7 +423,7 @@ func (m *Model) baseRefExists(ref string) bool {
 		return false
 	}
 	refQuery := fmt.Sprintf("%s^{commit}", ref)
-	out := m.services.git.RunGit(
+	out := m.state.services.git.RunGit(
 		m.ctx,
 		[]string{"git", "rev-parse", "--verify", refQuery},
 		"",
@@ -436,7 +436,7 @@ func (m *Model) baseRefExists(ref string) bool {
 
 // localBranchExists checks if a local branch with the given name exists.
 func (m *Model) localBranchExists(branch string) bool {
-	output := m.services.git.RunGit(
+	output := m.state.services.git.RunGit(
 		m.ctx,
 		[]string{"git", "show-ref", "--verify", fmt.Sprintf("refs/heads/%s", branch)},
 		"",
@@ -448,7 +448,7 @@ func (m *Model) localBranchExists(branch string) bool {
 }
 
 func (m *Model) branchCheckedOutInWorktree(branch string) bool {
-	for _, wt := range m.data.worktrees {
+	for _, wt := range m.state.data.worktrees {
 		if wt == nil {
 			continue
 		}
@@ -481,8 +481,8 @@ func (m *Model) showCheckoutOrCreatePrompt(branch string) tea.Cmd {
 		fmt.Sprintf("Branch %q exists locally", branch),
 		"Filter...",
 		"No options.",
-		m.view.WindowWidth,
-		m.view.WindowHeight,
+		m.state.view.WindowWidth,
+		m.state.view.WindowHeight,
 		"",
 		m.theme,
 	)
@@ -498,7 +498,7 @@ func (m *Model) showCheckoutOrCreatePrompt(branch string) tea.Cmd {
 		return nil
 	}
 
-	m.ui.screenManager.Push(listScreen)
+	m.state.ui.screenManager.Push(listScreen)
 	return textinput.Blink
 }
 
@@ -546,7 +546,7 @@ func (m *Model) showWorktreeNameForExistingBranch(branchName string) tea.Cmd {
 		return nil
 	}
 
-	m.ui.screenManager.Push(inputScr)
+	m.state.ui.screenManager.Push(inputScr)
 	return textinput.Blink
 }
 
@@ -557,7 +557,7 @@ func (m *Model) checkoutExistingBranchAsync(worktreeName, targetPath, branchName
 		// Key difference: no "-b" flag when checking out existing branch
 		args := []string{"git", "worktree", "add", targetPath, branchName}
 
-		ok := m.services.git.RunCommandChecked(
+		ok := m.state.services.git.RunCommandChecked(
 			m.ctx,
 			args,
 			"",
@@ -571,7 +571,7 @@ func (m *Model) checkoutExistingBranchAsync(worktreeName, targetPath, branchName
 		initCmds := m.collectInitCommands()
 
 		after := func() tea.Msg {
-			worktrees, err := m.services.git.GetWorktrees(m.ctx)
+			worktrees, err := m.state.services.git.GetWorktrees(m.ctx)
 			return worktreesLoadedMsg{worktrees: worktrees, err: err}
 		}
 
@@ -604,7 +604,7 @@ func (m *Model) createWorktreeFromBaseAsync(newBranch, targetPath, baseRef strin
 		}
 		args = append(args, targetPath, baseRef)
 
-		ok := m.services.git.RunCommandChecked(
+		ok := m.state.services.git.RunCommandChecked(
 			m.ctx,
 			args,
 			"",
@@ -628,7 +628,7 @@ func (m *Model) createWorktreeFromBaseAsync(newBranch, targetPath, baseRef strin
 			}
 
 			// Otherwise just reload worktrees
-			worktrees, err := m.services.git.GetWorktrees(m.ctx)
+			worktrees, err := m.state.services.git.GetWorktrees(m.ctx)
 			return worktreesLoadedMsg{
 				worktrees: worktrees,
 				err:       err,
@@ -662,7 +662,7 @@ func (m *Model) clearListSelection() {
 }
 
 func (m *Model) branchSelectionItems(preferred string) []selectionItem {
-	raw := m.services.git.RunGit(
+	raw := m.state.services.git.RunGit(
 		m.ctx,
 		[]string{
 			"git", "for-each-ref",
@@ -846,8 +846,8 @@ func (m *Model) executeCustomCreateCommand(menu *config.CustomCreateMenu) tea.Cm
 
 	// Get main worktree path for command execution
 	mainWorktreePath := ""
-	if len(m.data.worktrees) > 0 {
-		for _, wt := range m.data.worktrees {
+	if len(m.state.data.worktrees) > 0 {
+		for _, wt := range m.state.data.worktrees {
 			if wt.IsMain {
 				mainWorktreePath = wt.Path
 				break

@@ -16,7 +16,7 @@ import (
 
 // showCreateWorktree shows the base selection screen for creating a new worktree.
 func (m *Model) showCreateWorktree() tea.Cmd {
-	defaultBase := m.services.git.GetMainBranch(m.ctx)
+	defaultBase := m.state.services.git.GetMainBranch(m.ctx)
 	return m.showBaseSelection(defaultBase)
 }
 
@@ -29,11 +29,11 @@ func (m *Model) showCreateFromCurrent() tea.Cmd {
 		}
 
 		// Check for changes
-		statusRaw := m.services.git.RunGit(m.ctx, []string{"git", "status", "--porcelain"}, currentWt.Path, []int{0}, true, false)
+		statusRaw := m.state.services.git.RunGit(m.ctx, []string{"git", "status", "--porcelain"}, currentWt.Path, []int{0}, true, false)
 		hasChanges := strings.TrimSpace(statusRaw) != ""
 
 		// Get current branch
-		currentBranch := m.services.git.RunGit(m.ctx, []string{"git", "rev-parse", "--abbrev-ref", "HEAD"}, currentWt.Path, []int{0}, true, false)
+		currentBranch := m.state.services.git.RunGit(m.ctx, []string{"git", "rev-parse", "--abbrev-ref", "HEAD"}, currentWt.Path, []int{0}, true, false)
 		if currentBranch == "" {
 			return errMsg{err: fmt.Errorf("failed to get current branch")}
 		}
@@ -45,7 +45,7 @@ func (m *Model) showCreateFromCurrent() tea.Cmd {
 		// Get diff if changes exist (for later AI generation)
 		var diff string
 		if hasChanges && m.config.BranchNameScript != "" {
-			diff = m.services.git.RunGit(m.ctx, []string{"git", "diff", "HEAD"}, currentWt.Path, []int{0}, false, true)
+			diff = m.state.services.git.RunGit(m.ctx, []string{"git", "diff", "HEAD"}, currentWt.Path, []int{0}, false, true)
 		}
 
 		return createFromCurrentReadyMsg{
@@ -66,7 +66,7 @@ func (m *Model) getCurrentBranchForMenu() string {
 		return ""
 	}
 
-	branch := m.services.git.RunGit(
+	branch := m.state.services.git.RunGit(
 		m.ctx,
 		[]string{"git", "rev-parse", "--abbrev-ref", "HEAD"},
 		currentWt.Path,
@@ -81,7 +81,7 @@ func (m *Model) getCurrentBranchForMenu() string {
 func (m *Model) showCreateFromPR() tea.Cmd {
 	// Fetch all open PRs
 	return func() tea.Msg {
-		prs, err := m.services.git.FetchAllOpenPRs(m.ctx)
+		prs, err := m.state.services.git.FetchAllOpenPRs(m.ctx)
 		return openPRsLoadedMsg{
 			prs: prs,
 			err: err,
@@ -93,7 +93,7 @@ func (m *Model) showCreateFromPR() tea.Cmd {
 func (m *Model) showCreateFromIssue() tea.Cmd {
 	// Fetch all open issues
 	return func() tea.Msg {
-		issues, err := m.services.git.FetchAllOpenIssues(m.ctx)
+		issues, err := m.state.services.git.FetchAllOpenIssues(m.ctx)
 		return openIssuesLoadedMsg{
 			issues: issues,
 			err:    err,
@@ -104,22 +104,22 @@ func (m *Model) showCreateFromIssue() tea.Cmd {
 // showCreateWorktreeFromChanges initiates creating a worktree from changes in the selected worktree.
 func (m *Model) showCreateWorktreeFromChanges() tea.Cmd {
 	// Check if a worktree is selected
-	if m.data.selectedIndex < 0 || m.data.selectedIndex >= len(m.data.filteredWts) {
+	if m.state.data.selectedIndex < 0 || m.state.data.selectedIndex >= len(m.state.data.filteredWts) {
 		m.showInfo(errNoWorktreeSelected, nil)
 		return nil
 	}
 
-	wt := m.data.filteredWts[m.data.selectedIndex]
+	wt := m.state.data.filteredWts[m.state.data.selectedIndex]
 
 	// Check for changes in the selected worktree asynchronously
 	return func() tea.Msg {
-		statusRaw := m.services.git.RunGit(m.ctx, []string{"git", "status", "--porcelain"}, wt.Path, []int{0}, true, false)
+		statusRaw := m.state.services.git.RunGit(m.ctx, []string{"git", "status", "--porcelain"}, wt.Path, []int{0}, true, false)
 		if strings.TrimSpace(statusRaw) == "" {
 			return errMsg{err: fmt.Errorf("no changes to move")}
 		}
 
 		// Get current branch name
-		currentBranch := m.services.git.RunGit(m.ctx, []string{"git", "rev-parse", "--abbrev-ref", "HEAD"}, wt.Path, []int{0}, true, false)
+		currentBranch := m.state.services.git.RunGit(m.ctx, []string{"git", "rev-parse", "--abbrev-ref", "HEAD"}, wt.Path, []int{0}, true, false)
 		if currentBranch == "" {
 			return errMsg{err: fmt.Errorf("failed to get current branch")}
 		}
@@ -127,7 +127,7 @@ func (m *Model) showCreateWorktreeFromChanges() tea.Cmd {
 		// Get diff if branch_name_script is configured
 		var diff string
 		if m.config.BranchNameScript != "" {
-			diff = m.services.git.RunGit(m.ctx, []string{"git", "diff", "HEAD"}, wt.Path, []int{0}, false, true)
+			diff = m.state.services.git.RunGit(m.ctx, []string{"git", "diff", "HEAD"}, wt.Path, []int{0}, false, true)
 		}
 
 		return createFromChangesReadyMsg{
@@ -152,7 +152,7 @@ func (m *Model) showCreateFromChangesInput(wt *models.WorktreeInfo, currentBranc
 		}
 
 		// Prevent duplicates - check if branch already exists in worktrees
-		for _, existingWt := range m.data.worktrees {
+		for _, existingWt := range m.state.data.worktrees {
 			if existingWt.Branch == newBranch {
 				inputScr.ErrorMsg = fmt.Sprintf("Branch %q already exists.", newBranch)
 				return nil
@@ -160,7 +160,7 @@ func (m *Model) showCreateFromChangesInput(wt *models.WorktreeInfo, currentBranc
 		}
 
 		// Check if branch exists in git
-		branchRef := m.services.git.RunGit(m.ctx, []string{"git", "show-ref", fmt.Sprintf("refs/heads/%s", newBranch)}, "", []int{0, 1}, true, true)
+		branchRef := m.state.services.git.RunGit(m.ctx, []string{"git", "show-ref", fmt.Sprintf("refs/heads/%s", newBranch)}, "", []int{0, 1}, true, true)
 		if branchRef != "" {
 			// Branch exists
 			inputScr.ErrorMsg = fmt.Sprintf("Branch %q already exists.", newBranch)
@@ -181,7 +181,7 @@ func (m *Model) showCreateFromChangesInput(wt *models.WorktreeInfo, currentBranc
 
 		// Stash changes with descriptive message
 		stashMessage := fmt.Sprintf("git-wt-create move-current: %s", newBranch)
-		if !m.services.git.RunCommandChecked(
+		if !m.state.services.git.RunCommandChecked(
 			m.ctx,
 			[]string{"git", "stash", "push", "-u", "-m", stashMessage},
 			wt.Path,
@@ -191,46 +191,46 @@ func (m *Model) showCreateFromChangesInput(wt *models.WorktreeInfo, currentBranc
 		}
 
 		// Get the stash ref
-		stashRef := strings.TrimSpace(m.services.git.RunGit(m.ctx, []string{"git", "stash", "list", "-1", "--format=%gd"}, "", []int{0}, true, false))
+		stashRef := strings.TrimSpace(m.state.services.git.RunGit(m.ctx, []string{"git", "stash", "list", "-1", "--format=%gd"}, "", []int{0}, true, false))
 		if stashRef == "" || !strings.HasPrefix(stashRef, "stash@{") {
 			// Try to restore stash if we can't get the ref
-			m.services.git.RunCommandChecked(m.ctx, []string{"git", "stash", "pop"}, wt.Path, "Failed to restore stash")
+			m.state.services.git.RunCommandChecked(m.ctx, []string{"git", "stash", "pop"}, wt.Path, "Failed to restore stash")
 			return func() tea.Msg { return errMsg{err: fmt.Errorf("failed to get stash reference")} }
 		}
 
 		// Create the new worktree from current branch
-		if !m.services.git.RunCommandChecked(
+		if !m.state.services.git.RunCommandChecked(
 			m.ctx,
 			[]string{"git", "worktree", "add", "-b", newBranch, targetPath, currentBranch},
 			"",
 			fmt.Sprintf("Failed to create worktree %s", newBranch),
 		) {
 			// If worktree creation fails, try to restore the stash
-			m.services.git.RunCommandChecked(m.ctx, []string{"git", "stash", "pop"}, wt.Path, "Failed to restore stash")
+			m.state.services.git.RunCommandChecked(m.ctx, []string{"git", "stash", "pop"}, wt.Path, "Failed to restore stash")
 			return func() tea.Msg { return errMsg{err: fmt.Errorf("failed to create worktree %s", newBranch)} }
 		}
 
 		// Apply stash to the new worktree
-		if !m.services.git.RunCommandChecked(
+		if !m.state.services.git.RunCommandChecked(
 			m.ctx,
 			[]string{"git", "stash", "apply", "--index", stashRef},
 			targetPath,
 			"Failed to apply stash to new worktree",
 		) {
 			// If stash apply fails, clean up the worktree and try to restore stash to original location
-			m.services.git.RunCommandChecked(m.ctx, []string{"git", "worktree", "remove", "--force", targetPath}, "", "Failed to remove worktree")
-			m.services.git.RunCommandChecked(m.ctx, []string{"git", "stash", "pop"}, wt.Path, "Failed to restore stash")
+			m.state.services.git.RunCommandChecked(m.ctx, []string{"git", "worktree", "remove", "--force", targetPath}, "", "Failed to remove worktree")
+			m.state.services.git.RunCommandChecked(m.ctx, []string{"git", "stash", "pop"}, wt.Path, "Failed to restore stash")
 			return func() tea.Msg { return errMsg{err: fmt.Errorf("failed to apply stash to new worktree")} }
 		}
 
 		// Drop the stash from the original location
-		m.services.git.RunCommandChecked(m.ctx, []string{"git", "stash", "drop", stashRef}, wt.Path, "Failed to drop stash")
+		m.state.services.git.RunCommandChecked(m.ctx, []string{"git", "stash", "drop", stashRef}, wt.Path, "Failed to drop stash")
 
 		// Run init commands and refresh
 		env := m.buildCommandEnv(newBranch, targetPath)
 		initCmds := m.collectInitCommands()
 		after := func() tea.Msg {
-			worktrees, err := m.services.git.GetWorktrees(m.ctx)
+			worktrees, err := m.state.services.git.GetWorktrees(m.ctx)
 			return worktreesLoadedMsg{
 				worktrees: worktrees,
 				err:       err,
@@ -243,7 +243,7 @@ func (m *Model) showCreateFromChangesInput(wt *models.WorktreeInfo, currentBranc
 		return nil
 	}
 
-	m.ui.screenManager.Push(inputScr)
+	m.state.ui.screenManager.Push(inputScr)
 	return textinput.Blink
 }
 
@@ -338,7 +338,7 @@ func (m *Model) handleCreateFromCurrentReady(msg createFromCurrentReadyMsg) tea.
 		}
 
 		// Check if branch exists in git
-		branchRef := m.services.git.RunGit(m.ctx, []string{"git", "show-ref", fmt.Sprintf("refs/heads/%s", newBranch)}, "", []int{0, 1}, true, true)
+		branchRef := m.state.services.git.RunGit(m.ctx, []string{"git", "show-ref", fmt.Sprintf("refs/heads/%s", newBranch)}, "", []int{0, 1}, true, true)
 		if branchRef != "" {
 			inputScr.ErrorMsg = fmt.Sprintf("Branch %q already exists.", newBranch)
 			return nil
@@ -382,7 +382,7 @@ func (m *Model) handleCreateFromCurrentReady(msg createFromCurrentReadyMsg) tea.
 		return m.handleCheckboxToggle()
 	}
 
-	m.ui.screenManager.Push(inputScr)
+	m.state.ui.screenManager.Push(inputScr)
 	return textinput.Blink
 }
 
@@ -394,9 +394,9 @@ func (m *Model) executeCreateWithChanges(wt *models.WorktreeInfo, currentBranch,
 		}
 
 		// Stash changes with descriptive message
-		prevStashHash := m.services.git.RunGit(m.ctx, []string{"git", "stash", "list", "-1", "--format=%H"}, "", []int{0}, true, false)
+		prevStashHash := m.state.services.git.RunGit(m.ctx, []string{"git", "stash", "list", "-1", "--format=%H"}, "", []int{0}, true, false)
 		stashMessage := fmt.Sprintf("git-wt-create move-current: %s", newBranch)
-		if !m.services.git.RunCommandChecked(
+		if !m.state.services.git.RunCommandChecked(
 			m.ctx,
 			[]string{"git", "stash", "push", "-u", "-m", stashMessage},
 			wt.Path,
@@ -405,52 +405,52 @@ func (m *Model) executeCreateWithChanges(wt *models.WorktreeInfo, currentBranch,
 			return errMsg{err: fmt.Errorf("failed to create stash for moving changes")}
 		}
 
-		newStashHash := m.services.git.RunGit(m.ctx, []string{"git", "stash", "list", "-1", "--format=%H"}, "", []int{0}, true, false)
+		newStashHash := m.state.services.git.RunGit(m.ctx, []string{"git", "stash", "list", "-1", "--format=%H"}, "", []int{0}, true, false)
 		if newStashHash == "" || newStashHash == prevStashHash {
 			return errMsg{err: fmt.Errorf("failed to create stash for moving changes: no new entry created")}
 		}
 
 		// Get the stash ref
-		stashRef := strings.TrimSpace(m.services.git.RunGit(m.ctx, []string{"git", "stash", "list", "-1", "--format=%gd"}, "", []int{0}, true, false))
+		stashRef := strings.TrimSpace(m.state.services.git.RunGit(m.ctx, []string{"git", "stash", "list", "-1", "--format=%gd"}, "", []int{0}, true, false))
 		if stashRef == "" || !strings.HasPrefix(stashRef, "stash@{") {
 			// Try to restore stash if we can't get the ref
-			m.services.git.RunCommandChecked(m.ctx, []string{"git", "stash", "pop"}, wt.Path, "Failed to restore stash")
+			m.state.services.git.RunCommandChecked(m.ctx, []string{"git", "stash", "pop"}, wt.Path, "Failed to restore stash")
 			return errMsg{err: fmt.Errorf("failed to get stash reference")}
 		}
 
 		// Create the new worktree from current branch
-		if !m.services.git.RunCommandChecked(
+		if !m.state.services.git.RunCommandChecked(
 			m.ctx,
 			[]string{"git", "worktree", "add", "-b", newBranch, targetPath, currentBranch},
 			"",
 			fmt.Sprintf("Failed to create worktree %s", newBranch),
 		) {
 			// If worktree creation fails, try to restore the stash
-			m.services.git.RunCommandChecked(m.ctx, []string{"git", "stash", "pop"}, wt.Path, "Failed to restore stash")
+			m.state.services.git.RunCommandChecked(m.ctx, []string{"git", "stash", "pop"}, wt.Path, "Failed to restore stash")
 			return errMsg{err: fmt.Errorf("failed to create worktree %s", newBranch)}
 		}
 
 		// Apply stash to the new worktree
-		if !m.services.git.RunCommandChecked(
+		if !m.state.services.git.RunCommandChecked(
 			m.ctx,
 			[]string{"git", "stash", "apply", "--index", stashRef},
 			targetPath,
 			"Failed to apply stash to new worktree",
 		) {
 			// If stash apply fails, clean up the worktree and try to restore stash to original location
-			m.services.git.RunCommandChecked(m.ctx, []string{"git", "worktree", "remove", "--force", targetPath}, "", "Failed to remove worktree")
-			m.services.git.RunCommandChecked(m.ctx, []string{"git", "stash", "pop"}, wt.Path, "Failed to restore stash")
+			m.state.services.git.RunCommandChecked(m.ctx, []string{"git", "worktree", "remove", "--force", targetPath}, "", "Failed to remove worktree")
+			m.state.services.git.RunCommandChecked(m.ctx, []string{"git", "stash", "pop"}, wt.Path, "Failed to restore stash")
 			return errMsg{err: fmt.Errorf("failed to apply stash to new worktree")}
 		}
 
 		// Drop the stash from the original location
-		m.services.git.RunCommandChecked(m.ctx, []string{"git", "stash", "drop", stashRef}, wt.Path, "Failed to drop stash")
+		m.state.services.git.RunCommandChecked(m.ctx, []string{"git", "stash", "drop", stashRef}, wt.Path, "Failed to drop stash")
 
 		// Run init commands and refresh
 		env := m.buildCommandEnv(newBranch, targetPath)
 		initCmds := m.collectInitCommands()
 		after := func() tea.Msg {
-			worktrees, err := m.services.git.GetWorktrees(m.ctx)
+			worktrees, err := m.state.services.git.GetWorktrees(m.ctx)
 			return worktreesLoadedMsg{
 				worktrees: worktrees,
 				err:       err,
@@ -468,14 +468,14 @@ func (m *Model) executeCreateWithoutChanges(currentBranch, newBranch, targetPath
 		}
 
 		args := []string{"git", "worktree", "add", "-b", newBranch, targetPath, currentBranch}
-		if !m.services.git.RunCommandChecked(m.ctx, args, "", fmt.Sprintf("Failed to create worktree %s", newBranch)) {
+		if !m.state.services.git.RunCommandChecked(m.ctx, args, "", fmt.Sprintf("Failed to create worktree %s", newBranch)) {
 			return errMsg{err: fmt.Errorf("failed to create worktree %s", newBranch)}
 		}
 
 		env := m.buildCommandEnv(newBranch, targetPath)
 		initCmds := m.collectInitCommands()
 		after := func() tea.Msg {
-			worktrees, err := m.services.git.GetWorktrees(m.ctx)
+			worktrees, err := m.state.services.git.GetWorktrees(m.ctx)
 			return worktreesLoadedMsg{
 				worktrees: worktrees,
 				err:       err,
@@ -487,26 +487,26 @@ func (m *Model) executeCreateWithoutChanges(currentBranch, newBranch, targetPath
 
 // showDeleteWorktree shows a confirmation dialog for deleting a worktree.
 func (m *Model) showDeleteWorktree() tea.Cmd {
-	if m.data.selectedIndex < 0 || m.data.selectedIndex >= len(m.data.filteredWts) {
+	if m.state.data.selectedIndex < 0 || m.state.data.selectedIndex >= len(m.state.data.filteredWts) {
 		return nil
 	}
-	wt := m.data.filteredWts[m.data.selectedIndex]
+	wt := m.state.data.filteredWts[m.state.data.selectedIndex]
 	if wt.IsMain {
 		return nil
 	}
 	confirmScreen := appscreen.NewConfirmScreen(fmt.Sprintf("Delete worktree?\n\nPath: %s\nBranch: %s", wt.Path, wt.Branch), m.theme)
 	confirmScreen.OnConfirm = m.deleteWorktreeOnlyCmd(wt)
-	m.ui.screenManager.Push(confirmScreen)
+	m.state.ui.screenManager.Push(confirmScreen)
 	return nil
 }
 
 // showRenameWorktree shows an input screen for renaming a worktree.
 func (m *Model) showRenameWorktree() tea.Cmd {
-	if m.data.selectedIndex < 0 || m.data.selectedIndex >= len(m.data.filteredWts) {
+	if m.state.data.selectedIndex < 0 || m.state.data.selectedIndex >= len(m.state.data.filteredWts) {
 		return nil
 	}
 
-	wt := m.data.filteredWts[m.data.selectedIndex]
+	wt := m.state.data.filteredWts[m.state.data.selectedIndex]
 	if wt.IsMain {
 		m.showInfo("Cannot rename the main worktree.", nil)
 		return nil
@@ -539,11 +539,11 @@ func (m *Model) showRenameWorktree() tea.Cmd {
 		oldBranch := wt.Branch
 
 		return func() tea.Msg {
-			ok := m.services.git.RenameWorktree(m.ctx, oldPath, newPath, oldBranch, newBranch)
+			ok := m.state.services.git.RenameWorktree(m.ctx, oldPath, newPath, oldBranch, newBranch)
 			if !ok {
 				return errMsg{err: fmt.Errorf("failed to rename %s to %s", oldBranch, newBranch)}
 			}
-			worktrees, err := m.services.git.GetWorktrees(m.ctx)
+			worktrees, err := m.state.services.git.GetWorktrees(m.ctx)
 			return worktreesLoadedMsg{
 				worktrees: worktrees,
 				err:       err,
@@ -555,13 +555,13 @@ func (m *Model) showRenameWorktree() tea.Cmd {
 		return nil
 	}
 
-	m.ui.screenManager.Push(inputScr)
+	m.state.ui.screenManager.Push(inputScr)
 	return textinput.Blink
 }
 
 // showPruneMerged initiates the prune merged worktrees workflow.
 func (m *Model) showPruneMerged() tea.Cmd {
-	if !m.services.git.IsGitHubOrGitLab(m.ctx) {
+	if !m.state.services.git.IsGitHubOrGitLab(m.ctx) {
 		return m.performMergedWorktreeCheck()
 	}
 
@@ -569,7 +569,7 @@ func (m *Model) showPruneMerged() tea.Cmd {
 	m.cache.ciCache.Clear()
 	m.prDataLoaded = false
 	m.updateTable()
-	m.updateTableColumns(m.ui.worktreeTable.Width())
+	m.updateTableColumns(m.state.ui.worktreeTable.Width())
 	m.loading = true
 	m.setLoadingScreen("Fetching PR data...")
 	return m.fetchPRData()
@@ -577,10 +577,10 @@ func (m *Model) showPruneMerged() tea.Cmd {
 
 // performMergedWorktreeCheck checks for merged worktrees and shows a checklist.
 func (m *Model) performMergedWorktreeCheck() tea.Cmd {
-	mainBranch := m.services.git.GetMainBranch(m.ctx)
+	mainBranch := m.state.services.git.GetMainBranch(m.ctx)
 
 	wtBranches := make(map[string]*models.WorktreeInfo)
-	for _, wt := range m.data.worktrees {
+	for _, wt := range m.state.data.worktrees {
 		if !wt.IsMain {
 			wtBranches[wt.Branch] = wt
 		}
@@ -594,7 +594,7 @@ func (m *Model) performMergedWorktreeCheck() tea.Cmd {
 	candidateMap := make(map[string]candidate)
 
 	// 1. PR-based detection (existing logic)
-	for _, wt := range m.data.worktrees {
+	for _, wt := range m.state.data.worktrees {
 		if wt.IsMain {
 			continue
 		}
@@ -604,7 +604,7 @@ func (m *Model) performMergedWorktreeCheck() tea.Cmd {
 	}
 
 	// 2. Git-based detection
-	mergedBranches := m.services.git.GetMergedBranches(m.ctx, mainBranch)
+	mergedBranches := m.state.services.git.GetMergedBranches(m.ctx, mainBranch)
 	for _, branch := range mergedBranches {
 		if wt, exists := wtBranches[branch]; exists {
 			if existing, found := candidateMap[branch]; found {
@@ -663,8 +663,8 @@ func (m *Model) performMergedWorktreeCheck() tea.Cmd {
 		"Prune Merged Worktrees",
 		"Filter...",
 		"No merged worktrees found.",
-		m.view.WindowWidth,
-		m.view.WindowHeight,
+		m.state.view.WindowWidth,
+		m.state.view.WindowHeight,
 		m.theme,
 	)
 
@@ -692,18 +692,18 @@ func (m *Model) performMergedWorktreeCheck() tea.Cmd {
 				// Run terminate commands for each worktree with its environment
 				if len(terminateCmds) > 0 {
 					env := m.buildCommandEnv(wt.Branch, wt.Path)
-					_ = m.services.git.ExecuteCommands(m.ctx, terminateCmds, wt.Path, env)
+					_ = m.state.services.git.ExecuteCommands(m.ctx, terminateCmds, wt.Path, env)
 				}
 
-				ok1 := m.services.git.RunCommandChecked(m.ctx, []string{"git", "worktree", "remove", "--force", wt.Path}, "", fmt.Sprintf("Failed to remove worktree %s", wt.Path))
-				ok2 := m.services.git.RunCommandChecked(m.ctx, []string{"git", "branch", "-D", wt.Branch}, "", fmt.Sprintf("Failed to delete branch %s", wt.Branch))
+				ok1 := m.state.services.git.RunCommandChecked(m.ctx, []string{"git", "worktree", "remove", "--force", wt.Path}, "", fmt.Sprintf("Failed to remove worktree %s", wt.Path))
+				ok2 := m.state.services.git.RunCommandChecked(m.ctx, []string{"git", "branch", "-D", wt.Branch}, "", fmt.Sprintf("Failed to delete branch %s", wt.Branch))
 				if ok1 && ok2 {
 					pruned++
 				} else {
 					failed++
 				}
 			}
-			worktrees, err := m.services.git.GetWorktrees(m.ctx)
+			worktrees, err := m.state.services.git.GetWorktrees(m.ctx)
 			return pruneResultMsg{
 				worktrees: worktrees,
 				err:       err,
@@ -720,22 +720,22 @@ func (m *Model) performMergedWorktreeCheck() tea.Cmd {
 		return nil
 	}
 
-	m.ui.screenManager.Push(checkScreen)
+	m.state.ui.screenManager.Push(checkScreen)
 	return textinput.Blink
 }
 
 // showAbsorbWorktree shows a confirmation dialog for absorbing a worktree into main.
 func (m *Model) showAbsorbWorktree() tea.Cmd {
-	if m.data.selectedIndex < 0 || m.data.selectedIndex >= len(m.data.filteredWts) {
+	if m.state.data.selectedIndex < 0 || m.state.data.selectedIndex >= len(m.state.data.filteredWts) {
 		return nil
 	}
-	wt := m.data.filteredWts[m.data.selectedIndex]
+	wt := m.state.data.filteredWts[m.state.data.selectedIndex]
 	if wt.IsMain {
 		m.showInfo("Cannot absorb the main worktree.", nil)
 		return nil
 	}
 
-	mainBranch := m.services.git.GetMainBranch(m.ctx)
+	mainBranch := m.state.services.git.GetMainBranch(m.ctx)
 
 	// Prevent absorbing if the selected worktree is on the main branch
 	if wt.Branch == mainBranch {
@@ -745,7 +745,7 @@ func (m *Model) showAbsorbWorktree() tea.Cmd {
 
 	// Find the main worktree explicitly (don't use fallback)
 	var mainWorktree *models.WorktreeInfo
-	for _, w := range m.data.worktrees {
+	for _, w := range m.state.data.worktrees {
 		if w.IsMain {
 			mainWorktree = w
 			break
@@ -773,7 +773,7 @@ func (m *Model) showAbsorbWorktree() tea.Cmd {
 		return func() tea.Msg {
 			if mergeMethod == mergeMethodRebase {
 				// Rebase: first rebase the feature branch onto main, then fast-forward main
-				if !m.services.git.RunCommandChecked(m.ctx, []string{"git", "-C", wt.Path, "rebase", mainBranch}, "", fmt.Sprintf("Failed to rebase %s onto %s", wt.Branch, mainBranch)) {
+				if !m.state.services.git.RunCommandChecked(m.ctx, []string{"git", "-C", wt.Path, "rebase", mainBranch}, "", fmt.Sprintf("Failed to rebase %s onto %s", wt.Branch, mainBranch)) {
 					return absorbMergeResultMsg{
 						path:   wt.Path,
 						branch: wt.Branch,
@@ -781,14 +781,14 @@ func (m *Model) showAbsorbWorktree() tea.Cmd {
 					}
 				}
 				// Fast-forward main to the rebased branch
-				if !m.services.git.RunCommandChecked(m.ctx, []string{"git", "-C", mainPath, "merge", "--ff-only", wt.Branch}, "", fmt.Sprintf("Failed to fast-forward %s to %s", mainBranch, wt.Branch)) {
+				if !m.state.services.git.RunCommandChecked(m.ctx, []string{"git", "-C", mainPath, "merge", "--ff-only", wt.Branch}, "", fmt.Sprintf("Failed to fast-forward %s to %s", mainBranch, wt.Branch)) {
 					return absorbMergeResultMsg{
 						path:   wt.Path,
 						branch: wt.Branch,
 						err:    fmt.Errorf("fast-forward failed; the branch may have diverged"),
 					}
 				}
-			} else if !m.services.git.RunCommandChecked(m.ctx, []string{"git", "-C", mainPath, "merge", "--no-edit", wt.Branch}, "", fmt.Sprintf("Failed to merge %s into %s", wt.Branch, mainBranch)) {
+			} else if !m.state.services.git.RunCommandChecked(m.ctx, []string{"git", "-C", mainPath, "merge", "--no-edit", wt.Branch}, "", fmt.Sprintf("Failed to merge %s into %s", wt.Branch, mainBranch)) {
 				// Merge: traditional merge
 				return absorbMergeResultMsg{
 					path:   wt.Path,
@@ -803,7 +803,7 @@ func (m *Model) showAbsorbWorktree() tea.Cmd {
 			}
 		}
 	}
-	m.ui.screenManager.Push(confirmScreen)
+	m.state.ui.screenManager.Push(confirmScreen)
 	return nil
 }
 
@@ -812,10 +812,10 @@ func (m *Model) deleteWorktreeCmd(wt *models.WorktreeInfo) func() tea.Cmd {
 	env := m.buildCommandEnv(wt.Branch, wt.Path)
 	terminateCmds := m.collectTerminateCommands()
 	afterCmd := func() tea.Msg {
-		m.services.git.RunCommandChecked(m.ctx, []string{"git", "worktree", "remove", "--force", wt.Path}, "", fmt.Sprintf("Failed to remove worktree %s", wt.Path))
-		m.services.git.RunCommandChecked(m.ctx, []string{"git", "branch", "-D", wt.Branch}, "", fmt.Sprintf("Failed to delete branch %s", wt.Branch))
+		m.state.services.git.RunCommandChecked(m.ctx, []string{"git", "worktree", "remove", "--force", wt.Path}, "", fmt.Sprintf("Failed to remove worktree %s", wt.Path))
+		m.state.services.git.RunCommandChecked(m.ctx, []string{"git", "branch", "-D", wt.Branch}, "", fmt.Sprintf("Failed to delete branch %s", wt.Branch))
 
-		worktrees, err := m.services.git.GetWorktrees(m.ctx)
+		worktrees, err := m.state.services.git.GetWorktrees(m.ctx)
 		return worktreesLoadedMsg{
 			worktrees: worktrees,
 			err:       err,
@@ -834,7 +834,7 @@ func (m *Model) deleteWorktreeOnlyCmd(wt *models.WorktreeInfo) func() tea.Cmd {
 
 	afterCmd := func() tea.Msg {
 		// Only remove worktree
-		success := m.services.git.RunCommandChecked(
+		success := m.state.services.git.RunCommandChecked(
 			m.ctx,
 			[]string{"git", "worktree", "remove", "--force", wt.Path},
 			"",
@@ -865,14 +865,14 @@ func (m *Model) deleteWorktreeOnlyCmd(wt *models.WorktreeInfo) func() tea.Cmd {
 func (m *Model) deleteBranchCmd(branch string) func() tea.Cmd {
 	return func() tea.Cmd {
 		return func() tea.Msg {
-			m.services.git.RunCommandChecked(
+			m.state.services.git.RunCommandChecked(
 				m.ctx,
 				[]string{"git", "branch", "-D", branch},
 				"",
 				fmt.Sprintf("Failed to delete branch %s", branch),
 			)
 
-			worktrees, err := m.services.git.GetWorktrees(m.ctx)
+			worktrees, err := m.state.services.git.GetWorktrees(m.ctx)
 			return worktreesLoadedMsg{
 				worktrees: worktrees,
 				err:       err,

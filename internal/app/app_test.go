@@ -29,8 +29,8 @@ func TestHandleMouseDoesNotPanic(t *testing.T) {
 		WorktreeDir: "/tmp/test",
 	}
 	m := NewModel(cfg, "")
-	m.view.WindowWidth = 120
-	m.view.WindowHeight = 40
+	m.state.view.WindowWidth = 120
+	m.state.view.WindowHeight = 40
 
 	// Test mouse wheel events
 	mouseMsg := tea.MouseMsg{
@@ -90,9 +90,9 @@ func TestClosePersistsCurrentSelection(t *testing.T) {
 	m.repoKey = "example/repo"
 
 	selected := filepath.Join(t.TempDir(), "worktree")
-	m.data.filteredWts = []*models.WorktreeInfo{{Path: selected}}
-	m.ui.worktreeTable.SetRows([]table.Row{{"worktree"}})
-	m.data.selectedIndex = 0
+	m.state.data.filteredWts = []*models.WorktreeInfo{{Path: selected}}
+	m.state.ui.worktreeTable.SetRows([]table.Row{{"worktree"}})
+	m.state.data.selectedIndex = 0
 
 	m.Close()
 

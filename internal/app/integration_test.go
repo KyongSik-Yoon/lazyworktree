@@ -28,8 +28,8 @@ func TestModelInitialization(t *testing.T) {
 		t.Error("Model config not set correctly")
 	}
 
-	if m.view.FocusedPane != 0 {
-		t.Errorf("Expected focusedPane to be 0, got %d", m.view.FocusedPane)
+	if m.state.view.FocusedPane != 0 {
+		t.Errorf("Expected focusedPane to be 0, got %d", m.state.view.FocusedPane)
 	}
 
 	// sortMode is now an int: 0=path, 1=active, 2=switched
@@ -98,12 +98,12 @@ func TestFilterInput(t *testing.T) {
 	}
 	m := NewModel(cfg, "test-filter")
 
-	if !m.view.ShowingFilter {
+	if !m.state.view.ShowingFilter {
 		t.Error("Expected showingFilter to be true when initialized with filter")
 	}
 
-	if m.services.filter.FilterQuery != "test-filter" {
-		t.Errorf("Expected filterQuery to be 'test-filter', got %q", m.services.filter.FilterQuery)
+	if m.state.services.filter.FilterQuery != "test-filter" {
+		t.Errorf("Expected filterQuery to be 'test-filter', got %q", m.state.services.filter.FilterQuery)
 	}
 
 	// Test filter toggle
@@ -143,10 +143,10 @@ func TestSearchAutoSelectStartsFocused(t *testing.T) {
 	}
 	m := NewModel(cfg, "")
 
-	if !m.view.ShowingFilter {
+	if !m.state.view.ShowingFilter {
 		t.Error("Expected showingFilter to be true when search auto-select is enabled")
 	}
-	if !m.ui.filterInput.Focused() {
+	if !m.state.ui.filterInput.Focused() {
 		t.Error("Expected filter input to be focused when search auto-select is enabled")
 	}
 }
@@ -236,7 +236,7 @@ func TestHelpScreen(t *testing.T) {
 	}
 
 	// Help screen should be closed (screen manager should be inactive)
-	if m.ui.screenManager.IsActive() && m.ui.screenManager.Type() == appscreen.TypeHelp {
+	if m.state.ui.screenManager.IsActive() && m.state.ui.screenManager.Type() == appscreen.TypeHelp {
 		t.Error("Help screen should be closed after pressing 'q'")
 	}
 }
@@ -260,12 +260,12 @@ func TestWindowResize(t *testing.T) {
 		t.Fatal("Update returned wrong type")
 	}
 
-	if updatedModel.view.WindowWidth != 100 {
-		t.Errorf("Expected windowWidth to be 100, got %d", updatedModel.view.WindowWidth)
+	if updatedModel.state.view.WindowWidth != 100 {
+		t.Errorf("Expected windowWidth to be 100, got %d", updatedModel.state.view.WindowWidth)
 	}
 
-	if updatedModel.view.WindowHeight != 30 {
-		t.Errorf("Expected windowHeight to be 30, got %d", updatedModel.view.WindowHeight)
+	if updatedModel.state.view.WindowHeight != 30 {
+		t.Errorf("Expected windowHeight to be 30, got %d", updatedModel.state.view.WindowHeight)
 	}
 }
 
@@ -290,12 +290,12 @@ func TestVerySmallTerminalSize(t *testing.T) {
 	}
 
 	// Verify the model was updated
-	if updatedModel.view.WindowWidth != 10 {
-		t.Errorf("Expected windowWidth to be 10, got %d", updatedModel.view.WindowWidth)
+	if updatedModel.state.view.WindowWidth != 10 {
+		t.Errorf("Expected windowWidth to be 10, got %d", updatedModel.state.view.WindowWidth)
 	}
 
-	if updatedModel.view.WindowHeight != 5 {
-		t.Errorf("Expected windowHeight to be 5, got %d", updatedModel.view.WindowHeight)
+	if updatedModel.state.view.WindowHeight != 5 {
+		t.Errorf("Expected windowHeight to be 5, got %d", updatedModel.state.view.WindowHeight)
 	}
 
 	// Try to render the view - this previously caused slice bounds panic
@@ -337,7 +337,7 @@ func TestCommandPalette(t *testing.T) {
 		t.Fatal("Final model is not *Model type")
 	}
 
-	if m.ui.screenManager.IsActive() && m.ui.screenManager.Type() == appscreen.TypePalette {
+	if m.state.ui.screenManager.IsActive() && m.state.ui.screenManager.Type() == appscreen.TypePalette {
 		t.Error("Command palette should be closed after pressing escape")
 	}
 }
@@ -462,7 +462,7 @@ func TestCommitScreenEscapeKey(t *testing.T) {
 
 	// Set up the commit screen via screen manager
 	commitScr := appscreen.NewCommitScreen(appscreen.CommitMeta{SHA: "abc123"}, "stat", "diff", false, m.theme)
-	m.ui.screenManager.Push(commitScr)
+	m.state.ui.screenManager.Push(commitScr)
 
 	// Simulate pressing ESC
 	escMsg := tea.KeyMsg{Type: tea.KeyEsc}
@@ -481,8 +481,8 @@ func TestCommitScreenEscapeKey(t *testing.T) {
 	updatedModel := newModel.(*Model)
 
 	// Verify the commit screen was closed via screen manager
-	if updatedModel.ui.screenManager.IsActive() {
-		t.Errorf("Expected screen manager to be inactive, got type %v", updatedModel.ui.screenManager.Type())
+	if updatedModel.state.ui.screenManager.IsActive() {
+		t.Errorf("Expected screen manager to be inactive, got type %v", updatedModel.state.ui.screenManager.Type())
 	}
 }
 
@@ -496,7 +496,7 @@ func TestCommitScreenRawEscapeKey(t *testing.T) {
 
 	// Set up the commit screen via screen manager
 	commitScr := appscreen.NewCommitScreen(appscreen.CommitMeta{SHA: "abc123"}, "stat", "diff", false, m.theme)
-	m.ui.screenManager.Push(commitScr)
+	m.state.ui.screenManager.Push(commitScr)
 
 	// Simulate pressing ESC as a raw rune (how some terminals send it)
 	rawEscMsg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{0x1b}}
@@ -510,8 +510,8 @@ func TestCommitScreenRawEscapeKey(t *testing.T) {
 	updatedModel := newModel.(*Model)
 
 	// Verify the commit screen was closed via screen manager
-	if updatedModel.ui.screenManager.IsActive() {
-		t.Errorf("Expected screen manager to be inactive, got type %v", updatedModel.ui.screenManager.Type())
+	if updatedModel.state.ui.screenManager.IsActive() {
+		t.Errorf("Expected screen manager to be inactive, got type %v", updatedModel.state.ui.screenManager.Type())
 	}
 }
 
@@ -529,8 +529,8 @@ func TestWorktreeLoadingFlow(t *testing.T) {
 	updated, _ := m.handleCachedWorktrees(cachedMsg)
 	m = updated.(*Model)
 
-	if len(m.data.worktrees) != 1 {
-		t.Fatalf("expected 1 cached worktree, got %d", len(m.data.worktrees))
+	if len(m.state.data.worktrees) != 1 {
+		t.Fatalf("expected 1 cached worktree, got %d", len(m.state.data.worktrees))
 	}
 	if m.worktreesLoaded {
 		t.Error("expected worktreesLoaded to be false after cached load")
@@ -550,8 +550,8 @@ func TestWorktreeLoadingFlow(t *testing.T) {
 	if !m.worktreesLoaded {
 		t.Error("expected worktreesLoaded to be true after load")
 	}
-	if len(m.data.worktrees) != 2 {
-		t.Fatalf("expected 2 worktrees after load, got %d", len(m.data.worktrees))
+	if len(m.state.data.worktrees) != 2 {
+		t.Fatalf("expected 2 worktrees after load, got %d", len(m.state.data.worktrees))
 	}
 }
 
@@ -561,7 +561,7 @@ func TestPRFetchingFlow(t *testing.T) {
 		WorktreeDir: t.TempDir(),
 	}
 	m := NewModel(cfg, "")
-	m.data.worktrees = []*models.WorktreeInfo{
+	m.state.data.worktrees = []*models.WorktreeInfo{
 		{Path: "/tmp/pr-123", Branch: "pr-123", PR: nil},
 		{Path: "/tmp/main", Branch: "main", PR: nil},
 	}
@@ -577,11 +577,11 @@ func TestPRFetchingFlow(t *testing.T) {
 	if !m.prDataLoaded {
 		t.Error("expected prDataLoaded to be true")
 	}
-	if m.data.worktrees[0].PR == nil {
+	if m.state.data.worktrees[0].PR == nil {
 		t.Error("expected PR data to be assigned to worktree")
 	}
-	if m.data.worktrees[0].PR.Number != 123 {
-		t.Errorf("expected PR number 123, got %d", m.data.worktrees[0].PR.Number)
+	if m.state.data.worktrees[0].PR.Number != 123 {
+		t.Errorf("expected PR number 123, got %d", m.state.data.worktrees[0].PR.Number)
 	}
 }
 
@@ -635,12 +635,12 @@ func TestMultipleErrorHandling(t *testing.T) {
 	loadMsg := worktreesLoadedMsg{worktrees: nil, err: os.ErrPermission}
 	updated, _ := m.handleWorktreesLoaded(loadMsg)
 	m = updated.(*Model)
-	if !m.ui.screenManager.IsActive() || m.ui.screenManager.Type() != appscreen.TypeInfo {
+	if !m.state.ui.screenManager.IsActive() || m.state.ui.screenManager.Type() != appscreen.TypeInfo {
 		t.Error("expected error to show info screen")
 	}
 
 	// Test PR data error
-	m.ui.screenManager.Pop()
+	m.state.ui.screenManager.Pop()
 	prMsg := prDataLoadedMsg{prMap: nil, worktreePRs: nil, err: os.ErrPermission}
 	updated, _ = m.handlePRDataLoaded(prMsg)
 	m = updated.(*Model)

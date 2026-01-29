@@ -88,7 +88,7 @@ func TestCacheCleanupOnSubmit(t *testing.T) {
 		WorktreeDir: t.TempDir(),
 	}
 	m := NewModel(cfg, "")
-	m.data.worktrees = []*models.WorktreeInfo{
+	m.state.data.worktrees = []*models.WorktreeInfo{
 		{Path: "/tmp/main", Branch: mainWorktreeName, IsMain: true},
 	}
 
@@ -108,10 +108,10 @@ func TestCacheCleanupOnSubmit(t *testing.T) {
 
 	m.handleCreateFromCurrentReady(msg)
 
-	if !m.ui.screenManager.IsActive() || m.ui.screenManager.Type() != appscreen.TypeInput {
+	if !m.state.ui.screenManager.IsActive() || m.state.ui.screenManager.Type() != appscreen.TypeInput {
 		t.Fatal("input screen should be active")
 	}
-	inputScr := m.ui.screenManager.Current().(*appscreen.InputScreen)
+	inputScr := m.state.ui.screenManager.Current().(*appscreen.InputScreen)
 	if inputScr.OnSubmit == nil {
 		t.Fatal("OnSubmit callback should be set")
 	}
@@ -145,10 +145,10 @@ func TestShowBranchNameInputUsesDefaultName(t *testing.T) {
 	if cmd == nil {
 		t.Fatal("showBranchNameInput returned nil command")
 	}
-	if !m.ui.screenManager.IsActive() || m.ui.screenManager.Type() != appscreen.TypeInput {
-		t.Fatalf("expected input screen active, got type %v", m.ui.screenManager.Type())
+	if !m.state.ui.screenManager.IsActive() || m.state.ui.screenManager.Type() != appscreen.TypeInput {
+		t.Fatalf("expected input screen active, got type %v", m.state.ui.screenManager.Type())
 	}
-	inputScr, ok := m.ui.screenManager.Current().(*appscreen.InputScreen)
+	inputScr, ok := m.state.ui.screenManager.Current().(*appscreen.InputScreen)
 	if !ok {
 		t.Fatal("expected InputScreen")
 	}
@@ -176,11 +176,11 @@ func TestShowCommandPaletteIncludesCustomCommands(t *testing.T) {
 	if cmd == nil {
 		t.Fatal("showCommandPalette returned nil command")
 	}
-	if !m.ui.screenManager.IsActive() || m.ui.screenManager.Type() != appscreen.TypePalette {
+	if !m.state.ui.screenManager.IsActive() || m.state.ui.screenManager.Type() != appscreen.TypePalette {
 		t.Fatal("expected command palette screen")
 	}
 
-	paletteScreen := m.ui.screenManager.Current().(*appscreen.CommandPaletteScreen)
+	paletteScreen := m.state.ui.screenManager.Current().(*appscreen.CommandPaletteScreen)
 	items := paletteScreen.Items
 	found := false
 	for _, item := range items {
@@ -230,11 +230,11 @@ func TestShowCommandPaletteIncludesTmuxCommands(t *testing.T) {
 	if cmd == nil {
 		t.Fatal("showCommandPalette returned nil command")
 	}
-	if !m.ui.screenManager.IsActive() || m.ui.screenManager.Type() != appscreen.TypePalette {
+	if !m.state.ui.screenManager.IsActive() || m.state.ui.screenManager.Type() != appscreen.TypePalette {
 		t.Fatal("expected command palette screen")
 	}
 
-	paletteScreen := m.ui.screenManager.Current().(*appscreen.CommandPaletteScreen)
+	paletteScreen := m.state.ui.screenManager.Current().(*appscreen.CommandPaletteScreen)
 	items := paletteScreen.Items
 	found := false
 	for _, item := range items {
@@ -284,11 +284,11 @@ func TestShowCommandPaletteIncludesZellijCommands(t *testing.T) {
 	if cmd == nil {
 		t.Fatal("showCommandPalette returned nil command")
 	}
-	if !m.ui.screenManager.IsActive() || m.ui.screenManager.Type() != appscreen.TypePalette {
+	if !m.state.ui.screenManager.IsActive() || m.state.ui.screenManager.Type() != appscreen.TypePalette {
 		t.Fatal("expected command palette screen")
 	}
 
-	paletteScreen := m.ui.screenManager.Current().(*appscreen.CommandPaletteScreen)
+	paletteScreen := m.state.ui.screenManager.Current().(*appscreen.CommandPaletteScreen)
 	items := paletteScreen.Items
 	found := false
 	for _, item := range items {
@@ -313,11 +313,11 @@ func TestShowCommandPaletteHasSectionHeaders(t *testing.T) {
 	m := NewModel(cfg, "")
 	m.showCommandPalette()
 
-	if !m.ui.screenManager.IsActive() || m.ui.screenManager.Type() != appscreen.TypePalette {
+	if !m.state.ui.screenManager.IsActive() || m.state.ui.screenManager.Type() != appscreen.TypePalette {
 		t.Fatal("expected command palette screen")
 	}
 
-	paletteScreen := m.ui.screenManager.Current().(*appscreen.CommandPaletteScreen)
+	paletteScreen := m.state.ui.screenManager.Current().(*appscreen.CommandPaletteScreen)
 	sectionCount := 0
 	for _, item := range paletteScreen.Items {
 		if item.IsSection {
@@ -335,11 +335,11 @@ func TestShowCommandPaletteFirstItemIsSection(t *testing.T) {
 	m := NewModel(cfg, "")
 	m.showCommandPalette()
 
-	if !m.ui.screenManager.IsActive() || m.ui.screenManager.Type() != appscreen.TypePalette {
+	if !m.state.ui.screenManager.IsActive() || m.state.ui.screenManager.Type() != appscreen.TypePalette {
 		t.Fatal("expected command palette screen")
 	}
 
-	paletteScreen := m.ui.screenManager.Current().(*appscreen.CommandPaletteScreen)
+	paletteScreen := m.state.ui.screenManager.Current().(*appscreen.CommandPaletteScreen)
 	if !paletteScreen.Items[0].IsSection {
 		t.Error("expected first item to be a section header")
 	}
@@ -353,7 +353,7 @@ func TestShowCommandPaletteHasAllActions(t *testing.T) {
 	m := NewModel(cfg, "")
 	m.showCommandPalette()
 
-	if !m.ui.screenManager.IsActive() || m.ui.screenManager.Type() != appscreen.TypePalette {
+	if !m.state.ui.screenManager.IsActive() || m.state.ui.screenManager.Type() != appscreen.TypePalette {
 		t.Fatal("expected command palette screen")
 	}
 
@@ -368,7 +368,7 @@ func TestShowCommandPaletteHasAllActions(t *testing.T) {
 		"theme", "help",
 	}
 
-	paletteScreen := m.ui.screenManager.Current().(*appscreen.CommandPaletteScreen)
+	paletteScreen := m.state.ui.screenManager.Current().(*appscreen.CommandPaletteScreen)
 	itemIDs := make(map[string]bool)
 	for _, item := range paletteScreen.Items {
 		if !item.IsSection {
@@ -395,8 +395,8 @@ func TestRenderFooterIncludesCustomHelpHints(t *testing.T) {
 		},
 	}
 	m := NewModel(cfg, "")
-	m.view.WindowWidth = 200
-	m.view.WindowHeight = 50
+	m.state.view.WindowWidth = 200
+	m.state.view.WindowHeight = 50
 	layout := m.computeLayout()
 	footer := m.renderFooter(layout)
 
@@ -438,15 +438,15 @@ func TestShowThemeSelection(t *testing.T) {
 		t.Fatal("showThemeSelection returned nil command")
 	}
 
-	if !m.ui.screenManager.IsActive() {
+	if !m.state.ui.screenManager.IsActive() {
 		t.Fatal("expected screen manager to have active screen")
 	}
 
-	if m.ui.screenManager.Type() != appscreen.TypeListSelect {
-		t.Fatalf("expected list selection screen, got %v", m.ui.screenManager.Type())
+	if m.state.ui.screenManager.Type() != appscreen.TypeListSelect {
+		t.Fatalf("expected list selection screen, got %v", m.state.ui.screenManager.Type())
 	}
 
-	listScreen := m.ui.screenManager.Current().(*appscreen.ListSelectionScreen)
+	listScreen := m.state.ui.screenManager.Current().(*appscreen.ListSelectionScreen)
 	if listScreen == nil {
 		t.Fatal("listScreen should be initialized")
 	}
@@ -497,19 +497,19 @@ func TestCommandPaletteMRUDeduplication(t *testing.T) {
 		{ID: "create", Timestamp: time.Now().Unix() - 100, Count: 3},
 		{ID: "diff", Timestamp: time.Now().Unix() - 200, Count: 2},
 	}
-	m.view.WindowWidth = 100
-	m.view.WindowHeight = 50
+	m.state.view.WindowWidth = 100
+	m.state.view.WindowHeight = 50
 
 	cmd := m.showCommandPalette()
 	if cmd == nil {
 		t.Errorf("showCommandPalette should not return nil, got %v", cmd)
 	}
 
-	if !m.ui.screenManager.IsActive() || m.ui.screenManager.Type() != appscreen.TypePalette {
+	if !m.state.ui.screenManager.IsActive() || m.state.ui.screenManager.Type() != appscreen.TypePalette {
 		t.Fatal("expected command palette screen")
 	}
 
-	paletteScreen := m.ui.screenManager.Current().(*appscreen.CommandPaletteScreen)
+	paletteScreen := m.state.ui.screenManager.Current().(*appscreen.CommandPaletteScreen)
 	items := paletteScreen.Items
 
 	// Check that MRU section exists and is first
@@ -579,19 +579,19 @@ func TestCommandPaletteMRUDisabled(t *testing.T) {
 	m.paletteHistory = []commandPaletteUsage{
 		{ID: "refresh", Timestamp: time.Now().Unix(), Count: 5},
 	}
-	m.view.WindowWidth = 100
-	m.view.WindowHeight = 50
+	m.state.view.WindowWidth = 100
+	m.state.view.WindowHeight = 50
 
 	cmd := m.showCommandPalette()
 	if cmd == nil {
 		t.Errorf("showCommandPalette should not return nil, got %v", cmd)
 	}
 
-	if !m.ui.screenManager.IsActive() || m.ui.screenManager.Type() != appscreen.TypePalette {
+	if !m.state.ui.screenManager.IsActive() || m.state.ui.screenManager.Type() != appscreen.TypePalette {
 		t.Fatal("expected command palette screen")
 	}
 
-	paletteScreen := m.ui.screenManager.Current().(*appscreen.CommandPaletteScreen)
+	paletteScreen := m.state.ui.screenManager.Current().(*appscreen.CommandPaletteScreen)
 	items := paletteScreen.Items
 
 	// Should NOT have MRU section when disabled
@@ -622,19 +622,19 @@ func TestCommandPaletteMRUEmptyHistory(t *testing.T) {
 	}
 	m := NewModel(cfg, "")
 	m.paletteHistory = []commandPaletteUsage{}
-	m.view.WindowWidth = 100
-	m.view.WindowHeight = 50
+	m.state.view.WindowWidth = 100
+	m.state.view.WindowHeight = 50
 
 	cmd := m.showCommandPalette()
 	if cmd == nil {
 		t.Errorf("showCommandPalette should not return nil, got %v", cmd)
 	}
 
-	if !m.ui.screenManager.IsActive() || m.ui.screenManager.Type() != appscreen.TypePalette {
+	if !m.state.ui.screenManager.IsActive() || m.state.ui.screenManager.Type() != appscreen.TypePalette {
 		t.Fatal("expected command palette screen")
 	}
 
-	paletteScreen := m.ui.screenManager.Current().(*appscreen.CommandPaletteScreen)
+	paletteScreen := m.state.ui.screenManager.Current().(*appscreen.CommandPaletteScreen)
 	items := paletteScreen.Items
 
 	// Should NOT have MRU section when history is empty
@@ -650,7 +650,7 @@ func TestShowCherryPickNotInLogPane(t *testing.T) {
 		WorktreeDir: t.TempDir(),
 	}
 	m := NewModel(cfg, "")
-	m.view.FocusedPane = 0 // Not in log pane
+	m.state.view.FocusedPane = 0 // Not in log pane
 
 	cmd := m.showCherryPick()
 	if cmd != nil {
@@ -663,8 +663,8 @@ func TestShowCherryPickEmptyLogEntries(t *testing.T) {
 		WorktreeDir: t.TempDir(),
 	}
 	m := NewModel(cfg, "")
-	m.view.FocusedPane = 2 // Log pane
-	m.data.logEntries = []commitLogEntry{}
+	m.state.view.FocusedPane = 2 // Log pane
+	m.state.data.logEntries = []commitLogEntry{}
 
 	cmd := m.showCherryPick()
 	if cmd != nil {
@@ -677,21 +677,21 @@ func TestShowCherryPickNoOtherWorktrees(t *testing.T) {
 		WorktreeDir: t.TempDir(),
 	}
 	m := NewModel(cfg, "")
-	m.view.FocusedPane = 2 // Log pane
-	m.data.logEntries = []commitLogEntry{
+	m.state.view.FocusedPane = 2 // Log pane
+	m.state.data.logEntries = []commitLogEntry{
 		{sha: "abc1234", message: "Test commit"},
 	}
-	m.data.worktrees = []*models.WorktreeInfo{
+	m.state.data.worktrees = []*models.WorktreeInfo{
 		{Path: "/path/to/main", Branch: "main", IsMain: true},
 	}
-	m.data.filteredWts = m.data.worktrees
-	m.data.selectedIndex = 0
+	m.state.data.filteredWts = m.state.data.worktrees
+	m.state.data.selectedIndex = 0
 
 	m.showCherryPick()
-	if !m.ui.screenManager.IsActive() || m.ui.screenManager.Type() != appscreen.TypeInfo {
+	if !m.state.ui.screenManager.IsActive() || m.state.ui.screenManager.Type() != appscreen.TypeInfo {
 		t.Error("Expected info screen to be shown")
 	}
-	infoScr := m.ui.screenManager.Current().(*appscreen.InfoScreen)
+	infoScr := m.state.ui.screenManager.Current().(*appscreen.InfoScreen)
 	if !strings.Contains(infoScr.Message, "No other worktrees available") {
 		t.Errorf("Expected info message about no worktrees, got: %v", infoScr.Message)
 	}
@@ -702,25 +702,25 @@ func TestShowCherryPickCreatesListSelection(t *testing.T) {
 		WorktreeDir: t.TempDir(),
 	}
 	m := NewModel(cfg, "")
-	m.view.FocusedPane = 2 // Log pane
-	m.data.logEntries = []commitLogEntry{
+	m.state.view.FocusedPane = 2 // Log pane
+	m.state.data.logEntries = []commitLogEntry{
 		{sha: "abc1234", message: "Test commit"},
 	}
-	m.data.worktrees = []*models.WorktreeInfo{
+	m.state.data.worktrees = []*models.WorktreeInfo{
 		{Path: "/path/to/main", Branch: "main", IsMain: true},
 		{Path: "/path/to/feature", Branch: "feature", IsMain: false},
 	}
-	m.data.filteredWts = m.data.worktrees
-	m.data.selectedIndex = 0
+	m.state.data.filteredWts = m.state.data.worktrees
+	m.state.data.selectedIndex = 0
 
 	m.showCherryPick()
-	if !m.ui.screenManager.IsActive() {
+	if !m.state.ui.screenManager.IsActive() {
 		t.Error("Expected screen manager to have active screen")
 	}
-	if m.ui.screenManager.Type() != appscreen.TypeListSelect {
-		t.Errorf("Expected list selection screen, got %v", m.ui.screenManager.Type())
+	if m.state.ui.screenManager.Type() != appscreen.TypeListSelect {
+		t.Errorf("Expected list selection screen, got %v", m.state.ui.screenManager.Type())
 	}
-	listScreen := m.ui.screenManager.Current().(*appscreen.ListSelectionScreen)
+	listScreen := m.state.ui.screenManager.Current().(*appscreen.ListSelectionScreen)
 	if listScreen == nil {
 		t.Fatal("Expected listScreen to be set")
 	}
@@ -738,21 +738,21 @@ func TestShowCherryPickExcludesSourceWorktree(t *testing.T) {
 		WorktreeDir: t.TempDir(),
 	}
 	m := NewModel(cfg, "")
-	m.view.FocusedPane = 2
-	m.data.logEntries = []commitLogEntry{
+	m.state.view.FocusedPane = 2
+	m.state.data.logEntries = []commitLogEntry{
 		{sha: "abc1234", message: "Test commit"},
 	}
-	m.data.worktrees = []*models.WorktreeInfo{
+	m.state.data.worktrees = []*models.WorktreeInfo{
 		{Path: "/path/to/main", Branch: "main", IsMain: true},
 		{Path: "/path/to/feature1", Branch: "feature1", IsMain: false},
 		{Path: "/path/to/feature2", Branch: "feature2", IsMain: false},
 	}
-	m.data.filteredWts = m.data.worktrees
-	m.data.selectedIndex = 1 // Select feature1
+	m.state.data.filteredWts = m.state.data.worktrees
+	m.state.data.selectedIndex = 1 // Select feature1
 
 	m.showCherryPick()
 
-	listScreen := m.ui.screenManager.Current().(*appscreen.ListSelectionScreen)
+	listScreen := m.state.ui.screenManager.Current().(*appscreen.ListSelectionScreen)
 	// Should have 2 items (main + feature2, excluding feature1)
 	if len(listScreen.Items) != 2 {
 		t.Errorf("Expected 2 target worktrees, got %d", len(listScreen.Items))
@@ -771,20 +771,20 @@ func TestShowCherryPickMarksDirtyWorktrees(t *testing.T) {
 		WorktreeDir: t.TempDir(),
 	}
 	m := NewModel(cfg, "")
-	m.view.FocusedPane = 2
-	m.data.logEntries = []commitLogEntry{
+	m.state.view.FocusedPane = 2
+	m.state.data.logEntries = []commitLogEntry{
 		{sha: "abc1234", message: "Test commit"},
 	}
-	m.data.worktrees = []*models.WorktreeInfo{
+	m.state.data.worktrees = []*models.WorktreeInfo{
 		{Path: "/path/to/main", Branch: "main", IsMain: true},
 		{Path: "/path/to/dirty", Branch: "dirty", IsMain: false, Dirty: true},
 	}
-	m.data.filteredWts = m.data.worktrees
-	m.data.selectedIndex = 0
+	m.state.data.filteredWts = m.state.data.worktrees
+	m.state.data.selectedIndex = 0
 
 	m.showCherryPick()
 
-	listScreen := m.ui.screenManager.Current().(*appscreen.ListSelectionScreen)
+	listScreen := m.state.ui.screenManager.Current().(*appscreen.ListSelectionScreen)
 	// Find the dirty worktree item
 	var dirtyItem *appscreen.SelectionItem
 	for i := range listScreen.Items {
@@ -812,50 +812,50 @@ func TestRenderScreenVariants(t *testing.T) {
 
 	// CommitScreen is now managed by screenManager
 	commitScr := appscreen.NewCommitScreen(appscreen.CommitMeta{SHA: "abc123"}, "stat", "diff", false, m.theme)
-	m.ui.screenManager.Push(commitScr)
+	m.state.ui.screenManager.Push(commitScr)
 	out := m.View()
 	if out == "" {
 		t.Fatal("expected commit screen to render")
 	}
-	m.ui.screenManager.Pop()
+	m.state.ui.screenManager.Pop()
 
 	confirmScr := appscreen.NewConfirmScreen("Confirm?", m.theme)
-	m.ui.screenManager.Push(confirmScr)
+	m.state.ui.screenManager.Push(confirmScr)
 	if out = m.View(); out == "" {
 		t.Fatal("expected confirm screen to render")
 	}
-	m.ui.screenManager.Pop()
+	m.state.ui.screenManager.Pop()
 
 	infoScr := appscreen.NewInfoScreen("Info", m.theme)
-	m.ui.screenManager.Push(infoScr)
+	m.state.ui.screenManager.Push(infoScr)
 	if out = m.View(); out == "" {
 		t.Fatal("expected info screen to render")
 	}
-	m.ui.screenManager.Pop()
+	m.state.ui.screenManager.Pop()
 
 	// TrustScreen is now managed by screenManager
 	trustScr := appscreen.NewTrustScreen("/tmp/.wt.yaml", []string{"cmd"}, m.theme)
-	m.ui.screenManager.Push(trustScr)
+	m.state.ui.screenManager.Push(trustScr)
 	if out = m.View(); out == "" {
 		t.Fatal("expected trust screen to render")
 	}
-	m.ui.screenManager.Pop()
+	m.state.ui.screenManager.Pop()
 
 	// WelcomeScreen is now managed by screenManager
 	welcomeScr := appscreen.NewWelcomeScreen("/tmp", "/tmp/wt", m.theme)
-	m.ui.screenManager.Push(welcomeScr)
+	m.state.ui.screenManager.Push(welcomeScr)
 	if out = m.View(); out == "" {
 		t.Fatal("expected welcome screen to render")
 	}
-	m.ui.screenManager.Pop()
+	m.state.ui.screenManager.Pop()
 
 	paletteItems := []appscreen.PaletteItem{{ID: "help", Label: "Help"}}
 	paletteScr := appscreen.NewCommandPaletteScreen(paletteItems, 100, 40, m.theme)
-	m.ui.screenManager.Push(paletteScr)
+	m.state.ui.screenManager.Push(paletteScr)
 	if out = m.View(); out == "" {
 		t.Fatal("expected palette screen to render")
 	}
-	m.ui.screenManager.Pop()
+	m.state.ui.screenManager.Pop()
 
 	// No active screen should still render something
 	if out = m.View(); out == "" {
@@ -863,14 +863,14 @@ func TestRenderScreenVariants(t *testing.T) {
 	}
 
 	inputScr := appscreen.NewInputScreen("Prompt", "Placeholder", "value", m.theme, m.config.IconsEnabled())
-	m.ui.screenManager.Push(inputScr)
+	m.state.ui.screenManager.Push(inputScr)
 	if out = m.View(); out == "" {
 		t.Fatal("expected input screen to render")
 	}
-	m.ui.screenManager.Pop()
+	m.state.ui.screenManager.Pop()
 
 	listScreen := appscreen.NewListSelectionScreen([]appscreen.SelectionItem{{ID: "a", Label: "A"}}, "Select", "", "", 120, 40, "", m.theme)
-	m.ui.screenManager.Push(listScreen)
+	m.state.ui.screenManager.Push(listScreen)
 	if out = m.View(); out == "" {
 		t.Fatal("expected list selection screen to render")
 	}
@@ -882,10 +882,10 @@ func TestErrMsgShowsInfo(t *testing.T) {
 
 	_, _ = m.Update(errMsg{err: errors.New("boom")})
 
-	if !m.ui.screenManager.IsActive() || m.ui.screenManager.Type() != appscreen.TypeInfo {
-		t.Fatalf("expected info screen, got active=%v type=%v", m.ui.screenManager.IsActive(), m.ui.screenManager.Type())
+	if !m.state.ui.screenManager.IsActive() || m.state.ui.screenManager.Type() != appscreen.TypeInfo {
+		t.Fatalf("expected info screen, got active=%v type=%v", m.state.ui.screenManager.IsActive(), m.state.ui.screenManager.Type())
 	}
-	infoScr := m.ui.screenManager.Current().(*appscreen.InfoScreen)
+	infoScr := m.state.ui.screenManager.Current().(*appscreen.InfoScreen)
 	if !strings.Contains(infoScr.Message, "boom") {
 		t.Fatalf("expected info modal to include error, got %q", infoScr.Message)
 	}
