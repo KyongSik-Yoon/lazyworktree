@@ -3316,6 +3316,17 @@ func TestHandleGotoBottom(t *testing.T) {
 		_ = cmd
 	})
 
+	t.Run("goto bottom on empty status pane", func(t *testing.T) {
+		m.view.FocusedPane = 1
+		m.services.statusTree.TreeFlat = []*StatusTreeNode{}
+		m.services.statusTree.Index = 0
+		_, cmd := m.handleGotoBottom()
+		if m.services.statusTree.Index != 0 {
+			t.Errorf("expected statusTreeIndex to remain 0, got %d", m.services.statusTree.Index)
+		}
+		_ = cmd
+	})
+
 	t.Run("goto bottom on log pane", func(t *testing.T) {
 		m.view.FocusedPane = 2
 		m.ui.logTable.SetCursor(0)

@@ -394,7 +394,9 @@ func (m *Model) handleBuiltInKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "G":
 		if m.view.FocusedPane == 1 {
 			m.ui.statusViewport.GotoBottom()
-			m.services.statusTree.Index = len(m.services.statusTree.TreeFlat) - 1
+			if len(m.services.statusTree.TreeFlat) > 0 {
+				m.services.statusTree.Index = len(m.services.statusTree.TreeFlat) - 1
+			}
 			return m, nil
 		}
 		return m, nil
