@@ -1841,6 +1841,40 @@ func TestMouseScrollNavigatesFiles(t *testing.T) {
 	}
 }
 
+func TestMouseClickSelectsWorktree(t *testing.T) {
+	cfg := &config.AppConfig{
+		WorktreeDir: t.TempDir(),
+	}
+	m := NewModel(cfg, "")
+	m.setWindowSize(120, 40)
+	m.view.FocusedPane = 0
+	m.data.filteredWts = []*models.WorktreeInfo{
+		{Path: filepath.Join(cfg.WorktreeDir, testWt1), Branch: testFeat},
+		{Path: filepath.Join(cfg.WorktreeDir, testWt2), Branch: testOtherBranch},
+	}
+	m.ui.worktreeTable.SetRows([]table.Row{
+		{"wt1"},
+		{"wt2"},
+	})
+	m.ui.worktreeTable.SetCursor(0)
+	m.data.selectedIndex = 0
+
+	msg := tea.MouseMsg{
+		Action: tea.MouseActionPress,
+		Button: tea.MouseButtonLeft,
+		X:      2,
+		Y:      6,
+	}
+
+	_, _ = m.handleMouse(msg)
+	if m.ui.worktreeTable.Cursor() != 1 {
+		t.Fatalf("expected cursor to move to 1, got %d", m.ui.worktreeTable.Cursor())
+	}
+	if m.data.selectedIndex != 1 {
+		t.Fatalf("expected selectedIndex to be 1, got %d", m.data.selectedIndex)
+	}
+}
+
 // TestBuildStatusTreeEmpty tests building tree from empty file list.
 func TestBuildStatusTreeEmpty(t *testing.T) {
 	tree := services.BuildStatusTree([]StatusFile{})

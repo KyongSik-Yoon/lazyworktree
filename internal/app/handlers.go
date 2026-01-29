@@ -983,6 +983,7 @@ func (m *Model) handleMouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
 				for i := 0; i < len(m.data.filteredWts); i++ {
 					if i == relativeY {
 						m.ui.worktreeTable.SetCursor(i)
+						m.data.selectedIndex = i
 						m.updateWorktreeArrows()
 						cmds = append(cmds, m.debouncedUpdateDetailsView())
 						break
