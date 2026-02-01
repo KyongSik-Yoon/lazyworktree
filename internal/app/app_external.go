@@ -155,6 +155,10 @@ func (m *Model) executeCustomCommand(key string) tea.Cmd {
 		return m.openTmuxSession(customCmd.Tmux, wt)
 	}
 
+	if customCmd.NewTab {
+		return m.openTerminalTab(customCmd, wt)
+	}
+
 	if customCmd.ShowOutput {
 		return m.executeCustomCommandWithPager(customCmd, wt)
 	}
@@ -290,10 +294,13 @@ func (m *Model) customCommandLabel(cmd *config.CustomCommand, key string) string
 		if label == "" {
 			label = strings.TrimSpace(cmd.Command)
 			if label == "" {
-				if cmd.Zellij != nil {
+				switch {
+				case cmd.Zellij != nil:
 					label = zellijSessionLabel
-				} else if cmd.Tmux != nil {
+				case cmd.Tmux != nil:
 					label = tmuxSessionLabel
+				case cmd.NewTab:
+					label = terminalTabLabel
 				}
 			}
 		}

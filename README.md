@@ -623,9 +623,10 @@ custom_commands:
     description: Status
     show_help: true
     show_output: true
-  a: # Open CLaude CLI in the selected workspace in a new kitty tab
-    command: "kitten @ launch --type tab --cwd $WORKTREE_PATH -- claude"
-    description: Open Claude
+  c: # Open Claude CLI in a new terminal tab (Kitty)
+    command: claude
+    description: Claude Code
+    new_tab: true
     show_help: true
   t: # Open a tmux session with multiple windows
     description: Tmux
@@ -652,6 +653,7 @@ custom_commands:
 | `show_help` | bool | `false` | Whether to show this command in the help screen (`?`) and footer hints |
 | `wait` | bool | `false` | Wait for key press after command completes (useful for quick commands like `ls` or `make test`) |
 | `show_output` | bool | `false` | Run non-interactively and show stdout/stderr in the pager (ignores `wait`) |
+| `new_tab` | bool | `false` | Launch command in a new terminal tab (currently supports Kitty with remote control enabled) |
 | `tmux` | object | `null` | Configure a tmux session instead of executing a single command |
 | `zellij` | object | `null` | Configure a zellij session instead of executing a single command |
 

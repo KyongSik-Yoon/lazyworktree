@@ -22,6 +22,7 @@ type CustomCommand struct {
 	ShowHelp    bool
 	Wait        bool
 	ShowOutput  bool
+	NewTab      bool // Launch command in a new terminal tab (Kitty, etc.)
 	Tmux        *TmuxCommand
 	Zellij      *TmuxCommand
 }
@@ -387,6 +388,7 @@ func parseCustomCommands(data map[string]any) map[string]*CustomCommand {
 			ShowHelp:    coerceBool(cmdData["show_help"], false),
 			Wait:        coerceBool(cmdData["wait"], false),
 			ShowOutput:  coerceBool(cmdData["show_output"], false),
+			NewTab:      coerceBool(cmdData["new_tab"], false),
 		}
 
 		if tmux, ok := cmdData["tmux"].(map[string]any); ok {

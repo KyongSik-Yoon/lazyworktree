@@ -777,6 +777,14 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.showInfo(message, nil)
 		return m, nil
 
+	case terminalTabReadyMsg:
+		if msg.err != nil {
+			m.showInfo(fmt.Sprintf("Terminal tab error: %v", msg.err), nil)
+			return m, nil
+		}
+		m.showInfo(buildTerminalTabInfoMessage(msg.terminalName, msg.tabTitle), nil)
+		return m, nil
+
 	case refreshCompleteMsg:
 		return m, m.updateDetailsView()
 
