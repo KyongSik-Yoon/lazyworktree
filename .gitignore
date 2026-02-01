@@ -2,7 +2,7 @@
 cover.out
 coverage.out
 bin/*
-.claude
+.claude/settings.local.json
 tmp/
 /lazyworktree
 /tmp
