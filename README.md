@@ -2,11 +2,10 @@
 
 <img align="right" width="180" height="180" alt="lw-logo" src="https://github.com/user-attachments/assets/77b63679-40b8-494c-a62d-19ccc39ac38e" />
 
-LazyWorktree is a terminal user interface for managing Git worktrees. It
-provides a structured, keyboard-driven workflow for creating, inspecting, and
-navigating multiple worktrees within a single repository.
+LazyWorktree is a TUI for Git worktrees. It provides a keyboard-driven workflow
+for creating, inspecting, and navigating worktrees within a repository.
 
-Built with [BubbleTea](https://github.com/charmbracelet/bubbletea), it focuses on fast iteration, clear state visibility, and tight integration with common Git tooling.
+Built with [BubbleTea](https://github.com/charmbracelet/bubbletea), it focuses on fast iteration, clear state visibility, and tight Git tooling integration.
 
 ![Go](https://img.shields.io/badge/go-1.25%2B-blue)
 ![Coverage](https://img.shields.io/badge/Coverage-55.2%25-yellow)
@@ -19,30 +18,29 @@ _See other [Screenshots below](#screenshots)_
 
 ## Features
 
-* Worktree management: Create, rename, remove, absorb, and prune merged worktrees.
+* Worktree management: create, rename, remove, absorb, and prune merged worktrees.
 * Powerful creation options:
-  * From current branch: Create from the current branch, optionally carrying over uncommitted changes.
-  * Checkout existing branch: Associate a worktree with an existing local branch, or create a new branch based on it.
-  * From issue: Create from a GitHub/GitLab issue with automatic branch naming.
-  * From PR or MR: Create from an open GitHub/GitLab pull or merge request.
-* Show CI logs from GitHub Actions.
-* Show linked GitHub PR or Gitlab MR, CI status, and checks.
-* Stage, unstage, commit, edit, and diff files interactively.
-* View diffs in a pager, with optional delta integration.
-* Manage per-worktree Tmux or Zellij sessions.
-* Cherry-pick commits from one worktree to another.
-* Access actions, commands, and sessions with MRU-based navigation via a VSCode-like command palette.
-* Custom commands support. Define keybindings, tmux/zellij layouts, and per-repo command workflows.
-* Automation and hooks: Run init/terminate commands via `.wt` files with TOFU security.
-* Shell integration: Jump into selected worktrees and return to the last-used one.
-* Automatic branch naming: Generate branch names from diffs, issues, or PRs via
-scripts (like LLM tools).
+  * From current branch, optionally with uncommitted changes.
+  * Checkout existing branch or create a new branch from it.
+  * From GitHub/GitLab issue with automatic branch naming.
+  * From open GitHub/GitLab PR or MR.
+* View CI logs from GitHub Actions.
+* Display linked PR/MR, CI status, and checks.
+* Stage, unstage, commit, edit, and diff files.
+* View diffs in a pager with optional delta integration.
+* Manage per-worktree tmux or zellij sessions.
+* Cherry-pick commits between worktrees.
+* Command palette with MRU-based navigation.
+* Custom commands: define keybindings, tmux/zellij layouts, and per-repo workflows.
+* Init/terminate hooks via `.wt` files with TOFU security.
+* Shell integration: jump into worktrees and return to the last-used one.
+* Automatic branch naming via scripts (e.g., LLM tools).
 
 ## Getting Started
 
-1. Install lazyworktree using your preferred method below.
-2. Run `lazyworktree` inside a Git repository.
-3. Press `?` for help and key hints.
+1. Install lazyworktree (see below).
+2. Run `lazyworktree` in a Git repository.
+3. Press `?` for help.
 
 Common overrides:
 
@@ -55,25 +53,24 @@ lazyworktree --config lw.theme=nord --config lw.sort_mode=active
 
 ## Requirements
 
-* **Git**: 2.31+ (recommended)
-* **Forge CLI**: GitHub CLI (`gh`) or GitLab CLI (`glab`) for repo resolution and PR/MR status
+* **Git**: 2.31+
+* **Forge CLI**: `gh` or `glab` for PR/MR status
 
 **Optional:**
 
-* **delta**: For syntax-highlighted diffs (highly recommended)
-* **lazygit**: For full TUI git control
-* **tmux**: For tmux integration support
-* **zellij**: For zellij integration support
+* **delta**: Syntax-highlighted diffs (recommended)
+* **lazygit**: Full TUI git control
+* **tmux** / **zellij**: Session management
 
 **Build-time only:**
 
-* Go 1.25 or newer
+* Go 1.25+
 
 ## Installation
 
 ### Pre-built Binaries
 
-Pre-built binaries for various platforms are provided in the [Releases](https://github.com/chmouel/lazyworktree/releases) section.
+Pre-built binaries are available in the [Releases](https://github.com/chmouel/lazyworktree/releases).
 
 ### 🍺 Homebrew (macOS)
 
@@ -84,15 +81,11 @@ brew install lazyworktree --cask
 
 #### macOS Gatekeeper
 
-macOS quarantines binaries downloaded from the internet. On first run you may
-see "Apple could not verify lazyworktree". To resolve this:
+If macOS shows "Apple could not verify lazyworktree":
 
-**Option 1:** Allow via System Settings
+**Option 1:** System Settings > Privacy & Security > "Open Anyway"
 
-1. Open System Settings > Privacy & Security
-2. Click "Open Anyway" next to the lazyworktree warning
-
-**Option 2:** Remove the quarantine attribute
+**Option 2:** Remove quarantine attribute:
 
 ```bash
 xattr -d com.apple.quarantine /opt/homebrew/bin/lazyworktree
@@ -106,7 +99,13 @@ yay -S lazyworktree-bin
 
 ### From Source
 
-Clone the repository and build:
+Direct installation:
+
+```bash
+go install github.com/chmouel/lazyworktree/cmd/lazyworktree@latest
+```
+
+Via cloning and building:
 
 ```bash
 git clone https://github.com/chmouel/lazyworktree.git
@@ -114,32 +113,15 @@ cd lazyworktree
 go build -o lazyworktree ./cmd/lazyworktree
 ```
 
-Install to your PATH:
-
-```bash
-go install ./cmd/lazyworktree
-```
-
-Or build and run directly:
-
-```bash
-go run ./cmd/lazyworktree/main.go
-```
-
 ## Shell Integration
 
-LazyWorktree provides shell helpers to change the current directory to the
-selected worktree on exit. These helpers are optional but recommended for
-interactive use.
+Shell helpers change directory to the selected worktree on exit. Optional but recommended.
 
-Zsh helpers are provided under shell/functions.zsh and can be sourced
-directly or downloaded.
-
-See [./shell/README.md](./shell/README.md) for more detailed instructions.
+Zsh helpers are in `shell/functions.zsh`. See [./shell/README.md](./shell/README.md) for details.
 
 ## CLI Usage
 
-LazyWorktree supports command-line operations for creating and deleting worktrees without launching the TUI. The legacy `wt-create` and `wt-delete` CLI names still work as aliases for the new `create` and `delete` subcommands.
+Create and delete worktrees from the command line. Legacy aliases `wt-create` and `wt-delete` still work.
 
 ### Creating Worktrees
 
@@ -169,14 +151,14 @@ lazyworktree create --from-branch main my-feature [--with-change] [--silent] [--
 lazyworktree create --from-branch feature/new-feature [--with-change] [--silent] [--output-selection /tmp/selection]
 ```
 
-The worktree/branch name can be specified explicitly or auto-generated:
+Name can be explicit or auto-generated:
 
-* **Current branch + explicit name:** `lw create my-feature`
-* **Specific branch + explicit name:** `lw create --from-branch main my-feature`
-* **Current branch + auto-generated:** `lw create` uses current branch name
-* **Specific branch + auto-generated:** `lw create --from-branch feature/cool-thing` creates "feature-cool-thing"
-* **Force auto-generation:** `lw create --generate` forces automatic name generation even if a positional argument is provided
-* Names are automatically sanitised to lowercase alphanumeric characters with hyphens
+* `lw create my-feature` - explicit name from current branch
+* `lw create --from-branch main my-feature` - explicit name from specific branch
+* `lw create` - auto-generated from current branch
+* `lw create --from-branch feature/cool-thing` - creates "feature-cool-thing"
+* `lw create --generate` - force auto-generation even with positional argument
+* Names are sanitised to lowercase alphanumeric with hyphens
 
 **Create from a PR:**
 
@@ -190,7 +172,7 @@ lazyworktree create --from-pr 123 [--silent] [--output-selection /tmp/selection]
 lazyworktree delete [--no-branch] [--silent]
 ```
 
-Deletes the worktree and associated branch (only if worktree name matches branch name). Use `--no-branch` to skip branch deletion.
+Deletes worktree and branch (if names match). Use `--no-branch` to skip branch deletion.
 
 ## Key Bindings
 
@@ -252,9 +234,7 @@ Deletes the worktree and associated branch (only if worktree name matches branch
 
 **Status Pane** (when focused on status):
 
-The status pane displays changed files in a collapsible tree view, grouped by
-directory (similar to lazygit). Directories can be expanded/collapsed, files
-are sorted alphabetically within each directory level.
+Displays changed files in a collapsible tree view, grouped by directory (similar to lazygit).
 
 | Key | Action |
 | --- | --- |
@@ -270,26 +250,22 @@ are sorted alphabetically within each directory level.
 | `ctrl+←`, `ctrl+→` | Jump to previous/next folder |
 | `/` | Search file/directory names (incremental) |
 
-CI Status Pane:
-
-When viewing CI checks, a selection screen shows available checks for the selected worktree's PR/MR.
+**CI Status Pane** (when viewing CI checks):
 
 | Key | Action |
 |--- | --- |
-| `Enter` | Open selected CI job in browser (within CI check selection) |
-| `Ctrl+v` | View selected CI check logs in pager (within CI check selection) |
-| `Ctrl+r` | Restart selected CI job (GitHub Actions only, within CI check selection) |
+| `Enter` | Open CI job in browser |
+| `Ctrl+v` | View CI logs in pager |
+| `Ctrl+r` | Restart CI job (GitHub Actions only) |
 
 **Filter Mode:**
 
-Filter mode applies to the focused pane (worktrees, file names, commit titles).
+Applies to focused pane (worktrees, files, commits). Active filter shows `[Esc] Clear` hint.
 
-* `alt+n`, `alt+p`: Navigate and update filter input with selected item
-* `↑`, `↓`, `ctrl+j`, `ctrl+k`: Navigate list without changing filter input
-* `Enter`: Exit filter mode (filter remains active)
-* `Esc`, `Ctrl+C`: Exit filter mode
-
-When a filter is active, the pane title shows a filter indicator with `[Esc] Clear` hint. Press `Esc` to clear the filter.
+* `alt+n`, `alt+p`: Navigate and update filter input
+* `↑`, `↓`, `ctrl+j`, `ctrl+k`: Navigate without changing input
+* `Enter`: Exit filter mode (filter remains)
+* `Esc`, `Ctrl+C`: Clear filter
 
 **Search Mode:**
 
@@ -298,30 +274,27 @@ When a filter is active, the pane title shows a filter indicator with `[Esc] Cle
 * `Enter`: Close search
 * `Esc`, `Ctrl+C`: Clear search
 
-**Command History (! command):**
+**Command History (`!`):**
 
-Commands run via `!` are saved per repository (100 entries max). Use `↑`/`↓` to navigate history.
+Saved per repository (100 max). Use `↑`/`↓` to navigate.
 
 **Command Palette Actions:**
 
-* **Select theme**: Change the application theme with live preview (see [Themes](#themes)).
-* **Create from current branch**: Copy your current branch to a new worktree. If uncommitted changes exist, tick "Include current file changes" to stash and reapply them in the new worktree. Any configured `branch_name_script` receives the diff for automatic naming.
+* **Select theme**: Change theme with live preview (see [Themes](#themes)).
+* **Create from current branch**: Copy current branch to a new worktree. Tick "Include current file changes" to carry over uncommitted changes. Uses `branch_name_script` if configured.
 
 ### Mouse Controls
 
 * **Click**: Select and focus panes or items
-* **Scroll Wheel**: Scroll through lists and content
-  * Worktree table (left pane)
-  * Status pane (right top pane)
-  * Log table (right bottom pane)
+* **Scroll**: Navigate lists in any pane
 
 ## Configuration
 
-Worktrees are expected to be organised under `~/.local/share/worktrees/<organization>-<repo_name>` by default unless overridden via configuration.
+Default worktree location: `~/.local/share/worktrees/<organization>-<repo_name>`.
 
 ### Global Configuration (YAML)
 
-lazyworktree reads `~/.config/lazyworktree/config.yaml` (or `.yml`) for default settings. An example configuration is provided below (also available in [config.example.yaml](./config.example.yaml)):
+Reads `~/.config/lazyworktree/config.yaml`. Example (also in [config.example.yaml](./config.example.yaml)):
 
 ```yaml
 worktree_dir: ~/.local/share/worktrees
@@ -379,19 +352,17 @@ custom_create_menus:
 
 ### Configuration Precedence
 
-lazyworktree reads configuration from multiple sources with the following precedence (highest to lowest):
+Highest to lowest priority:
 
-1. **CLI overrides** (using `--config` flag): Highest priority
-2. **Git local configuration** (repository-specific via `git config --local`)
-3. **Git global configuration** (user-wide via `git config --global`)
+1. **CLI overrides** (`--config` flag)
+2. **Git local configuration** (`git config --local`)
+3. **Git global configuration** (`git config --global`)
 4. **YAML configuration file** (`~/.config/lazyworktree/config.yaml`)
-5. **Built-in defaults**: Lowest priority
-
-This allows flexible configuration at different levels. For example, you can set a default theme globally in your Git config, override it for a specific repository, and temporarily change it via the command line.
+5. **Built-in defaults**
 
 ### Git Configuration
 
-Settings can be stored in Git's configuration system with the `lw.` prefix. Examples:
+Use the `lw.` prefix:
 
 ```bash
 # Set globally
@@ -415,9 +386,9 @@ git config --local --get-regexp "^lw\."
 
 **Themes**
 
-* `theme` selects the colour theme. See [Themes](#themes). Default: auto-detected (`dracula` for dark, `dracula-light` for light).
-* Execute `lazyworktree --show-syntax-themes` to display the default delta `--syntax-theme` values for each UI theme.
-* Use `lazyworktree --theme <name>` to select a UI theme directly.
+* `theme`: colour theme (auto-detected: `dracula` dark, `dracula-light` light). See [Themes](#themes).
+* `lazyworktree --show-syntax-themes`: show delta syntax-theme defaults.
+* `lazyworktree --theme <name>`: select UI theme.
 
 **Worktree list and refresh**
 
@@ -441,7 +412,7 @@ git config --local --get-regexp "^lw\."
 * `git_pager_args`: arguments for git_pager. Auto-selects syntax theme for delta.
 * `git_pager_interactive`: set `true` for interactive viewers like `diffnav` or `tig`.
 * `pager`: pager for output display (default: `$PAGER`, fallback to `less`).
-* `ci_script_pager`: pager for CI check logs. When set, runs interactively with direct terminal control (no `set -o pipefail` or environment adjustments). Falls back to `pager` if not configured. This let you for example preprocess the logs with `sed` or another script. For example here is a configuration to remove the date of the GitHub action logs:
+* `ci_script_pager`: pager for CI logs with direct terminal control. Falls back to `pager`. Example to strip GitHub Actions timestamps:
 
 ```yaml
 ci_script_pager: |
@@ -453,18 +424,13 @@ ci_script_pager: |
   less --use-color -q --wordwrap -qcR -P 'Press q to exit..'
 ```
 
-CI-specific environment variables available to `ci_script_pager`:
-
-* `LW_CI_JOB_NAME`: Name of the CI check/job
-* `LW_CI_JOB_NAME_CLEAN`: Sanitised job name suitable for filenames (lowercase, hyphens only)
-* `LW_CI_RUN_ID`: GitHub Actions run ID (extracted from check URL)
-* `LW_CI_STARTED_AT`: Job start time in ISO 8601 format (if available)
+CI environment variables: `LW_CI_JOB_NAME`, `LW_CI_JOB_NAME_CLEAN`, `LW_CI_RUN_ID`, `LW_CI_STARTED_AT`.
 
 * `editor`: editor for Status pane `e` key (default: `$EDITOR`, fallback to `nvim`).
 
 **Worktree lifecycle**
 
-* `init_commands` and `terminate_commands` execute prior to any repository-specific `.wt` commands (if present).
+* `init_commands`, `terminate_commands`: run before repository `.wt` commands.
 
 **Sync and multiplexers**
 
@@ -482,7 +448,7 @@ CI-specific environment variables available to `ci_script_pager`:
 
 ## Themes
 
-lazyworktree includes built-in themes:
+Built-in themes:
 
 | Theme | Notes | Best For |
 |-------|-------|----------|
@@ -509,17 +475,13 @@ lazyworktree includes built-in themes:
 | **everforest-dark** | Dark (#2D353B) | Everforest nature dark |
 | **kanagawa** | Wave (#1F1F28) | Kanagawa Wave inspired by Japanese art |
 
-To select a theme, configure it in your configuration file:
-
-```yaml
-theme: dracula  # or any listed above
-```
+Set in config: `theme: dracula`
 
 ### Custom Themes
 
-You can define custom themes in your configuration file that inherit from built-in themes or define completely new colour schemes.
+Define custom themes that inherit from built-in themes or define new colour schemes.
 
-**Inheriting from a built-in theme:**
+**Inherit from built-in:**
 
 ```yaml
 custom_themes:
@@ -551,7 +513,7 @@ custom_themes:
     cyan: "#00FFFF"
 ```
 
-**Custom themes can inherit from other custom themes:**
+**Inherit from other custom themes:**
 
 ```yaml
 custom_themes:
@@ -563,45 +525,25 @@ custom_themes:
     accent: "#00FF00"
 ```
 
-**Available colour fields:**
+**Colour fields:** `accent`, `accent_fg`, `accent_dim`, `border`, `border_dim`, `muted_fg`, `text_fg`, `success_fg`, `warn_fg`, `error_fg`, `cyan`.
 
-* `accent` - Primary accent colour (highlights, selected items)
-* `accent_fg` - Foreground colour for text on accent background
-* `accent_dim` - Dimmed accent colour (selected rows/panels)
-* `border` - Border colour
-* `border_dim` - Dimmed border colour
-* `muted_fg` - Muted text colour
-* `text_fg` - Primary text colour
-* `success_fg` - Success indicator colour
-* `warn_fg` - Warning indicator colour
-* `error_fg` - Error indicator colour
-* `cyan` - Cyan accent colour
-
-Colour values must be in hex format (`#RRGGBB` or `#RGB`). When using a `base` theme, only specify colours you want to override. When not using a base, all 11 colour fields are required.
-
-Custom themes appear in the theme selection screen alongside built-in themes.
+Values must be hex (`#RRGGBB` or `#RGB`). With `base`, only override what you need. Without `base`, all 11 fields are required. Custom themes appear alongside built-in themes.
 
 ## CI Status Display
 
-When viewing a worktree with an associated PR/MR, lazyworktree automatically retrieves and displays CI check statuses in the information pane.
+Shows CI check statuses for worktrees with associated PR/MR:
 
-* `✓` **Green** - Passed
-* `✗` **Red** - Failed
-* `●` **Yellow** - Pending/Running
-* `○` **Grey** - Skipped
-* `⊘` **Grey** - Cancelled
+* `✓` Green - Passed | `✗` Red - Failed | `●` Yellow - Pending | `○` Grey - Skipped | `⊘` Grey - Cancelled
 
-CI status is retrieved lazily (only for the selected worktree) and cached for 30 seconds to maintain UI responsiveness. Press `p` to force a refresh of CI status.
+Status is fetched lazily and cached for 30 seconds. Press `p` to refresh.
 
 ## Custom Commands
 
-Define custom keybindings in `~/.config/lazyworktree/config.yaml`. Commands run interactively (TUI suspends) and appear in the command palette. Use `show_output` to pipe output through the pager.
+Define keybindings in config. Commands run interactively (TUI suspends) and appear in the palette. Use `show_output` to pipe through pager.
 
-Defaults: `t` opens tmux, `Z` opens zellij. Override by defining `custom_commands.t` or `custom_commands.Z`. The palette lists active sessions matching `session_prefix` (default: `wt-`).
+Defaults: `t` = tmux, `Z` = zellij. Override via `custom_commands.t` or `custom_commands.Z`. Palette lists sessions matching `session_prefix` (default: `wt-`).
 
 ### Configuration Format
-
-Add a `custom_commands` section to your config:
 
 ```yaml
 custom_commands:
@@ -648,14 +590,14 @@ custom_commands:
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `command` | string | **required** | The command to execute |
-| `description` | string | `""` | Description shown in the help screen and command palette |
-| `show_help` | bool | `false` | Whether to show this command in the help screen (`?`) and footer hints |
-| `wait` | bool | `false` | Wait for key press after command completes (useful for quick commands like `ls` or `make test`) |
-| `show_output` | bool | `false` | Run non-interactively and show stdout/stderr in the pager (ignores `wait`) |
-| `new_tab` | bool | `false` | Launch command in a new terminal tab (currently supports Kitty with remote control enabled) |
-| `tmux` | object | `null` | Configure a tmux session instead of executing a single command |
-| `zellij` | object | `null` | Configure a zellij session instead of executing a single command |
+| `command` | string | **required** | Command to execute |
+| `description` | string | `""` | Shown in help and palette |
+| `show_help` | bool | `false` | Show in help screen (`?`) and footer |
+| `wait` | bool | `false` | Wait for keypress after completion |
+| `show_output` | bool | `false` | Show stdout/stderr in pager (ignores `wait`) |
+| `new_tab` | bool | `false` | Launch in new terminal tab (Kitty) |
+| `tmux` | object | `null` | Configure tmux session |
+| `zellij` | object | `null` | Configure zellij session |
 
 #### tmux fields
 
@@ -666,7 +608,7 @@ custom_commands:
 | `on_exists` | string | `switch` | Behaviour if session exists: `switch`, `attach`, `kill`, `new` |
 | `windows` | list | `[ { name: "shell" } ]` | Window definitions for the session |
 
-If `windows` is omitted or empty, lazyworktree creates a single `shell` window.
+If `windows` is empty, creates a single `shell` window.
 
 #### tmux window fields
 
@@ -685,8 +627,7 @@ If `windows` is omitted or empty, lazyworktree creates a single `shell` window.
 | `on_exists` | string | `switch` | Behaviour if session exists: `switch`, `attach`, `kill`, `new` |
 | `windows` | list | `[ { name: "shell" } ]` | Tab definitions for the session |
 
-If `windows` is omitted or empty, lazyworktree creates a single `shell` tab.
-Zellij session names cannot include `/`, `\`, or `:`, so lazyworktree replaces them with `-`.
+If `windows` is empty, creates a single `shell` tab. Session names with `/`, `\`, `:` are replaced with `-`.
 
 #### zellij window fields
 
@@ -698,21 +639,11 @@ Zellij session names cannot include `/`, `\`, or `:`, so lazyworktree replaces t
 
 ### Environment Variables
 
-Custom commands have access to the same environment variables as init/terminate commands:
-
-* `WORKTREE_BRANCH`: Name of the git branch
-* `MAIN_WORKTREE_PATH`: Path to the main repository
-* `WORKTREE_PATH`: Path to the selected worktree
-* `WORKTREE_NAME`: Name of the worktree (directory name)
-* `REPO_NAME`: Name of the repository (from GitHub/GitLab)
+Available: `WORKTREE_BRANCH`, `MAIN_WORKTREE_PATH`, `WORKTREE_PATH`, `WORKTREE_NAME`, `REPO_NAME`.
 
 ### Supported Key Formats
 
-Custom commands support the same key formats as built-in keybindings:
-
-* **Single keys**: `e`, `s`, `t`, `l`, etc.
-* **Modifier combinations**: `ctrl+e`, `ctrl+t`, `alt+s`, etc.
-* **Special keys**: `enter`, `esc`, `tab`, `space`, etc.
+Single keys (`e`, `s`), modifiers (`ctrl+e`, `alt+t`), special keys (`enter`, `esc`, `tab`, `space`).
 
 **Examples:**
 
@@ -729,11 +660,11 @@ custom_commands:
 
 ### Key Precedence
 
-**Custom commands take precedence over built-in keys.** If you define a custom command with key `s`, it overrides the built-in sort toggle.
+Custom commands override built-in keys.
 
 ## Custom Initialisation and Termination
 
-Create a `.wt` file in your main repository to define commands that run when creating or removing a worktree. Format inspired by [wt](https://github.com/taecontrol/wt).
+Create a `.wt` file in your repository to run commands when creating/removing worktrees. Format inspired by [wt](https://github.com/taecontrol/wt).
 
 ### Example `.wt` configuration
 
@@ -748,34 +679,17 @@ terminate_commands:
     - echo "Cleaning up $WORKTREE_NAME"
 ```
 
-The following environment variables are available to your commands:
-
-* `WORKTREE_BRANCH`: Name of the git branch.
-* `MAIN_WORKTREE_PATH`: Path to the main repository.
-* `WORKTREE_PATH`: Path to the new worktree being created or removed.
-* `WORKTREE_NAME`: Name of the worktree (directory name).
+Environment variables: `WORKTREE_BRANCH`, `MAIN_WORKTREE_PATH`, `WORKTREE_PATH`, `WORKTREE_NAME`.
 
 ### Security: Trust on First Use (TOFU)
 
-Since `.wt` files can execute arbitrary commands, lazyworktree uses a **Trust on First Use** security model.
+Since `.wt` files execute arbitrary commands, lazyworktree uses TOFU. On first encounter or modification, select **Trust**, **Block**, or **Cancel**. Hashes stored in `~/.local/share/lazyworktree/trusted.json`.
 
-* **First Run**: When encountering a new or modified `.wt` file, lazyworktree pauses and displays the commands. Select **Trust** (run and save), **Block** (skip), or **Cancel**.
-* **Trusted**: Once trusted, commands run silently in the background until the `.wt` file changes again.
-* **Persistence**: Trusted file hashes are stored in `~/.local/share/lazyworktree/trusted.json`.
-
-Configure via `trust_mode` in `config.yaml`:
-
-* **`tofu`** (Default): Prompts for confirmation on new or changed files. Secure and usable.
-* **`never`**: Never runs commands from `.wt` files. Safest for untrusted environments.
-* **`always`**: Always runs commands without prompting. Useful for personal/internal environments but risky.
+Configure `trust_mode`: `tofu` (default, prompt), `never` (skip all), `always` (no prompts).
 
 ### Special Commands
 
-* `link_topsymlinks`: A built-in automation command (not a shell command) that executes without TOFU prompts once the `.wt` file is trusted. It performs the following:
-  * Symlinks all untracked and ignored files from the root of the main worktree to the new worktree (excluding subdirectories).
-  * Symlinks non-empty editor configurations (`.vscode`, `.idea`, `.cursor`, `.claude/settings.local.json`) if it exists.
-  * Ensures a `tmp/` directory exists in the new worktree.
-  * Automatically runs `direnv allow` if a `.envrc` file is present.
+* `link_topsymlinks`: Built-in command that symlinks untracked/ignored root files, editor configs (`.vscode`, `.idea`, `.cursor`, `.claude/settings.local.json`), creates `tmp/`, and runs `direnv allow` if `.envrc` exists.
 
 ## Branch Naming Conventions
 
@@ -789,17 +703,12 @@ Special characters are converted to hyphens for Git compatibility. Leading/trail
 
 ## Automatically Generated Branch Names
 
-Configure `branch_name_script` to generate branch names via a helper tool, for example [aichat](https://github.com/sigoden/aichat/) or [claude code](https://claude.com/product/claude-code).
-
-* **PRs/issues:** Script outputs a title available via `{generated}` placeholder.
-* **Diffs:** Script outputs a complete branch name.
+Configure `branch_name_script` to generate names via tools like [aichat](https://github.com/sigoden/aichat/) or [claude code](https://claude.com/product/claude-code). PRs/issues output to `{generated}` placeholder; diffs output complete names.
 
 > [!NOTE]
-> Smaller, faster models are usually sufficient for short branch names. Choose a tool and model that fit your workflow.
+> Smaller, faster models suffice for branch names.
 
 ### Configuration
-
-Add `branch_name_script` to your `~/.config/lazyworktree/config.yaml`:
 
 ```yaml
 # For PRs/issues: generate a title (available via {generated} placeholder)
@@ -816,12 +725,10 @@ pr_branch_name_template: "pr-{number}-{generated}"  # Use generated title
 
 ### Template Placeholders
 
-When creating worktrees from PRs or issues, the following placeholders are available:
-
-* `{number}` - The PR/issue number
-* `{title}` - The original sanitised PR/issue title (always available)
-* `{generated}` - The generated title (falls back to `{title}` if the script is not configured or returns empty output)
-* `{pr_author}` - The PR author's username (PRs only, sanitised)
+* `{number}` - PR/issue number
+* `{title}` - Original sanitised title
+* `{generated}` - Generated title (falls back to `{title}`)
+* `{pr_author}` - PR author username
 
 **Examples:**
 
@@ -832,15 +739,15 @@ When creating worktrees from PRs or issues, the following placeholders are avail
 | `pr-{number}-{pr_author}-{title}` | `pr-2-alice-add-ai-session-management` | Not used |
 | `pr-{number}-{pr_author}-{generated}` | `pr-2-alice-feat-ai-session-manager` | Used |
 
-If the script fails or returns empty output, `{generated}` automatically falls back to the sanitised original title.
+If script fails, `{generated}` falls back to `{title}`.
 
 ### Script Requirements
 
-The script receives content on stdin (diff, issue, or PR title+body) and outputs the branch name on stdout (first line used). Timeout: 30 seconds. Falls back to the original title if the script fails.
+Receives content on stdin, outputs branch name on stdout (first line). Timeout: 30s.
 
 ### Environment Variables
 
-Available to scripts: `LAZYWORKTREE_TYPE` (pr/issue/diff), `LAZYWORKTREE_NUMBER`, `LAZYWORKTREE_TEMPLATE`, `LAZYWORKTREE_SUGGESTED_NAME`.
+`LAZYWORKTREE_TYPE` (pr/issue/diff), `LAZYWORKTREE_NUMBER`, `LAZYWORKTREE_TEMPLATE`, `LAZYWORKTREE_SUGGESTED_NAME`.
 
 **Example:**
 
@@ -886,16 +793,11 @@ branch_name_script: |
 
 ## How does it compare?
 
-lazyworktree covers a broader set of use cases than most Git worktree tools,
-especially for interactive and human-driven workflows.
-
-For a fair and detailed comparison with other popular worktree managers
-(including their respective strengths and trade-offs), see
-the [COMPARISON](./COMPARISON.md) document.
+See [COMPARISON.md](./COMPARISON.md) for a detailed comparison with other worktree managers.
 
 ## Trivia
 
-Previously, this was a Python textual application; however, the startup time proved excessive, prompting a migration to a Go-based [charmbracelet bubble](https://github.com/charmbracelet/bubbles) Terminal User Interface. The original Python implementation remains available for review or testing at <https://github.com/chmouel/lazyworktree/tree/python>
+Originally a Python [Textual](https://textual.textualize.io/) app, migrated to Go ([BubbleTea](https://github.com/charmbracelet/bubbletea)) for faster startup. Python version: <https://github.com/chmouel/lazyworktree/tree/python>
 
 ## Copyright
 
