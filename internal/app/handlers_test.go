@@ -448,41 +448,6 @@ func TestHandlePRDataLoadedUpdatesTable(t *testing.T) {
 	}
 }
 
-func TestHandlePRDataLoadedOmitsIconWhenDisabled(t *testing.T) {
-	// Set default provider for testing
-	SetIconProvider(&NerdFontV3Provider{})
-	cfg := config.DefaultConfig()
-	cfg.WorktreeDir = t.TempDir()
-	cfg.IconSet = "none"
-	m := NewModel(cfg, "")
-	m.state.ui.worktreeTable.SetWidth(100)
-	m.worktreesLoaded = true
-	m.state.data.worktrees = []*models.WorktreeInfo{
-		{Path: filepath.Join(cfg.WorktreeDir, "wt1"), Branch: "feature"},
-	}
-	m.state.data.filteredWts = m.state.data.worktrees
-	m.state.ui.worktreeTable.SetCursor(0)
-
-	msg := prDataLoadedMsg{
-		prMap: map[string]*models.PRInfo{
-			"feature": {Number: 12, State: "OPEN", Title: "Test PR", URL: "https://example.com"},
-		},
-	}
-
-	_, cmd := m.handlePRDataLoaded(msg)
-	if cmd == nil {
-		t.Fatal("expected command to be returned")
-	}
-
-	rows := m.state.ui.worktreeTable.Rows()
-	if len(rows) != 1 || len(rows[0]) != 4 {
-		t.Fatalf("unexpected row shape: %+v", rows)
-	}
-	if strings.Contains(rows[0][3], getIconPR()) {
-		t.Fatalf("expected PR icon to be omitted, got %q", rows[0][3])
-	}
-}
-
 func TestUpdateTableHidesPRForMainWorktree(t *testing.T) {
 	cfg := &config.AppConfig{
 		WorktreeDir: t.TempDir(),
@@ -592,46 +557,6 @@ func TestHandleCIStatusLoadedUpdatesCache(t *testing.T) {
 	}
 	if !strings.Contains(m.infoContent, ciIconForConclusion("success")) {
 		t.Fatalf("expected info content to include CI icon %q, got %q", ciIconForConclusion("success"), m.infoContent)
-	}
-}
-
-func TestHandleCIStatusLoadedOmitsIconWhenDisabled(t *testing.T) {
-	// Set default provider for testing
-	SetIconProvider(&NerdFontV3Provider{})
-	cfg := config.DefaultConfig()
-	cfg.WorktreeDir = t.TempDir()
-	cfg.IconSet = "none"
-	m := NewModel(cfg, "")
-	m.state.data.filteredWts = []*models.WorktreeInfo{
-		{
-			Path:   filepath.Join(cfg.WorktreeDir, "wt1"),
-			Branch: "feature",
-			PR: &models.PRInfo{
-				Number: 1,
-				State:  "OPEN",
-				Title:  "Test",
-				URL:    testPRURL,
-			},
-		},
-	}
-	m.state.data.selectedIndex = 0
-
-	msg := ciStatusLoadedMsg{
-		branch: "feature",
-		checks: []*models.CICheck{
-			{Name: "build", Status: "completed", Conclusion: "success"},
-		},
-	}
-
-	_, cmd := m.handleCIStatusLoaded(msg)
-	if cmd != nil {
-		t.Fatal("expected no command")
-	}
-	if !strings.Contains(m.infoContent, "CI Checks:") {
-		t.Fatalf("expected info content to include CI checks, got %q", m.infoContent)
-	}
-	if strings.Contains(m.infoContent, ciIconForConclusion("success")) {
-		t.Fatalf("expected CI icon to be omitted, got %q", m.infoContent)
 	}
 }
 
@@ -1818,7 +1743,7 @@ func TestRenderStatusFilesIconsDisabled(t *testing.T) {
 	SetIconProvider(&NerdFontV3Provider{})
 	cfg := config.DefaultConfig()
 	cfg.WorktreeDir = t.TempDir()
-	cfg.IconSet = "none"
+	cfg.IconSet = "text"
 	m := NewModel(cfg, "")
 	m.state.view.FocusedPane = 1
 	m.state.ui.statusViewport = viewport.New(40, 10)

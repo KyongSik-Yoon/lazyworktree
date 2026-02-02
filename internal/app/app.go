@@ -378,11 +378,7 @@ func NewModel(cfg *config.AppConfig, initialFilter string) *Model {
 
 	// Initialize icon provider based on config
 	switch cfg.IconSet {
-	case "none":
-		SetIconProvider(&TextProvider{})
-	case "emoji":
-		SetIconProvider(&EmojiProvider{})
-	case "text":
+	case "text", "emoji", "none":
 		SetIconProvider(&TextProvider{})
 	default:
 		SetIconProvider(&NerdFontV3Provider{})

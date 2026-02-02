@@ -37,7 +37,7 @@ fuzzy_finder_input: false
 theme: dracula
 
 # Icon set for file trees, PR views, and UI indicators
-# Options: "nerd-font-v3", "emoji", "text", "none" (empty disables icons)
+# Options: "nerd-font-v3", "text"
 icon_set: nerd-font-v3
 
 # Start with the filter focused and automatically select the first match when you press Enter

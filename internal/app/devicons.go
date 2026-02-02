@@ -714,17 +714,9 @@ func combinedStatusIndicator(dirty, hasUpstream bool, ahead, behind, unpushed in
 	case dirtyStr != "":
 		result = dirtyStr + " -"
 	case syncStr != "":
-		if iconSet == "emoji" {
-			result = "   " + syncStr
-		} else {
-			result = "  " + syncStr
-		}
+		result = "  " + syncStr
 	default:
-		if iconSet == "emoji" {
-			return "   -"
-		} else {
-			return "  -"
-		}
+		return "  -"
 	}
 
 	return result

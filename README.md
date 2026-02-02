@@ -407,7 +407,7 @@ git config --local --get-regexp "^lw\."
 * `auto_refresh`: background refresh of git metadata (default: true).
 * `ci_auto_refresh`: periodically refresh CI status for GitHub repositories (default: false).
 * `refresh_interval`: refresh frequency in seconds (default: 10).
-* `icon_set`: choose icon set ("nerd-font-v3", "emoji", "text", "none"). Use `none` or an empty value to suppress icons.
+* `icon_set`: choose icon set ("nerd-font-v3", "text").
 * `max_untracked_diffs`, `max_diff_chars`: limits for diff display (0 disables).
 * `max_name_length`: maximum display length for worktree names (default: 95, 0 disables truncation).
 

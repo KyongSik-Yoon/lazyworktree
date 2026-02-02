@@ -531,30 +531,30 @@ func TestParseConfig(t *testing.T) {
 			},
 		},
 		{
-			name: "icon_set none",
+			name: "icon_set none maps to text",
 			data: map[string]interface{}{
 				"icon_set": "none",
 			},
 			validate: func(t *testing.T, cfg *AppConfig) {
-				assert.Equal(t, "none", cfg.IconSet)
+				assert.Equal(t, "text", cfg.IconSet)
 			},
 		},
 		{
-			name: "icon_set empty disables icons",
+			name: "icon_set empty maps to text",
 			data: map[string]interface{}{
 				"icon_set": "",
 			},
 			validate: func(t *testing.T, cfg *AppConfig) {
-				assert.Equal(t, "none", cfg.IconSet)
+				assert.Equal(t, "text", cfg.IconSet)
 			},
 		},
 		{
-			name: "icon_set emoji",
+			name: "icon_set emoji maps to text",
 			data: map[string]interface{}{
 				"icon_set": "emoji",
 			},
 			validate: func(t *testing.T, cfg *AppConfig) {
-				assert.Equal(t, "emoji", cfg.IconSet)
+				assert.Equal(t, "text", cfg.IconSet)
 			},
 		},
 		{
@@ -572,7 +572,7 @@ func TestParseConfig(t *testing.T) {
 				"icon_set": "invalid",
 			},
 			expectError: true,
-			errContains: "available: nerd-font-v3, emoji, text, none",
+			errContains: "available: nerd-font-v3, text",
 		},
 		{
 			name: "max_untracked_diffs",

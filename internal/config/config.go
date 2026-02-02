@@ -98,7 +98,7 @@ type AppConfig struct {
 	Theme                   string // Theme name: see AvailableThemes in internal/theme
 	MergeMethod             string // Merge method for absorb: "rebase" or "merge" (default: "rebase")
 	FuzzyFinderInput        bool   // Enable fuzzy finder for input suggestions (default: false)
-	IconSet                 string // Icon set: "nerd-font-v3", "emoji", "text", "none" (default: "nerd-font-v3")
+	IconSet                 string // Icon set: "nerd-font-v3", "text" (default: "nerd-font-v3"). Legacy "emoji" and "none" map to "text".
 	IssueBranchNameTemplate string // Template for issue branch names with placeholders: {number}, {title} (default: "issue-{number}-{title}")
 	PRBranchNameTemplate    string // Template for PR branch names with placeholders: {number}, {title} (default: "pr-{number}-{title}")
 	SessionPrefix           string // Prefix for tmux/zellij session names (default: "wt-")
@@ -168,12 +168,12 @@ func DefaultConfig() *AppConfig {
 	}
 }
 
-var iconSetOptions = []string{"nerd-font-v3", "emoji", "text", "none"}
+var iconSetOptions = []string{"nerd-font-v3", "text"}
 
 // IconsEnabled reports whether icon rendering should be enabled for the current icon set.
 func (c *AppConfig) IconsEnabled() bool {
 	iconSet := strings.ToLower(strings.TrimSpace(c.IconSet))
-	return iconSet != "" && iconSet != "none"
+	return iconSet != ""
 }
 
 func iconSetOptionsString() string {
@@ -246,10 +246,12 @@ func parseConfig(data map[string]any) (*AppConfig, error) {
 	if iconSet, ok := data["icon_set"].(string); ok {
 		iconSet = strings.ToLower(strings.TrimSpace(iconSet))
 		if iconSet == "" {
-			cfg.IconSet = "none"
+			cfg.IconSet = "text"
 		} else {
 			switch iconSet {
-			case "nerd-font-v3", "emoji", "text", "none":
+			case "emoji", "none":
+				cfg.IconSet = "text"
+			case "nerd-font-v3", "text":
 				cfg.IconSet = iconSet
 			default:
 				return nil, fmt.Errorf("invalid icon_set %q (available: %s)", iconSet, iconSetOptionsString())
