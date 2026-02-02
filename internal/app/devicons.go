@@ -252,7 +252,7 @@ func (p *TextProvider) GetFileIcon(name string, isDir bool) string {
 }
 
 // GetPRIcon returns the PR icon.
-func (p *TextProvider) GetPRIcon() string { return "[PR]" }
+func (p *TextProvider) GetPRIcon() string { return "" }
 
 // GetIssueIcon returns the issue icon.
 func (p *TextProvider) GetIssueIcon() string { return "[I]" }
