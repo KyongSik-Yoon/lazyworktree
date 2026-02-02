@@ -171,6 +171,7 @@ Custom commands can set new_tab: true to open in a new terminal tab (Kitty with 
 
 **{{HELP_ICON_CONFIGURATION}}Icon Configuration**
 - icon_set: Choose icon set ("nerd-font-v3", "emoji", "text", "none"). Default: "nerd-font-v3". Applies to file icons, UI indicators, and help headings. The text set uses plain labels. Set to "none" or an empty value to suppress icons.
+- If icons render as placeholder glyphs, set icon_set: text or install a font patched with Nerd Font.
 - disable_pr: Disable all PR/MR fetching and display. Default: false.
 
 {{HELP_TIP}}Tip: PR data is not fetched by default for speed.

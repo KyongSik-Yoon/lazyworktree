@@ -58,6 +58,7 @@ lazyworktree --config lw.theme=nord --config lw.sort_mode=active
 
 **Optional:**
 
+* **Nerd Font**: Icons default to Nerd Font glyphs. If they render as placeholders, set `icon_set: text` or install a font patched with Nerd Font.
 * **delta**: Syntax-highlighted diffs (recommended)
 * **lazygit**: Full TUI git control
 * **tmux** / **zellij**: Session management
