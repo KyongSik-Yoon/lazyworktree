@@ -4,7 +4,7 @@ import tea "github.com/charmbracelet/bubbletea"
 
 const (
 	sectionWorktreeActions = "Worktree Actions"
-	sectionCreateShortcuts = "Create Shortcuts"
+	sectionCreateShortcuts = "Create Menu"
 	sectionGitOperations   = "Git Operations"
 	sectionStatusPane      = "Status Pane"
 	sectionLogPane         = "Log Pane"
