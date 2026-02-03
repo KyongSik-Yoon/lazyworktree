@@ -1,3 +1,4 @@
+![Go](https://img.shields.io/badge/go-1.25%2B-blue) ![Coverage](https://img.shields.io/badge/Coverage-56.4%25-yellow)
 # LazyWorktree - Easy Git worktree management for the terminal
 
 <img align="right" width="180" height="180" alt="lw-logo" src="https://github.com/user-attachments/assets/77b63679-40b8-494c-a62d-19ccc39ac38e" />
@@ -6,9 +7,6 @@ LazyWorktree is a TUI for Git worktrees. It provides a keyboard-driven workflow
 for creating, inspecting, and navigating worktrees within a repository.
 
 Built with [BubbleTea](https://github.com/charmbracelet/bubbletea), it focuses on fast iteration, clear state visibility, and tight Git tooling integration.
-
-![Go](https://img.shields.io/badge/go-1.25%2B-blue)
-![Coverage](https://img.shields.io/badge/Coverage-56.4%25-yellow)
 
 ## Screenshot
 
