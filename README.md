@@ -36,19 +36,11 @@ _See other [Screenshots below](#screenshots)_
 * Automatic branch naming via scripts (e.g., LLM tools).
 
 ## Getting Started
-
-1. Install lazyworktree (see below).
-2. Run `lazyworktree` in a Git repository.
-3. Press `?` for help.
-
-Common overrides:
-
-```bash
-lazyworktree --worktree-dir ~/worktrees
-
-# Override config values via command line
-lazyworktree --config lw.theme=nord --config lw.sort_mode=active
-```
+    
+* Install lazyworktree using one of the methods below
+* Navigate to a Git repository in your terminal
+* Run lazyworktree to launch the TUI
+* Press ? to view the interactive help screen
 
 ## Requirements
 
@@ -119,41 +111,7 @@ Shell helpers change directory to the selected worktree on exit. Optional but re
 
 Zsh helpers are in `shell/functions.zsh`. See [./shell/README.md](./shell/README.md) for details.
 
-## CLI Usage
-
-Create, delete, and list worktrees from the command line. Legacy aliases `wt-create` and `wt-delete` still work.
-
-### Listing Worktrees
-
-```bash
-lazyworktree list              # Table output (default)
-lazyworktree list --pristine   # Paths only (scripting)
-lazyworktree list --json       # JSON output
-lazyworktree ls                # Alias
-```
-
-Note: `--pristine` and `--json` are mutually exclusive.
-
-### Creating Worktrees
-
-```bash
-lazyworktree create                          # Auto-generated from current branch
-lazyworktree create my-feature               # Explicit name
-lazyworktree create my-feature --with-change # With uncommitted changes
-lazyworktree create --from-branch main my-feature
-lazyworktree create --from-pr 123
-```
-
-For complete CLI documentation, see `man lazyworktree` or `lazyworktree --help`.
-
-### Deleting Worktrees
-
-```bash
-lazyworktree delete                # Delete worktree and branch
-lazyworktree delete --no-branch    # Delete worktree only
-```
-
-# Key Bindings
+## Key Bindings
 
 | Key | Action |
 | --- | --- |
@@ -752,6 +710,49 @@ branch_name_script: |
 # Use PR/issue number in the prompt
 branch_name_script: |
   aichat -m gemini:gemini-2.5-flash-lite "Generate a title for PR #$LAZYWORKTREE_NUMBER. Output only the title."
+```
+
+## CLI Usage
+
+### Config overrides:
+
+```bash
+lazyworktree --worktree-dir ~/worktrees
+
+# Override config values via command line
+lazyworktree --config lw.theme=nord --config lw.sort_mode=active
+```
+
+Create, delete, and list worktrees from the command line. Legacy aliases `wt-create` and `wt-delete` still work.
+
+### Listing Worktrees
+
+```bash
+lazyworktree list              # Table output (default)
+lazyworktree list --pristine   # Paths only (scripting)
+lazyworktree list --json       # JSON output
+lazyworktree ls                # Alias
+```
+
+Note: `--pristine` and `--json` are mutually exclusive.
+
+### Creating Worktrees
+
+```bash
+lazyworktree create                          # Auto-generated from current branch
+lazyworktree create my-feature               # Explicit name
+lazyworktree create my-feature --with-change # With uncommitted changes
+lazyworktree create --from-branch main my-feature
+lazyworktree create --from-pr 123
+```
+
+For complete CLI documentation, see `man lazyworktree` or `lazyworktree --help`.
+
+### Deleting Worktrees
+
+```bash
+lazyworktree delete                # Delete worktree and branch
+lazyworktree delete --no-branch    # Delete worktree only
 ```
 
 ## Screenshots
