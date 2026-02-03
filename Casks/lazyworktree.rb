@@ -3,28 +3,40 @@ cask "lazyworktree" do
   name "lazyworktree"
   desc "lazyworktree - A TUI tool to manage git worktrees"
   homepage "https://github.com/chmouel/lazyworktree"
-  version "1.13.0"
+  version "1.32.0"
 
   livecheck do
     skip "Auto-generated on release."
   end
 
   binary "lazyworktree"
+  depends_on formula: [
+      "git",
+      "git-delta",
+      "lazygit",
+      "less",
+      "tmux",
+    ]
 
   on_macos do
     url "https://github.com/chmouel/lazyworktree/releases/download/v#{version}/lazyworktree_Darwin_all.tar.gz"
-    sha256 "60a4d3b4fe6213b4f8bbe6750237d4600e553a20c26e7e982682e888565ce01b"
+    sha256 "81b561f45bebee4ecd9d2048b0aeb5ef582eb0fa240608447642bbf6518ddb23"
   end
 
   on_linux do
     on_intel do
       url "https://github.com/chmouel/lazyworktree/releases/download/v#{version}/lazyworktree_Linux_x86_64.tar.gz"
-      sha256 "7ec23275e09b7f5c6715bd4d5eaa1c69e865ef58e85cb0243fdfc85d40d60192"
+      sha256 "a212fe71a78a6ffb3bbadfdf5d03f394e6951d5afec0a4ddf66ebde28b47065b"
     end
     on_arm do
       url "https://github.com/chmouel/lazyworktree/releases/download/v#{version}/lazyworktree_Linux_arm64.tar.gz"
-      sha256 "b040b8ff61bb646ecaec2df0af5a8a18f4e831431c9286ac185b35637dfbcf6f"
+      sha256 "0cd476b64d242a0eb4b26eeee91ca88be17a3b5d527cd96f442d14c653d73df3"
     end
+  end
+
+  caveats do
+    "On first run, macOS may block the binary. To remove the quarantine attribute:"
+    "  xattr -d com.apple.quarantine #{staged_path}/lazyworktree"
   end
 
   # No zap stanza required
