@@ -339,6 +339,42 @@ func (m *Model) handleBuiltInKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
+	case "h":
+		// Navigate left - go to pane 0 if not already there
+		if m.state.view.FocusedPane != 0 {
+			m.state.view.ZoomedPane = -1
+			wasPane1 := m.state.view.FocusedPane == 1
+			m.state.view.FocusedPane = 0
+			m.state.ui.worktreeTable.Focus()
+			if wasPane1 {
+				m.ciCheckIndex = -1
+				m.rebuildStatusContentWithHighlight()
+			}
+		}
+		return m, nil
+
+	case "l":
+		// Navigate right - cycle through right panels (1, 2)
+		switch m.state.view.FocusedPane {
+		case 0:
+			// From left panel, go to status panel (1)
+			m.state.view.ZoomedPane = -1
+			m.state.view.FocusedPane = 1
+			m.rebuildStatusContentWithHighlight()
+		case 1:
+			// From status panel, go to log panel (2)
+			m.state.view.ZoomedPane = -1
+			m.state.view.FocusedPane = 2
+			m.ciCheckIndex = -1
+			m.state.ui.logTable.Focus()
+		default:
+			// From log panel (2), go back to status panel (1)
+			m.state.view.ZoomedPane = -1
+			m.state.view.FocusedPane = 1
+			m.rebuildStatusContentWithHighlight()
+		}
+		return m, nil
+
 	case "j", "down":
 		return m.handleNavigationDown(msg)
 

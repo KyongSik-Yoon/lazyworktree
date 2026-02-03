@@ -148,6 +148,7 @@ Zsh helpers are in `shell/functions.zsh`. See [./shell/README.md](./shell/README
 | `1` | Focus Worktree pane (toggle zoom if focused) |
 | `2` | Focus Status pane (toggle zoom if focused) |
 | `3` | Focus Log pane (toggle zoom if focused) |
+| `h`, `l` | Navigate left/right (h=worktree pane, l=cycle right panes) |
 | `Tab`, `]` | Cycle to next pane |
 | `[` | Cycle to previous pane |
 | `=` | Toggle zoom for focused pane (full screen) |
