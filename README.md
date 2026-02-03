@@ -1,4 +1,5 @@
 ![Go](https://img.shields.io/badge/go-1.25%2B-blue) ![Coverage](https://img.shields.io/badge/Coverage-56.4%25-yellow)
+
 # LazyWorktree - Easy Git worktree management for the terminal
 
 <img align="right" width="180" height="180" alt="lw-logo" src="https://github.com/user-attachments/assets/77b63679-40b8-494c-a62d-19ccc39ac38e" />
@@ -120,60 +121,39 @@ Zsh helpers are in `shell/functions.zsh`. See [./shell/README.md](./shell/README
 
 ## CLI Usage
 
-Create and delete worktrees from the command line. Legacy aliases `wt-create` and `wt-delete` still work.
+Create, delete, and list worktrees from the command line. Legacy aliases `wt-create` and `wt-delete` still work.
+
+### Listing Worktrees
+
+```bash
+lazyworktree list              # Table output (default)
+lazyworktree list --pristine   # Paths only (scripting)
+lazyworktree list --json       # JSON output
+lazyworktree ls                # Alias
+```
+
+Note: `--pristine` and `--json` are mutually exclusive.
 
 ### Creating Worktrees
 
-**Create from current branch:**
-
 ```bash
-# Auto-generated name from current branch
-lazyworktree create
-
-# Explicit name
-lazyworktree create my-feature
-
-# With uncommitted changes
-lazyworktree create --with-change
-
-# Explicit name + changes
-lazyworktree create my-feature --with-change
+lazyworktree create                          # Auto-generated from current branch
+lazyworktree create my-feature               # Explicit name
+lazyworktree create my-feature --with-change # With uncommitted changes
+lazyworktree create --from-branch main my-feature
+lazyworktree create --from-pr 123
 ```
 
-**Create from a specific branch:**
-
-```bash
-# Explicit name
-lazyworktree create --from-branch main my-feature [--with-change] [--silent] [--output-selection /tmp/selection]
-
-# Auto-generated name (sanitised from source branch)
-lazyworktree create --from-branch feature/new-feature [--with-change] [--silent] [--output-selection /tmp/selection]
-```
-
-Name can be explicit or auto-generated:
-
-* `lw create my-feature` - explicit name from current branch
-* `lw create --from-branch main my-feature` - explicit name from specific branch
-* `lw create` - auto-generated from current branch
-* `lw create --from-branch feature/cool-thing` - creates "feature-cool-thing"
-* `lw create --generate` - force auto-generation even with positional argument
-* Names are sanitised to lowercase alphanumeric with hyphens
-
-**Create from a PR:**
-
-```bash
-lazyworktree create --from-pr 123 [--silent] [--output-selection /tmp/selection]
-```
+For complete CLI documentation, see `man lazyworktree` or `lazyworktree --help`.
 
 ### Deleting Worktrees
 
 ```bash
-lazyworktree delete [--no-branch] [--silent]
+lazyworktree delete                # Delete worktree and branch
+lazyworktree delete --no-branch    # Delete worktree only
 ```
 
-Deletes worktree and branch (if names match). Use `--no-branch` to skip branch deletion.
-
-## Key Bindings
+# Key Bindings
 
 | Key | Action |
 | --- | --- |

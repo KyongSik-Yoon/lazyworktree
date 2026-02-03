@@ -1,7 +1,9 @@
 package main
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"io"
 	"os"
 	"path/filepath"
@@ -10,6 +12,9 @@ import (
 
 	"github.com/chmouel/lazyworktree/internal/config"
 	"github.com/chmouel/lazyworktree/internal/git"
+	"github.com/chmouel/lazyworktree/internal/models"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	urfavecli "github.com/urfave/cli/v3"
 )
 
@@ -138,6 +143,65 @@ func TestHandleCreateValidation(t *testing.T) {
 			}
 
 			// Restore original action
+			cmd.Action = savedAction
+		})
+	}
+}
+
+func TestHandleListValidation(t *testing.T) {
+	tests := []struct {
+		name        string
+		args        []string
+		expectError bool
+		errorMsg    string
+	}{
+		{
+			name:        "pristine and json together",
+			args:        []string{"lazyworktree", "list", "--pristine", "--json"},
+			expectError: true,
+			errorMsg:    "mutually exclusive",
+		},
+		{
+			name:        "pristine only",
+			args:        []string{"lazyworktree", "list", "--pristine"},
+			expectError: false,
+		},
+		{
+			name:        "json only",
+			args:        []string{"lazyworktree", "list", "--json"},
+			expectError: false,
+		},
+		{
+			name:        "default output",
+			args:        []string{"lazyworktree", "list"},
+			expectError: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cmd := listCommand()
+			app := &urfavecli.Command{
+				Name:     "lazyworktree",
+				Commands: []*urfavecli.Command{cmd},
+			}
+
+			savedAction := cmd.Action
+			cmd.Action = func(ctx context.Context, c *urfavecli.Command) error {
+				return validateListFlags(c)
+			}
+
+			err := app.Run(context.Background(), tt.args)
+
+			if tt.expectError {
+				require.Error(t, err)
+				if tt.errorMsg != "" {
+					assert.Contains(t, err.Error(), tt.errorMsg)
+				}
+			} else {
+				require.NoError(t, err)
+			}
+
 			cmd.Action = savedAction
 		})
 	}
@@ -351,4 +415,273 @@ func TestHandleDeleteFlags(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestListCommandFlags(t *testing.T) {
+	tests := []struct {
+		name     string
+		args     []string
+		pristine bool
+		json     bool
+	}{
+		{
+			name:     "default flags (verbose table)",
+			args:     []string{"lazyworktree", "list"},
+			pristine: false,
+			json:     false,
+		},
+		{
+			name:     "pristine flag",
+			args:     []string{"lazyworktree", "list", "--pristine"},
+			pristine: true,
+			json:     false,
+		},
+		{
+			name:     "pristine short flag",
+			args:     []string{"lazyworktree", "list", "-p"},
+			pristine: true,
+			json:     false,
+		},
+		{
+			name:     "json flag",
+			args:     []string{"lazyworktree", "list", "--json"},
+			pristine: false,
+			json:     true,
+		},
+		{
+			name:     "ls alias",
+			args:     []string{"lazyworktree", "ls"},
+			pristine: false,
+			json:     false,
+		},
+		{
+			name:     "ls alias with pristine",
+			args:     []string{"lazyworktree", "ls", "-p"},
+			pristine: true,
+			json:     false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cmd := listCommand()
+			var capturedPristine, capturedJSON bool
+
+			cmd.Action = func(_ context.Context, c *urfavecli.Command) error {
+				capturedPristine = c.Bool("pristine")
+				capturedJSON = c.Bool("json")
+				return nil
+			}
+
+			app := &urfavecli.Command{
+				Name:     "lazyworktree",
+				Commands: []*urfavecli.Command{cmd},
+			}
+
+			err := app.Run(context.Background(), tt.args)
+			require.NoError(t, err)
+			assert.Equal(t, tt.pristine, capturedPristine, "pristine flag mismatch")
+			assert.Equal(t, tt.json, capturedJSON, "json flag mismatch")
+		})
+	}
+}
+
+func TestBuildStatusString(t *testing.T) {
+	tests := []struct {
+		name     string
+		wt       *models.WorktreeInfo
+		expected string
+	}{
+		{
+			name:     "clean worktree",
+			wt:       &models.WorktreeInfo{Dirty: false, HasUpstream: true},
+			expected: "✓",
+		},
+		{
+			name:     "dirty worktree",
+			wt:       &models.WorktreeInfo{Dirty: true, HasUpstream: true},
+			expected: "~",
+		},
+		{
+			name:     "ahead only",
+			wt:       &models.WorktreeInfo{Dirty: false, HasUpstream: true, Ahead: 3},
+			expected: "✓↑3",
+		},
+		{
+			name:     "behind only",
+			wt:       &models.WorktreeInfo{Dirty: false, HasUpstream: true, Behind: 2},
+			expected: "✓↓2",
+		},
+		{
+			name:     "ahead and behind",
+			wt:       &models.WorktreeInfo{Dirty: false, HasUpstream: true, Ahead: 3, Behind: 2},
+			expected: "✓↓2↑3",
+		},
+		{
+			name:     "dirty with ahead and behind",
+			wt:       &models.WorktreeInfo{Dirty: true, HasUpstream: true, Ahead: 1, Behind: 5},
+			expected: "~↓5↑1",
+		},
+		{
+			name:     "unpushed without upstream",
+			wt:       &models.WorktreeInfo{Dirty: false, HasUpstream: false, Unpushed: 4},
+			expected: "✓?4",
+		},
+		{
+			name:     "unpushed with upstream is ignored",
+			wt:       &models.WorktreeInfo{Dirty: false, HasUpstream: true, Unpushed: 4},
+			expected: "✓",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := buildStatusString(tt.wt)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestOutputListJSON(t *testing.T) {
+	worktrees := []*models.WorktreeInfo{
+		{
+			Path:        "/home/user/worktrees/main",
+			Branch:      "main",
+			IsMain:      true,
+			Dirty:       false,
+			Ahead:       0,
+			Behind:      0,
+			HasUpstream: true,
+			LastActive:  "2 hours ago",
+		},
+		{
+			Path:        "/home/user/worktrees/feature-x",
+			Branch:      "feature/x",
+			IsMain:      false,
+			Dirty:       true,
+			Ahead:       3,
+			Behind:      1,
+			HasUpstream: true,
+			LastActive:  "5 mins ago",
+		},
+	}
+
+	// Capture stdout
+	oldStdout := os.Stdout
+	r, w, err := os.Pipe()
+	require.NoError(t, err)
+	os.Stdout = w
+	t.Cleanup(func() {
+		os.Stdout = oldStdout
+		_ = w.Close()
+		_ = r.Close()
+	})
+
+	err = outputListJSON(worktrees)
+	require.NoError(t, err)
+
+	_ = w.Close()
+
+	var buf bytes.Buffer
+	_, _ = io.Copy(&buf, r)
+
+	var result []worktreeJSON
+	err = json.Unmarshal(buf.Bytes(), &result)
+	require.NoError(t, err)
+
+	assert.Len(t, result, 2)
+	assert.Equal(t, "/home/user/worktrees/main", result[0].Path)
+	assert.Equal(t, "main", result[0].Name)
+	assert.Equal(t, "main", result[0].Branch)
+	assert.True(t, result[0].IsMain)
+	assert.False(t, result[0].Dirty)
+
+	assert.Equal(t, "/home/user/worktrees/feature-x", result[1].Path)
+	assert.Equal(t, "feature-x", result[1].Name)
+	assert.Equal(t, "feature/x", result[1].Branch)
+	assert.False(t, result[1].IsMain)
+	assert.True(t, result[1].Dirty)
+	assert.Equal(t, 3, result[1].Ahead)
+	assert.Equal(t, 1, result[1].Behind)
+}
+
+func TestOutputListVerbose(t *testing.T) {
+	worktrees := []*models.WorktreeInfo{
+		{
+			Path:        "/home/user/worktrees/main",
+			Branch:      "main",
+			IsMain:      true,
+			Dirty:       false,
+			HasUpstream: true,
+			LastActive:  "2 hours ago",
+		},
+		{
+			Path:        "/home/user/worktrees/feature-x",
+			Branch:      "feature/x",
+			IsMain:      false,
+			Dirty:       true,
+			Ahead:       3,
+			Behind:      2,
+			HasUpstream: true,
+			LastActive:  "5 mins ago",
+		},
+	}
+
+	// Capture stdout
+	oldStdout := os.Stdout
+	r, w, err := os.Pipe()
+	require.NoError(t, err)
+	os.Stdout = w
+	t.Cleanup(func() {
+		os.Stdout = oldStdout
+		_ = w.Close()
+		_ = r.Close()
+	})
+
+	err = outputListVerbose(worktrees)
+	require.NoError(t, err)
+
+	_ = w.Close()
+
+	var buf bytes.Buffer
+	_, _ = io.Copy(&buf, r)
+	output := buf.String()
+
+	// Verify header
+	assert.Contains(t, output, "NAME")
+	assert.Contains(t, output, "BRANCH")
+	assert.Contains(t, output, "STATUS")
+	assert.Contains(t, output, "LAST ACTIVE")
+	assert.Contains(t, output, "PATH")
+
+	// Verify content
+	assert.Contains(t, output, "main")
+	assert.Contains(t, output, "feature-x")
+	assert.Contains(t, output, "feature/x")
+	assert.Contains(t, output, "2 hours ago")
+	assert.Contains(t, output, "5 mins ago")
+
+	// Verify paths
+	assert.Contains(t, output, "/home/user/worktrees/main")
+	assert.Contains(t, output, "/home/user/worktrees/feature-x")
+
+	// Verify status indicators
+	assert.Contains(t, output, "✓")  // clean
+	assert.Contains(t, output, "~")  // dirty
+	assert.Contains(t, output, "↑3") // ahead
+	assert.Contains(t, output, "↓2") // behind
+}
+
+func TestSortWorktreesByPath(t *testing.T) {
+	worktrees := []*models.WorktreeInfo{
+		{Path: "/worktrees/zeta"},
+		{Path: "/worktrees/alpha"},
+		{Path: "/worktrees/beta"},
+	}
+
+	sortWorktreesByPath(worktrees)
+
+	assert.Equal(t, "/worktrees/alpha", worktrees[0].Path)
+	assert.Equal(t, "/worktrees/beta", worktrees[1].Path)
+	assert.Equal(t, "/worktrees/zeta", worktrees[2].Path)
 }

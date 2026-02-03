@@ -38,6 +38,7 @@ func main() {
 		Commands: []*cli.Command{
 			createCommand(),
 			deleteCommand(),
+			listCommand(),
 		},
 
 		Action: func(ctx context.Context, cmd *cli.Command) error {

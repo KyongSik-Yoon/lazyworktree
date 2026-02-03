@@ -152,9 +152,7 @@ Search Mode:
 
 **{{HELP_SHELL_COMPLETION}}Shell Completion**
 Generate completions: lazyworktree --completion <bash|zsh|fish>
-
-**{{HELP_CONFIGURATION}}CLI Output**
-The lazyworktree create command writes the created worktree path to stdout by default. Use --output-selection to write it to a file instead.
+For CLI commands, see: man lazyworktree or lazyworktree --help
 
 **{{HELP_CONFIGURATION}}Configuration & Overrides**
 Configuration is read from multiple sources (in order of precedence):

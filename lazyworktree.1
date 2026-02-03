@@ -153,8 +153,23 @@ Skip branch deletion entirely (even if worktree name matches branch name).
 Suppress all progress messages to stderr. Useful for scripting and automation.
 .
 .SH EXAMPLES
-.SS CLI Operations
-Create a worktree from current branch:
+.SS Worktree Management
+List worktrees (table format):
+.br
+.B lazyworktree list
+.
+.PP
+List worktrees (paths only, suitable for scripting):
+.br
+.B lazyworktree list \-\-pristine
+.
+.PP
+List worktrees as JSON:
+.br
+.B lazyworktree list \-\-json
+.
+.PP
+Create from current branch (auto-generated name):
 .br
 .B lazyworktree create
 .
@@ -164,9 +179,9 @@ Create from current branch with explicit name:
 .B lazyworktree create my\-feature
 .
 .PP
-Create from current branch with changes:
+Create from specific branch:
 .br
-.B lazyworktree create \-\-with\-change
+.B lazyworktree create \-\-from\-branch feature/new\-feature
 .
 .PP
 Create from specific branch with explicit name:
@@ -174,29 +189,24 @@ Create from specific branch with explicit name:
 .B lazyworktree create \-\-from\-branch main my\-feature
 .
 .PP
-Create from specific branch with auto-generated name:
-.br
-.B lazyworktree create \-\-from\-branch feature/new\-feature
-.
-.PP
-Create from PR:
+Create from PR number:
 .br
 .B lazyworktree create \-\-from\-pr 123
 .
 .PP
-Delete a worktree (and branch if name matches):
+Create with uncommitted changes:
+.br
+.B lazyworktree create my\-feature \-\-with\-change
+.
+.PP
+Delete worktree (and branch if name matches):
 .br
 .B lazyworktree delete
 .
 .PP
-Delete a worktree without deleting the branch:
+Delete worktree without deleting branch:
 .br
 .B lazyworktree delete \-\-no\-branch
-.
-.PP
-Create a worktree silently (for scripting):
-.br
-.B lazyworktree create \-\-from\-branch feature/new\-feature \-\-silent
 .
 .SS TUI Launch
 Launch the TUI (default):

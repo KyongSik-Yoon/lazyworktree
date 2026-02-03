@@ -3,16 +3,19 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"slices"
 	"strings"
+	"text/tabwriter"
 
 	"github.com/chmouel/lazyworktree/internal/cli"
 	"github.com/chmouel/lazyworktree/internal/config"
 	"github.com/chmouel/lazyworktree/internal/git"
 	"github.com/chmouel/lazyworktree/internal/log"
+	"github.com/chmouel/lazyworktree/internal/models"
 	"github.com/chmouel/lazyworktree/internal/utils"
 	appiCli "github.com/urfave/cli/v3"
 )
@@ -328,6 +331,173 @@ func writeOutputSelection(outputSelection, outputPath string) error {
 		return err
 	}
 	return nil
+}
+
+func listCommand() *appiCli.Command {
+	return &appiCli.Command{
+		Name:    "list",
+		Aliases: []string{"ls"},
+		Usage:   "List all worktrees",
+		Action: func(ctx context.Context, cmd *appiCli.Command) error {
+			if handleSubcommandCompletion(cmd) {
+				return nil
+			}
+			return handleListAction(ctx, cmd)
+		},
+		ShellComplete: subcommandShellComplete,
+		Flags: []appiCli.Flag{
+			&appiCli.BoolFlag{
+				Name:    "pristine",
+				Aliases: []string{"p"},
+				Usage:   "Output paths only (one per line, suitable for scripting)",
+			},
+			&appiCli.BoolFlag{
+				Name:  "json",
+				Usage: "Output as JSON",
+			},
+		},
+	}
+}
+
+func validateListFlags(cmd *appiCli.Command) error {
+	pristine := cmd.Bool("pristine")
+	jsonOutput := cmd.Bool("json")
+	if pristine && jsonOutput {
+		return fmt.Errorf("--pristine and --json are mutually exclusive")
+	}
+	return nil
+}
+
+func sortWorktreesByPath(worktrees []*models.WorktreeInfo) {
+	slices.SortFunc(worktrees, func(a, b *models.WorktreeInfo) int {
+		return strings.Compare(a.Path, b.Path)
+	})
+}
+
+// worktreeJSON represents the JSON output format for a worktree.
+type worktreeJSON struct {
+	Path       string `json:"path"`
+	Name       string `json:"name"`
+	Branch     string `json:"branch"`
+	IsMain     bool   `json:"is_main"`
+	Dirty      bool   `json:"dirty"`
+	Ahead      int    `json:"ahead"`
+	Behind     int    `json:"behind"`
+	Unpushed   int    `json:"unpushed,omitempty"`
+	LastActive string `json:"last_active"`
+}
+
+// handleListAction handles the list subcommand action.
+func handleListAction(ctx context.Context, cmd *appiCli.Command) error {
+	defer func() {
+		_ = log.Close()
+	}()
+	if err := validateListFlags(cmd); err != nil {
+		return err
+	}
+	cfg, err := loadCLIConfigFunc(
+		cmd.String("config-file"),
+		cmd.String("worktree-dir"),
+		cmd.StringSlice("config"),
+	)
+	if err != nil {
+		return err
+	}
+
+	gitSvc := newCLIGitServiceFunc(cfg)
+
+	worktrees, err := gitSvc.GetWorktrees(ctx)
+	if err != nil {
+		return err
+	}
+
+	sortWorktreesByPath(worktrees)
+
+	pristine := cmd.Bool("pristine")
+	jsonOutput := cmd.Bool("json")
+
+	if jsonOutput {
+		return outputListJSON(worktrees)
+	}
+
+	if pristine {
+		// Simple path output for scripting
+		for _, wt := range worktrees {
+			fmt.Println(wt.Path)
+		}
+		return nil
+	}
+
+	// Default: verbose table output
+	return outputListVerbose(worktrees)
+}
+
+// outputListJSON outputs worktrees as JSON.
+func outputListJSON(worktrees []*models.WorktreeInfo) error {
+	output := make([]worktreeJSON, 0, len(worktrees))
+	for _, wt := range worktrees {
+		name := filepath.Base(wt.Path)
+		output = append(output, worktreeJSON{
+			Path:       wt.Path,
+			Name:       name,
+			Branch:     wt.Branch,
+			IsMain:     wt.IsMain,
+			Dirty:      wt.Dirty,
+			Ahead:      wt.Ahead,
+			Behind:     wt.Behind,
+			Unpushed:   wt.Unpushed,
+			LastActive: wt.LastActive,
+		})
+	}
+
+	enc := json.NewEncoder(os.Stdout)
+	enc.SetIndent("", "  ")
+	if err := enc.Encode(output); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// outputListVerbose outputs worktrees in a formatted table.
+func outputListVerbose(worktrees []*models.WorktreeInfo) error {
+	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	fmt.Fprintln(w, "NAME\tBRANCH\tSTATUS\tLAST ACTIVE\tPATH")
+
+	for _, wt := range worktrees {
+		name := filepath.Base(wt.Path)
+		status := buildStatusString(wt)
+		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n", name, wt.Branch, status, wt.LastActive, wt.Path)
+	}
+
+	if err := w.Flush(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// buildStatusString creates a status indicator string for a worktree.
+func buildStatusString(wt *models.WorktreeInfo) string {
+	var parts []string
+
+	if wt.Dirty {
+		parts = append(parts, "~")
+	} else {
+		parts = append(parts, "✓")
+	}
+
+	if wt.Behind > 0 {
+		parts = append(parts, fmt.Sprintf("↓%d", wt.Behind))
+	}
+	if wt.Ahead > 0 {
+		parts = append(parts, fmt.Sprintf("↑%d", wt.Ahead))
+	}
+	if !wt.HasUpstream && wt.Unpushed > 0 {
+		parts = append(parts, fmt.Sprintf("?%d", wt.Unpushed))
+	}
+
+	return strings.Join(parts, "")
 }
 
 // handleDeleteAction handles the delete subcommand action.
