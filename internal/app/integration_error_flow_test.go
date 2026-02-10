@@ -52,8 +52,8 @@ func TestIntegrationCreateFromPRValidationErrors(t *testing.T) {
 		t.Fatalf("expected PR selection screen, got active=%v type=%v", m.state.ui.screenManager.IsActive(), m.state.ui.screenManager.Type())
 	}
 
-	prScreen := m.state.ui.screenManager.Current().(*appscreen.PRSelectionScreen)
-	if prScreen == nil {
+	prScreen, ok := m.state.ui.screenManager.Current().(*appscreen.PRSelectionScreen)
+	if !ok || prScreen == nil {
 		t.Fatal("expected PRSelectionScreen to be set")
 	}
 

@@ -1360,18 +1360,20 @@ func TestBranchSelectionWithLocalBranch(t *testing.T) {
 
 	listScreen = m.state.ui.screenManager.Current().(*appscreen.ListSelectionScreen)
 
-	var featureItem *appscreen.SelectionItem
+	var featureItem appscreen.SelectionItem
+	featureFound := false
 	for i := range listScreen.Items {
 		if listScreen.Items[i].ID == featureBranch {
-			featureItem = &listScreen.Items[i]
+			featureItem = listScreen.Items[i]
+			featureFound = true
 			break
 		}
 	}
-	if featureItem == nil {
+	if !featureFound {
 		t.Fatalf("expected to find %s in branch list", featureBranch)
 	}
 
-	listScreen.OnSelect(*featureItem)
+	listScreen.OnSelect(featureItem)
 	if !m.state.ui.screenManager.IsActive() || m.state.ui.screenManager.Type() != appscreen.TypeListSelect {
 		t.Fatal("expected checkout/create prompt screen")
 	}
@@ -1411,18 +1413,20 @@ func TestBranchSelectionWithSlashLocalBranch(t *testing.T) {
 
 	listScreen = m.state.ui.screenManager.Current().(*appscreen.ListSelectionScreen)
 
-	var slashItem *appscreen.SelectionItem
+	var slashItem appscreen.SelectionItem
+	slashFound := false
 	for i := range listScreen.Items {
 		if listScreen.Items[i].ID == branchWithSlash {
-			slashItem = &listScreen.Items[i]
+			slashItem = listScreen.Items[i]
+			slashFound = true
 			break
 		}
 	}
-	if slashItem == nil {
+	if !slashFound {
 		t.Fatalf("expected to find %s in branch list", branchWithSlash)
 	}
 
-	listScreen.OnSelect(*slashItem)
+	listScreen.OnSelect(slashItem)
 	if !m.state.ui.screenManager.IsActive() || m.state.ui.screenManager.Type() != appscreen.TypeListSelect {
 		t.Fatal("expected checkout/create prompt screen")
 	}
@@ -1462,18 +1466,20 @@ func TestBranchSelectionSkipsCheckoutForCheckedOutBranch(t *testing.T) {
 
 	listScreen = m.state.ui.screenManager.Current().(*appscreen.ListSelectionScreen)
 
-	var mainItem *appscreen.SelectionItem
+	var mainItem appscreen.SelectionItem
+	mainFound := false
 	for i := range listScreen.Items {
 		if listScreen.Items[i].ID == repo.branch {
-			mainItem = &listScreen.Items[i]
+			mainItem = listScreen.Items[i]
+			mainFound = true
 			break
 		}
 	}
-	if mainItem == nil {
+	if !mainFound {
 		t.Fatalf("expected to find %s in branch list", repo.branch)
 	}
 
-	listScreen.OnSelect(*mainItem)
+	listScreen.OnSelect(mainItem)
 	if !m.state.ui.screenManager.IsActive() || m.state.ui.screenManager.Type() != appscreen.TypeInput {
 		t.Fatal("expected input screen for branch name")
 	}

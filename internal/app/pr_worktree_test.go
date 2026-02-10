@@ -341,8 +341,7 @@ func TestGetWorktreeForBranch(t *testing.T) {
 	found := m.getWorktreeForBranch("feature-branch")
 	if found == nil {
 		t.Fatal("Expected to find worktree for branch 'feature-branch'")
-	}
-	if found.Path != "/path/to/feature" {
+	} else if found.Path != "/path/to/feature" {
 		t.Errorf("Expected path '/path/to/feature', got %q", found.Path)
 	}
 

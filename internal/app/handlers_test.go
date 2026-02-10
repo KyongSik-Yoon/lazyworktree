@@ -1870,8 +1870,7 @@ func TestBuildStatusTreeEmpty(t *testing.T) {
 	tree := services.BuildStatusTree([]StatusFile{})
 	if tree == nil {
 		t.Fatal("expected non-nil tree root")
-	}
-	if tree.Path != "" {
+	} else if tree.Path != "" {
 		t.Errorf("expected empty root path, got %q", tree.Path)
 	}
 	if len(tree.Children) != 0 {
@@ -3872,8 +3871,7 @@ func TestPRDataLoadedSyncAfterWorktreeReload(t *testing.T) {
 	}
 	if restoredPR == nil {
 		t.Fatal("expected PR to be restored to wt1")
-	}
-	if restoredPR.Number != 42 {
+	} else if restoredPR.Number != 42 {
 		t.Fatalf("expected PR number 42, got %d", restoredPR.Number)
 	}
 

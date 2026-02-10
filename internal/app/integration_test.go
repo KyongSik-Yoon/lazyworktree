@@ -22,13 +22,11 @@ func TestModelInitialization(t *testing.T) {
 
 	if m == nil {
 		t.Fatal("NewModel returned nil")
-	}
-
-	if m.config != cfg {
+	} else if m.config != cfg {
 		t.Error("Model config not set correctly")
 	}
 
-	if m.state.view.FocusedPane != 0 {
+	if m != nil && m.state.view.FocusedPane != 0 {
 		t.Errorf("Expected focusedPane to be 0, got %d", m.state.view.FocusedPane)
 	}
 

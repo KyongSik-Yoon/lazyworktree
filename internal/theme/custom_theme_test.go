@@ -12,9 +12,7 @@ func TestGetThemeWithCustoms_BuiltInTheme(t *testing.T) {
 
 	// Test that built-in themes still work
 	thm := GetThemeWithCustoms("dracula", customThemes)
-	if thm == nil {
-		t.Fatal("expected theme, got nil")
-	}
+	requireTheme(t, thm)
 
 	// Verify it's actually Dracula theme
 	if thm.Accent != lipgloss.Color("#BD93F9") {
@@ -31,9 +29,7 @@ func TestGetThemeWithCustoms_CustomThemeWithBase(t *testing.T) {
 	}
 
 	thm := GetThemeWithCustoms("my-theme", customThemes)
-	if thm == nil {
-		t.Fatal("expected theme, got nil")
-	}
+	requireTheme(t, thm)
 
 	// Should have custom accent
 	if thm.Accent != lipgloss.Color("#FF6B9D") {
@@ -64,9 +60,7 @@ func TestGetThemeWithCustoms_CustomThemeWithoutBase(t *testing.T) {
 	}
 
 	thm := GetThemeWithCustoms("complete-theme", customThemes)
-	if thm == nil {
-		t.Fatal("expected theme, got nil")
-	}
+	requireTheme(t, thm)
 
 	if thm.Accent != lipgloss.Color("#00FF00") {
 		t.Errorf("expected accent #00FF00, got %s", thm.Accent)
@@ -86,9 +80,7 @@ func TestGetThemeWithCustoms_CustomInheritsCustom(t *testing.T) {
 	}
 
 	thm := GetThemeWithCustoms("derived", customThemes)
-	if thm == nil {
-		t.Fatal("expected theme, got nil")
-	}
+	requireTheme(t, thm)
 
 	// Should have derived accent (overrides base-custom)
 	if thm.Accent != lipgloss.Color("#00FF00") {
@@ -118,9 +110,7 @@ func TestGetThemeWithCustoms_MultiLevelInheritance(t *testing.T) {
 	}
 
 	thm := GetThemeWithCustoms("level3", customThemes)
-	if thm == nil {
-		t.Fatal("expected theme, got nil")
-	}
+	requireTheme(t, thm)
 
 	// Should have level3 accent
 	if thm.Accent != lipgloss.Color("#00FF00") {
@@ -142,9 +132,7 @@ func TestGetThemeWithCustoms_UnknownTheme(t *testing.T) {
 	customThemes := make(map[string]*CustomThemeData)
 
 	thm := GetThemeWithCustoms("nonexistent", customThemes)
-	if thm == nil {
-		t.Fatal("expected fallback theme, got nil")
-	}
+	requireTheme(t, thm)
 
 	// Should fallback to Dracula
 	if thm.Accent != lipgloss.Color("#BD93F9") {
@@ -156,9 +144,7 @@ func TestGetThemeWithCustoms_EmptyName(t *testing.T) {
 	customThemes := make(map[string]*CustomThemeData)
 
 	thm := GetThemeWithCustoms("", customThemes)
-	if thm == nil {
-		t.Fatal("expected fallback theme, got nil")
-	}
+	requireTheme(t, thm)
 
 	// Should fallback to Dracula
 	if thm.Accent != lipgloss.Color("#BD93F9") {
@@ -289,6 +275,13 @@ func TestIsBuiltInTheme(t *testing.T) {
 
 	if isBuiltInTheme("nonexistent") {
 		t.Error("expected nonexistent theme to not be built-in")
+	}
+}
+
+func requireTheme(t *testing.T, thm *Theme) {
+	t.Helper()
+	if thm == nil {
+		t.Fatal("expected theme, got nil")
 	}
 }
 

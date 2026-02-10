@@ -446,8 +446,8 @@ func TestShowThemeSelection(t *testing.T) {
 		t.Fatalf("expected list selection screen, got %v", m.state.ui.screenManager.Type())
 	}
 
-	listScreen := m.state.ui.screenManager.Current().(*appscreen.ListSelectionScreen)
-	if listScreen == nil {
+	listScreen, ok := m.state.ui.screenManager.Current().(*appscreen.ListSelectionScreen)
+	if !ok || listScreen == nil {
 		t.Fatal("listScreen should be initialized")
 	}
 
@@ -720,8 +720,8 @@ func TestShowCherryPickCreatesListSelection(t *testing.T) {
 	if m.state.ui.screenManager.Type() != appscreen.TypeListSelect {
 		t.Errorf("Expected list selection screen, got %v", m.state.ui.screenManager.Type())
 	}
-	listScreen := m.state.ui.screenManager.Current().(*appscreen.ListSelectionScreen)
-	if listScreen == nil {
+	listScreen, ok := m.state.ui.screenManager.Current().(*appscreen.ListSelectionScreen)
+	if !ok || listScreen == nil {
 		t.Fatal("Expected listScreen to be set")
 	}
 	if !strings.Contains(listScreen.Title, "Cherry-pick") {
@@ -784,17 +784,22 @@ func TestShowCherryPickMarksDirtyWorktrees(t *testing.T) {
 
 	m.showCherryPick()
 
-	listScreen := m.state.ui.screenManager.Current().(*appscreen.ListSelectionScreen)
+	listScreen, ok := m.state.ui.screenManager.Current().(*appscreen.ListSelectionScreen)
+	if !ok || listScreen == nil {
+		t.Fatal("Expected listScreen to be set")
+	}
 	// Find the dirty worktree item
-	var dirtyItem *appscreen.SelectionItem
+	var dirtyItem appscreen.SelectionItem
+	found := false
 	for i := range listScreen.Items {
 		if listScreen.Items[i].ID == "/path/to/dirty" {
-			dirtyItem = &listScreen.Items[i]
+			dirtyItem = listScreen.Items[i]
+			found = true
 			break
 		}
 	}
 
-	if dirtyItem == nil {
+	if !found {
 		t.Fatal("Expected dirty worktree in selection list")
 	}
 
