@@ -18,6 +18,7 @@ import (
 )
 
 func TestNewService(t *testing.T) {
+	t.Parallel()
 	notify := func(_ string, _ string) {}
 	notifyOnce := func(_ string, _ string, _ string) {}
 
@@ -51,6 +52,7 @@ func TestNewService(t *testing.T) {
 }
 
 func TestUseGitPager(t *testing.T) {
+	t.Parallel()
 	notify := func(_ string, _ string) {}
 	notifyOnce := func(_ string, _ string, _ string) {}
 
@@ -62,6 +64,7 @@ func TestUseGitPager(t *testing.T) {
 }
 
 func TestSetGitPager(t *testing.T) {
+	t.Parallel()
 	notify := func(_ string, _ string) {}
 	notifyOnce := func(_ string, _ string, _ string) {}
 
@@ -85,6 +88,7 @@ func TestSetGitPager(t *testing.T) {
 }
 
 func TestSetGitPagerArgs(t *testing.T) {
+	t.Parallel()
 	notify := func(_ string, _ string) {}
 	notifyOnce := func(_ string, _ string, _ string) {}
 
@@ -103,6 +107,7 @@ func TestSetGitPagerArgs(t *testing.T) {
 }
 
 func TestApplyGitPager(t *testing.T) {
+	t.Parallel()
 	notify := func(_ string, _ string) {}
 	notifyOnce := func(_ string, _ string, _ string) {}
 
@@ -176,6 +181,7 @@ func TestGetMainWorktreePathFallback(t *testing.T) {
 }
 
 func TestRenameWorktree(t *testing.T) {
+	t.Parallel()
 	notify := func(_ string, _ string) {}
 	notifyOnce := func(_ string, _ string, _ string) {}
 
@@ -207,6 +213,7 @@ func TestRenameWorktree(t *testing.T) {
 }
 
 func TestExecuteCommands(t *testing.T) {
+	t.Parallel()
 	notify := func(_ string, _ string) {}
 	notifyOnce := func(_ string, _ string, _ string) {}
 
@@ -242,6 +249,7 @@ func TestExecuteCommands(t *testing.T) {
 }
 
 func TestBuildThreePartDiff(t *testing.T) {
+	t.Parallel()
 	notify := func(_ string, _ string) {}
 	notifyOnce := func(_ string, _ string, _ string) {}
 
@@ -263,6 +271,7 @@ func TestBuildThreePartDiff(t *testing.T) {
 }
 
 func TestRunGit(t *testing.T) {
+	t.Parallel()
 	notify := func(_ string, _ string) {}
 	notifyOnce := func(_ string, _ string, _ string) {}
 
@@ -299,6 +308,7 @@ func TestRunGit(t *testing.T) {
 }
 
 func TestNotifications(t *testing.T) {
+	t.Parallel()
 	t.Run("notify function called", func(t *testing.T) {
 		called := false
 		var receivedMessage, receivedSeverity string
@@ -345,6 +355,7 @@ func TestNotifications(t *testing.T) {
 }
 
 func TestWorktreeOperations(t *testing.T) {
+	t.Parallel()
 	notify := func(_ string, _ string) {}
 	notifyOnce := func(_ string, _ string, _ string) {}
 
@@ -365,10 +376,14 @@ func TestWorktreeOperations(t *testing.T) {
 }
 
 func TestFetchPRMap(t *testing.T) {
+	t.Parallel()
 	notify := func(_ string, _ string) {}
 	notifyOnce := func(_ string, _ string, _ string) {}
 
 	service := NewService(notify, notifyOnce)
+	service.SetCommandRunner(func(_ context.Context, name string, args ...string) *exec.Cmd {
+		return exec.Command("echo")
+	})
 	ctx := context.Background()
 
 	t.Run("fetch PR map without git repository", func(t *testing.T) {
@@ -388,10 +403,14 @@ func TestFetchPRMap(t *testing.T) {
 }
 
 func TestFetchPRForWorktree(t *testing.T) {
+	t.Parallel()
 	notify := func(_ string, _ string) {}
 	notifyOnce := func(_ string, _ string, _ string) {}
 
 	service := NewService(notify, notifyOnce)
+	service.SetCommandRunner(func(_ context.Context, name string, args ...string) *exec.Cmd {
+		return exec.Command("echo")
+	})
 	ctx := context.Background()
 
 	t.Run("fetch PR for non-existent worktree returns nil", func(t *testing.T) {
@@ -409,6 +428,7 @@ func TestFetchPRForWorktree(t *testing.T) {
 }
 
 func TestGithubBucketToConclusion(t *testing.T) {
+	t.Parallel()
 	notify := func(_ string, _ string) {}
 	notifyOnce := func(_ string, _ string, _ string) {}
 	service := NewService(notify, notifyOnce)
@@ -440,6 +460,7 @@ func TestGithubBucketToConclusion(t *testing.T) {
 }
 
 func TestGitlabStatusToConclusion(t *testing.T) {
+	t.Parallel()
 	notify := func(_ string, _ string) {}
 	notifyOnce := func(_ string, _ string, _ string) {}
 	service := NewService(notify, notifyOnce)
@@ -476,9 +497,13 @@ func TestGitlabStatusToConclusion(t *testing.T) {
 }
 
 func TestFetchCIStatus(t *testing.T) {
+	t.Parallel()
 	notify := func(_ string, _ string) {}
 	notifyOnce := func(_ string, _ string, _ string) {}
 	service := NewService(notify, notifyOnce)
+	service.SetCommandRunner(func(_ context.Context, name string, args ...string) *exec.Cmd {
+		return exec.Command("echo")
+	})
 	ctx := context.Background()
 
 	t.Run("fetch CI status without git repository", func(t *testing.T) {
@@ -497,10 +522,14 @@ func TestFetchCIStatus(t *testing.T) {
 }
 
 func TestFetchAllOpenPRs(t *testing.T) {
+	t.Parallel()
 	notify := func(_ string, _ string) {}
 	notifyOnce := func(_ string, _ string, _ string) {}
 
 	service := NewService(notify, notifyOnce)
+	service.SetCommandRunner(func(_ context.Context, name string, args ...string) *exec.Cmd {
+		return exec.Command("echo")
+	})
 	ctx := context.Background()
 
 	t.Run("fetch open PRs without git repository", func(t *testing.T) {
@@ -518,6 +547,7 @@ func TestFetchAllOpenPRs(t *testing.T) {
 }
 
 func TestComputeCIStatusFromRollup(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		rollup   any
@@ -821,6 +851,7 @@ func TestCreateWorktreeFromPRUnknownHostSuccess(t *testing.T) {
 }
 
 func TestCreateWorktreeFromPRBranchTracking(t *testing.T) {
+	t.Parallel()
 	// This test verifies the branch tracking config structure
 	// by testing the config commands that would be run
 
@@ -856,6 +887,7 @@ func TestCreateWorktreeFromPRBranchTracking(t *testing.T) {
 }
 
 func TestCreateWorktreeFromPRJSONParsing(t *testing.T) {
+	t.Parallel()
 	t.Run("parse github pr json", func(t *testing.T) {
 		jsonData := `{"headRefOid":"abc123def456","headRepository":{"url":"https://github.com/fork/repo"}}`
 
@@ -1184,6 +1216,7 @@ func writeStubCommand(t *testing.T, name, envVar string) {
 }
 
 func TestCherryPickCommit(t *testing.T) {
+	t.Parallel()
 	notify := func(_ string, _ string) {}
 	notifyOnce := func(_ string, _ string, _ string) {}
 
@@ -1291,6 +1324,7 @@ func setupGitRepo(t *testing.T, dir string) {
 }
 
 func TestGetCommitFiles(t *testing.T) {
+	t.Parallel()
 	notify := func(_ string, _ string) {}
 	notifyOnce := func(_ string, _ string, _ string) {}
 
@@ -1333,6 +1367,7 @@ func TestGetCommitFiles(t *testing.T) {
 }
 
 func TestParseCommitFiles(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		input    string
@@ -1864,6 +1899,7 @@ func TestApplyGitPagerEdgeCases(t *testing.T) {
 }
 
 func TestGetHeadSHA(t *testing.T) {
+	t.Parallel()
 	notify := func(_ string, _ string) {}
 	notifyOnce := func(_ string, _ string, _ string) {}
 
@@ -1955,6 +1991,7 @@ func TestFetchCIStatusByCommit(t *testing.T) {
 }
 
 func TestMapGitHubConclusion(t *testing.T) {
+	t.Parallel()
 	service := NewService(func(string, string) {}, func(string, string, string) {})
 
 	tests := []struct {

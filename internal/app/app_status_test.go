@@ -6,6 +6,7 @@ import (
 )
 
 func TestParseCommitMetaComplete(t *testing.T) {
+	t.Parallel()
 	// Test with complete commit metadata (format: SHA\x1fAuthor\x1fEmail\x1fDate\x1fSubject\x1fBody)
 	raw := "d25c6aa6b03f571cf0714e7a56a49053c3bdebf0\x1fChmouel Boudjnah\x1fchmouel@chmouel.com\x1fMon Dec 29 19:33:24 2025 +0100\x1ffeat: Add prune merged worktrees command\x1fIntroduced a new command to automatically identify and prune worktrees\nassociated with merged pull or merge requests. This feature helps maintain a\nclean and organized workspace by removing obsolete worktrees, thereby improving\nefficiency. The command prompts for confirmation before proceeding with the\ndeletion of any identified merged worktrees.\n\nSigned-off-by: Chmouel Boudjnah <chmouel@chmouel.com>"
 
@@ -39,6 +40,7 @@ func TestParseCommitMetaComplete(t *testing.T) {
 }
 
 func TestParseCommitMetaMinimal(t *testing.T) {
+	t.Parallel()
 	// Test with minimal commit metadata (only SHA)
 	raw := randomSHA
 	meta := parseCommitMeta(raw)
@@ -64,6 +66,7 @@ func TestParseCommitMetaMinimal(t *testing.T) {
 }
 
 func TestParseCommitMetaNoBody(t *testing.T) {
+	t.Parallel()
 	// Test with commit metadata but no body (format: SHA\x1fAuthor\x1fEmail\x1fDate\x1fSubject)
 	raw := "abc123\x1fJohn Doe\x1fjohn@example.com\x1fMon Jan 1 00:00:00 2025 +0000\x1ffix: Bug fix"
 
@@ -90,6 +93,7 @@ func TestParseCommitMetaNoBody(t *testing.T) {
 }
 
 func TestTruncateToHeightFromEnd(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		input    string

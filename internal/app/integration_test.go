@@ -15,6 +15,7 @@ import (
 
 // TestModelInitialization verifies the model initializes correctly
 func TestModelInitialization(t *testing.T) {
+	t.Parallel()
 	cfg := &config.AppConfig{
 		WorktreeDir: t.TempDir(),
 	}
@@ -56,21 +57,21 @@ func TestKeyboardNavigation(t *testing.T) {
 	)
 
 	// Wait for initial load
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(20 * time.Millisecond)
 
 	// Test tab navigation
 	tm.Send(tea.KeyMsg{Type: tea.KeyTab})
-	time.Sleep(50 * time.Millisecond)
+	time.Sleep(10 * time.Millisecond)
 
 	// Test number keys for pane focus
 	tm.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("1")})
-	time.Sleep(50 * time.Millisecond)
+	time.Sleep(10 * time.Millisecond)
 
 	tm.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("2")})
-	time.Sleep(50 * time.Millisecond)
+	time.Sleep(10 * time.Millisecond)
 
 	tm.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("3")})
-	time.Sleep(50 * time.Millisecond)
+	time.Sleep(10 * time.Millisecond)
 
 	// Quit
 	tm.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("q")})
@@ -111,22 +112,22 @@ func TestFilterInput(t *testing.T) {
 		teatest.WithInitialTermSize(120, 40),
 	)
 
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(20 * time.Millisecond)
 
 	// Press 'f' to show filter
 	tm.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("f")})
-	time.Sleep(50 * time.Millisecond)
+	time.Sleep(10 * time.Millisecond)
 
 	// Type some filter text
 	tm.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("m")})
 	tm.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("a")})
 	tm.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("i")})
 	tm.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("n")})
-	time.Sleep(50 * time.Millisecond)
+	time.Sleep(10 * time.Millisecond)
 
 	// Press enter to exit filter mode
 	tm.Send(tea.KeyMsg{Type: tea.KeyEnter})
-	time.Sleep(50 * time.Millisecond)
+	time.Sleep(10 * time.Millisecond)
 
 	// Quit
 	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlC})
@@ -135,6 +136,7 @@ func TestFilterInput(t *testing.T) {
 }
 
 func TestSearchAutoSelectStartsFocused(t *testing.T) {
+	t.Parallel()
 	cfg := &config.AppConfig{
 		WorktreeDir:      t.TempDir(),
 		SearchAutoSelect: true,
@@ -161,18 +163,18 @@ func TestSortCycle(t *testing.T) {
 		teatest.WithInitialTermSize(120, 40),
 	)
 
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(20 * time.Millisecond)
 
 	// Press 's' three times to cycle through all modes and back to original
 	// switched (2) -> path (0) -> active (1) -> switched (2)
 	tm.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("s")})
-	time.Sleep(50 * time.Millisecond)
+	time.Sleep(10 * time.Millisecond)
 
 	tm.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("s")})
-	time.Sleep(50 * time.Millisecond)
+	time.Sleep(10 * time.Millisecond)
 
 	tm.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("s")})
-	time.Sleep(50 * time.Millisecond)
+	time.Sleep(10 * time.Millisecond)
 
 	// Quit
 	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlC})
@@ -202,11 +204,11 @@ func TestHelpScreen(t *testing.T) {
 		teatest.WithInitialTermSize(120, 40),
 	)
 
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(20 * time.Millisecond)
 
 	// Press '?' to show help
 	tm.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("?")})
-	time.Sleep(50 * time.Millisecond)
+	time.Sleep(10 * time.Millisecond)
 
 	// Verify output contains help text
 	teatest.WaitFor(
@@ -220,7 +222,7 @@ func TestHelpScreen(t *testing.T) {
 
 	// Press 'q' to close help
 	tm.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("q")})
-	time.Sleep(50 * time.Millisecond)
+	time.Sleep(10 * time.Millisecond)
 
 	// Quit the app
 	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlC})
@@ -241,6 +243,7 @@ func TestHelpScreen(t *testing.T) {
 
 // TestWindowResize tests window resize handling
 func TestWindowResize(t *testing.T) {
+	t.Parallel()
 	cfg := &config.AppConfig{
 		WorktreeDir: t.TempDir(),
 	}
@@ -269,6 +272,7 @@ func TestWindowResize(t *testing.T) {
 
 // TestVerySmallTerminalSize tests handling of very small terminal sizes
 func TestVerySmallTerminalSize(t *testing.T) {
+	t.Parallel()
 	cfg := &config.AppConfig{
 		WorktreeDir: t.TempDir(),
 	}
@@ -314,19 +318,19 @@ func TestCommandPalette(t *testing.T) {
 		teatest.WithInitialTermSize(120, 40),
 	)
 
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(20 * time.Millisecond)
 
 	// Press 'ctrl+p' to show command palette
 	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlP})
-	time.Sleep(50 * time.Millisecond)
+	time.Sleep(10 * time.Millisecond)
 
 	// First Esc exits filter mode (filter is active by default)
 	tm.Send(tea.KeyMsg{Type: tea.KeyEsc})
-	time.Sleep(50 * time.Millisecond)
+	time.Sleep(10 * time.Millisecond)
 
 	// Second Esc closes the palette
 	tm.Send(tea.KeyMsg{Type: tea.KeyEsc})
-	time.Sleep(50 * time.Millisecond)
+	time.Sleep(10 * time.Millisecond)
 
 	// Quit
 	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlC})
@@ -346,6 +350,7 @@ func TestCommandPalette(t *testing.T) {
 
 // TestViewRendering tests that the View method doesn't panic and produces output
 func TestViewRendering(t *testing.T) {
+	t.Parallel()
 	cfg := &config.AppConfig{
 		WorktreeDir: t.TempDir(),
 	}
@@ -376,25 +381,25 @@ func TestArrowKeyNavigation(t *testing.T) {
 		teatest.WithInitialTermSize(120, 40),
 	)
 
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(20 * time.Millisecond)
 
 	// Test down/up arrows in worktree table
 	tm.Send(tea.KeyMsg{Type: tea.KeyDown})
-	time.Sleep(50 * time.Millisecond)
+	time.Sleep(10 * time.Millisecond)
 
 	tm.Send(tea.KeyMsg{Type: tea.KeyUp})
-	time.Sleep(50 * time.Millisecond)
+	time.Sleep(10 * time.Millisecond)
 
 	// Switch to pane 2 (viewport)
 	tm.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("2")})
-	time.Sleep(50 * time.Millisecond)
+	time.Sleep(10 * time.Millisecond)
 
 	// Test scrolling in viewport
 	tm.Send(tea.KeyMsg{Type: tea.KeyDown})
-	time.Sleep(50 * time.Millisecond)
+	time.Sleep(10 * time.Millisecond)
 
 	tm.Send(tea.KeyMsg{Type: tea.KeyUp})
-	time.Sleep(50 * time.Millisecond)
+	time.Sleep(10 * time.Millisecond)
 
 	// Quit
 	tm.Send(tea.KeyMsg{Type: tea.KeyCtrlC})
@@ -404,6 +409,7 @@ func TestArrowKeyNavigation(t *testing.T) {
 
 // TestMouseEvents tests that mouse events don't cause panics
 func TestMouseEvents(t *testing.T) {
+	t.Parallel()
 	cfg := &config.AppConfig{
 		WorktreeDir: t.TempDir(),
 	}
@@ -443,6 +449,7 @@ func TestMouseEvents(t *testing.T) {
 
 // TestCleanup tests that the Close method properly cleans up resources
 func TestCleanup(t *testing.T) {
+	t.Parallel()
 	cfg := &config.AppConfig{
 		WorktreeDir: t.TempDir(),
 	}
@@ -457,6 +464,7 @@ func TestCleanup(t *testing.T) {
 
 // TestCommitScreenEscapeKey tests that ESC key closes the commit screen
 func TestCommitScreenEscapeKey(t *testing.T) {
+	t.Parallel()
 	cfg := &config.AppConfig{
 		WorktreeDir: t.TempDir(),
 	}
@@ -491,6 +499,7 @@ func TestCommitScreenEscapeKey(t *testing.T) {
 // TestCommitScreenRawEscapeKey tests that raw ESC byte (0x1b) also closes the commit screen
 // Some terminals send ESC as a raw byte rather than the special tea.KeyEsc type
 func TestCommitScreenRawEscapeKey(t *testing.T) {
+	t.Parallel()
 	cfg := &config.AppConfig{
 		WorktreeDir: t.TempDir(),
 	}
@@ -519,6 +528,7 @@ func TestCommitScreenRawEscapeKey(t *testing.T) {
 
 // TestWorktreeLoadingFlow tests the complete flow from cache to loaded state
 func TestWorktreeLoadingFlow(t *testing.T) {
+	t.Parallel()
 	cfg := &config.AppConfig{
 		WorktreeDir: t.TempDir(),
 	}
@@ -569,6 +579,7 @@ func TestWorktreeLoadingFlow(t *testing.T) {
 
 // TestPRFetchingFlow tests PR data loading flow
 func TestPRFetchingFlow(t *testing.T) {
+	t.Parallel()
 	cfg := &config.AppConfig{
 		WorktreeDir: t.TempDir(),
 	}
@@ -599,6 +610,7 @@ func TestPRFetchingFlow(t *testing.T) {
 
 // TestCIStatusCaching tests CI status loading and caching
 func TestCIStatusCaching(t *testing.T) {
+	t.Parallel()
 	cfg := &config.AppConfig{
 		WorktreeDir: t.TempDir(),
 	}
@@ -638,6 +650,7 @@ func TestCIStatusCaching(t *testing.T) {
 
 // TestMultipleErrorHandling tests proper error handling across message types
 func TestMultipleErrorHandling(t *testing.T) {
+	t.Parallel()
 	cfg := &config.AppConfig{
 		WorktreeDir: t.TempDir(),
 	}

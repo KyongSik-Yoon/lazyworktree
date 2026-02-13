@@ -1,8 +1,10 @@
 package app
 
 import (
+	"context"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -14,6 +16,7 @@ import (
 )
 
 func TestFetchRemotesCompleteTriggersRefresh(t *testing.T) {
+	t.Parallel()
 	cfg := &config.AppConfig{WorktreeDir: t.TempDir()}
 	m := NewModel(cfg, "")
 	m.loading = true
@@ -40,6 +43,7 @@ func TestFetchRemotesCompleteTriggersRefresh(t *testing.T) {
 }
 
 func TestHandleOpenPRsLoaded(t *testing.T) {
+	t.Parallel()
 	cfg := &config.AppConfig{
 		WorktreeDir: t.TempDir(),
 	}
@@ -84,10 +88,18 @@ func TestHandleOpenPRsLoaded(t *testing.T) {
 }
 
 func TestFetchCommandMessages(t *testing.T) {
+	t.Parallel()
 	cfg := &config.AppConfig{
 		WorktreeDir: t.TempDir(),
 	}
 	m := NewModel(cfg, "")
+
+	// Stub command runners to avoid calling real gh/git fetch commands.
+	noopRunner := func(_ context.Context, name string, args ...string) *exec.Cmd {
+		return exec.Command("echo")
+	}
+	m.commandRunner = noopRunner
+	m.state.services.git.SetCommandRunner(noopRunner)
 
 	if msg := m.fetchPRData()(); msg == nil {
 		t.Fatal("expected pr data message")
@@ -101,6 +113,7 @@ func TestFetchCommandMessages(t *testing.T) {
 }
 
 func TestMaybeFetchCIStatus(t *testing.T) {
+	t.Parallel()
 	cfg := &config.AppConfig{WorktreeDir: t.TempDir()}
 	m := NewModel(cfg, "")
 	m.state.data.filteredWts = []*models.WorktreeInfo{
@@ -120,6 +133,7 @@ func TestMaybeFetchCIStatus(t *testing.T) {
 }
 
 func TestMaybeFetchCIStatusNonPRBranch(t *testing.T) {
+	t.Parallel()
 	cfg := &config.AppConfig{WorktreeDir: t.TempDir()}
 	m := NewModel(cfg, "")
 	// Branch without a PR
@@ -145,6 +159,7 @@ func TestMaybeFetchCIStatusNonPRBranch(t *testing.T) {
 }
 
 func TestHandlePruneResult(t *testing.T) {
+	t.Parallel()
 	cfg := &config.AppConfig{
 		WorktreeDir: t.TempDir(),
 	}
@@ -166,6 +181,7 @@ func TestHandlePruneResult(t *testing.T) {
 }
 
 func TestHandleAbsorbResult(t *testing.T) {
+	t.Parallel()
 	cfg := &config.AppConfig{
 		WorktreeDir: t.TempDir(),
 	}
@@ -189,6 +205,7 @@ func TestHandleAbsorbResult(t *testing.T) {
 }
 
 func TestWorktreeDeletedMsg(t *testing.T) {
+	t.Parallel()
 	t.Run("success shows branch deletion prompt", func(t *testing.T) {
 		cfg := &config.AppConfig{
 			WorktreeDir: t.TempDir(),
@@ -250,6 +267,7 @@ func TestWorktreeDeletedMsg(t *testing.T) {
 }
 
 func TestHandleCherryPickResultSuccess(t *testing.T) {
+	t.Parallel()
 	cfg := &config.AppConfig{
 		WorktreeDir: t.TempDir(),
 	}
@@ -284,6 +302,7 @@ func TestHandleCherryPickResultSuccess(t *testing.T) {
 }
 
 func TestHandleCherryPickResultError(t *testing.T) {
+	t.Parallel()
 	cfg := &config.AppConfig{
 		WorktreeDir: t.TempDir(),
 	}
@@ -318,6 +337,7 @@ func TestHandleCherryPickResultError(t *testing.T) {
 }
 
 func TestRunCommandsWithTrustNever(t *testing.T) {
+	t.Parallel()
 	cfg := &config.AppConfig{
 		WorktreeDir: t.TempDir(),
 		TrustMode:   "never",
@@ -339,6 +359,7 @@ func TestRunCommandsWithTrustNever(t *testing.T) {
 }
 
 func TestRunCommandsWithTrustTofu(t *testing.T) {
+	t.Parallel()
 	cfg := &config.AppConfig{
 		WorktreeDir: t.TempDir(),
 	}
@@ -365,6 +386,7 @@ func TestRunCommandsWithTrustTofu(t *testing.T) {
 }
 
 func TestClearPendingTrust(t *testing.T) {
+	t.Parallel()
 	cfg := &config.AppConfig{
 		WorktreeDir: t.TempDir(),
 	}
@@ -385,6 +407,7 @@ func TestClearPendingTrust(t *testing.T) {
 }
 
 func TestCollectInitTerminateCommands(t *testing.T) {
+	t.Parallel()
 	cfg := &config.AppConfig{
 		WorktreeDir:       t.TempDir(),
 		InitCommands:      []string{"init-1"},
