@@ -162,6 +162,11 @@ func TestConstants(t *testing.T) {
 			constant: CacheFilename,
 			expected: ".worktree-cache.json",
 		},
+		{
+			name:     "worktree notes filename",
+			constant: WorktreeNotesFilename,
+			expected: ".worktree-notes.json",
+		},
 	}
 
 	for _, tt := range tests {

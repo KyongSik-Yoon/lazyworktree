@@ -72,6 +72,7 @@ const (
 	commitMessageMaxLength     = 80
 	filterWorktreesPlaceholder = "Filter worktrees..."
 	placeholderFilterFiles     = "Filter files..."
+	worktreeNoteMaxChars       = 4000
 )
 
 type (
@@ -164,6 +165,12 @@ type (
 		branch      string
 		targetPath  string
 		err         error
+	}
+	renameWorktreeResultMsg struct {
+		oldPath   string
+		newPath   string
+		worktrees []*models.WorktreeInfo
+		err       error
 	}
 	createFromChangesReadyMsg struct {
 		worktree      *models.WorktreeInfo
@@ -352,6 +359,9 @@ type Model struct {
 	// Command history for ! command
 	commandHistory []string
 
+	// Per-worktree annotations.
+	worktreeNotes map[string]models.WorktreeNote
+
 	// Command palette usage history for MRU sorting
 	paletteHistory []commandPaletteUsage
 
@@ -500,6 +510,7 @@ func NewModel(cfg *config.AppConfig, initialFilter string) *Model {
 	m.state.data.worktrees = []*models.WorktreeInfo{}
 	m.state.data.filteredWts = []*models.WorktreeInfo{}
 	m.state.data.accessHistory = make(map[string]int64)
+	m.worktreeNotes = make(map[string]models.WorktreeNote)
 
 	m.cache.dataCache = make(map[string]any)
 	m.cache.divergenceCache = make(map[string]string)
@@ -543,6 +554,7 @@ func NewModel(cfg *config.AppConfig, initialFilter string) *Model {
 func (m *Model) Init() tea.Cmd {
 	m.loadCommandHistory()
 	m.loadAccessHistory()
+	m.loadWorktreeNotes()
 	m.loadPaletteHistory()
 	cmds := []tea.Cmd{
 		m.loadCache(),
@@ -597,6 +609,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Worktree deletion failed, don't prompt for branch deletion
 			return m, nil
 		}
+		m.deleteWorktreeNote(msg.path)
 
 		// Worktree deleted successfully, show branch deletion prompt
 		confirmScreen := screen.NewConfirmScreenWithDefault(
@@ -643,6 +656,17 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return worktreesLoadedMsg{worktrees: worktrees, err: err}
 		}
 		return m, m.runCommandsWithTrust(initCmds, msg.targetPath, env, after)
+
+	case renameWorktreeResultMsg:
+		if msg.err != nil {
+			m.showInfo(fmt.Sprintf("Error: %v", msg.err), nil)
+			return m, nil
+		}
+		m.migrateWorktreeNote(msg.oldPath, msg.newPath)
+		return m.handleWorktreesLoaded(worktreesLoadedMsg{
+			worktrees: msg.worktrees,
+			err:       nil,
+		})
 
 	case customCreateResultMsg:
 		m.loading = false

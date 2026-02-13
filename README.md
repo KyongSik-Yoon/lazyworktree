@@ -124,6 +124,7 @@ Zsh helpers are in `shell/functions.zsh`. See [./shell/README.md](./shell/README
 | `Enter` | Jump to worktree (exit and cd) |
 | `j`, `k` | Move selection up/down in lists and menus |
 | `c` | Create new worktree (from branch, commit, PR/MR, or issue) |
+| `i` | Annotate selected worktree (multiline note with optional pinned flag) |
 | `m` | Rename selected worktree |
 | `D` | Delete selected worktree |
 | `d` | View diff in pager (worktree or commit, depending on pane) |
@@ -154,6 +155,8 @@ Zsh helpers are in `shell/functions.zsh`. See [./shell/README.md](./shell/README
 | `Tab`, `]` | Cycle to next pane |
 | `[` | Cycle to previous pane |
 | `=` | Toggle zoom for focused pane (full screen) |
+
+In the annotation editor (`i`): `Ctrl+S` saves, `Enter` adds a new line, `Tab` switches focus to the pinned checkbox, and `Esc` cancels.
 
 **Log Pane** (when focused on commit log):
 

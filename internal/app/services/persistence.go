@@ -194,3 +194,41 @@ func SavePaletteHistory(repoKey, worktreeDir string, commands []CommandPaletteUs
 	}
 	return nil
 }
+
+// LoadWorktreeNotes loads worktree notes from file.
+func LoadWorktreeNotes(repoKey, worktreeDir string) (map[string]models.WorktreeNote, error) {
+	notesPath := filepath.Join(worktreeDir, repoKey, models.WorktreeNotesFilename)
+	// #nosec G304 -- notesPath is constructed from vetted directory and constant filename
+	data, err := os.ReadFile(notesPath)
+	if err != nil {
+		return map[string]models.WorktreeNote{}, nil
+	}
+
+	var notes map[string]models.WorktreeNote
+	if err := json.Unmarshal(data, &notes); err != nil {
+		return nil, err
+	}
+	if notes == nil {
+		return map[string]models.WorktreeNote{}, nil
+	}
+	return notes, nil
+}
+
+// SaveWorktreeNotes saves worktree notes to file.
+func SaveWorktreeNotes(repoKey, worktreeDir string, notes map[string]models.WorktreeNote) error {
+	notesPath := filepath.Join(worktreeDir, repoKey, models.WorktreeNotesFilename)
+	if err := os.MkdirAll(filepath.Dir(notesPath), utils.DefaultDirPerms); err != nil {
+		return err
+	}
+	if notes == nil {
+		notes = map[string]models.WorktreeNote{}
+	}
+	data, err := json.Marshal(notes)
+	if err != nil {
+		return err
+	}
+	if err := os.WriteFile(notesPath, data, defaultFilePerms); err != nil {
+		return err
+	}
+	return nil
+}

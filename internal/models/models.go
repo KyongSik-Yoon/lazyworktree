@@ -70,6 +70,13 @@ type WorktreeInfo struct {
 	Divergence     string
 }
 
+// WorktreeNote stores user-authored metadata for a worktree.
+type WorktreeNote struct {
+	Note      string
+	Pinned    bool
+	UpdatedAt int64
+}
+
 const (
 	// LastSelectedFilename stores the last worktree selection for a repo.
 	LastSelectedFilename = ".last-selected"
@@ -81,6 +88,8 @@ const (
 	AccessHistoryFilename = ".worktree-access.json"
 	// CommandPaletteHistoryFilename stores command palette usage history for MRU sorting.
 	CommandPaletteHistoryFilename = ".command-palette-history.json"
+	// WorktreeNotesFilename stores per-worktree annotations.
+	WorktreeNotesFilename = ".worktree-notes.json"
 )
 
 // PR fetch status values for WorktreeInfo.PRFetchStatus field.

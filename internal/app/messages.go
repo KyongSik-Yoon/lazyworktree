@@ -47,6 +47,7 @@ func (m *Model) handleWorktreesLoaded(msg worktreesLoadedMsg) (tea.Model, tea.Cm
 	prStateMap := extractPRState(m.state.data.worktrees)
 	m.state.data.worktrees = msg.worktrees
 	restorePRState(m.state.data.worktrees, prStateMap)
+	m.pruneStaleWorktreeNotes(m.state.data.worktrees)
 	if !m.prDataLoaded && hasPRData(m.state.data.worktrees) {
 		m.prDataLoaded = true
 		m.updateTableColumns(m.state.ui.worktreeTable.Width())
@@ -173,6 +174,7 @@ func (m *Model) handlePruneResult(msg pruneResultMsg) (tea.Model, tea.Cmd) {
 		prStateMap := extractPRState(m.state.data.worktrees)
 		m.state.data.worktrees = msg.worktrees
 		restorePRState(m.state.data.worktrees, prStateMap)
+		m.pruneStaleWorktreeNotes(m.state.data.worktrees)
 		if !m.prDataLoaded && hasPRData(m.state.data.worktrees) {
 			m.prDataLoaded = true
 			m.updateTableColumns(m.state.ui.worktreeTable.Width())

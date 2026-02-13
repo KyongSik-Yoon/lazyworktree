@@ -183,6 +183,18 @@ func (m *Model) buildInfoContent(wt *models.WorktreeInfo) string {
 		}
 		infoLines = append(infoLines, fmt.Sprintf("%s %s", labelStyle.Render("Divergence:"), strings.Join(parts, " ")))
 	}
+	if note, ok := m.getWorktreeNote(wt.Path); ok {
+		pinnedText := "No"
+		if note.Pinned {
+			pinnedText = "Yes"
+		}
+		infoLines = append(infoLines, "")
+		infoLines = append(infoLines, labelStyle.Render("Annotation:"))
+		infoLines = append(infoLines, fmt.Sprintf("  %s %s", labelStyle.Render("Pinned:"), valueStyle.Render(pinnedText)))
+		for _, line := range strings.Split(note.Note, "\n") {
+			infoLines = append(infoLines, "  "+valueStyle.Render(line))
+		}
+	}
 	hidePRDetails := wt.PR != nil && wt.IsMain && (wt.PR.State == prStateMerged || wt.PR.State == prStateClosed)
 	if wt.PR != nil && !hidePRDetails && !m.config.DisablePR {
 		prLabelStyle := lipgloss.NewStyle().Foreground(m.theme.Accent).Bold(true) // Accent for PR prominence

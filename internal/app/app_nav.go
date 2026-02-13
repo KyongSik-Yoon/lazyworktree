@@ -183,6 +183,9 @@ func (m *Model) updateTable() {
 				name = string(nameRunes[:m.config.MaxNameLength]) + "..."
 			}
 		}
+		if note, ok := m.getWorktreeNote(wt.Path); ok {
+			name = name + " " + m.worktreeNoteBadge(note)
+		}
 
 		statusStr := combinedStatusIndicator(wt.Dirty, wt.HasUpstream, wt.Ahead, wt.Behind, wt.Unpushed, showIcons, m.config.IconSet)
 

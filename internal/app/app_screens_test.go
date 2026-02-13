@@ -358,7 +358,7 @@ func TestShowCommandPaletteHasAllActions(t *testing.T) {
 	}
 
 	expectedIDs := []string{
-		"create", "delete", "rename", "absorb", "prune",
+		"create", "delete", "rename", "annotate", "absorb", "prune",
 		"create-from-current", "create-from-branch", "create-from-commit",
 		"create-from-pr", "create-from-issue", "create-freeform",
 		"diff", "refresh", "fetch", "push", "sync", "fetch-pr-data", "pr", "lazygit", "run-command",

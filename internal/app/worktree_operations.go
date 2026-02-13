@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/charmbracelet/bubbles/textarea"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	appscreen "github.com/chmouel/lazyworktree/internal/app/screen"
@@ -545,10 +546,16 @@ func (m *Model) showRenameWorktree() tea.Cmd {
 		return func() tea.Msg {
 			ok := m.state.services.git.RenameWorktree(m.ctx, oldPath, newPath, oldBranch, newBranch)
 			if !ok {
-				return errMsg{err: fmt.Errorf("failed to rename %s to %s", oldBranch, newBranch)}
+				return renameWorktreeResultMsg{
+					oldPath: oldPath,
+					newPath: newPath,
+					err:     fmt.Errorf("failed to rename %s to %s", oldBranch, newBranch),
+				}
 			}
 			worktrees, err := m.state.services.git.GetWorktrees(m.ctx)
-			return worktreesLoadedMsg{
+			return renameWorktreeResultMsg{
+				oldPath:   oldPath,
+				newPath:   newPath,
 				worktrees: worktrees,
 				err:       err,
 			}
@@ -561,6 +568,51 @@ func (m *Model) showRenameWorktree() tea.Cmd {
 
 	m.state.ui.screenManager.Push(inputScr)
 	return textinput.Blink
+}
+
+// showAnnotateWorktree opens a multiline annotation editor for the selected worktree.
+func (m *Model) showAnnotateWorktree() tea.Cmd {
+	if m.state.view.FocusedPane != 0 {
+		return nil
+	}
+	if m.state.data.selectedIndex < 0 || m.state.data.selectedIndex >= len(m.state.data.filteredWts) {
+		m.showInfo(errNoWorktreeSelected, nil)
+		return nil
+	}
+
+	wt := m.state.data.filteredWts[m.state.data.selectedIndex]
+	existing, _ := m.getWorktreeNote(wt.Path)
+	textareaScr := appscreen.NewTextareaScreen(
+		"Annotate worktree",
+		"Add notes for this worktree...",
+		existing.Note,
+		m.state.view.WindowWidth,
+		m.state.view.WindowHeight,
+		m.theme,
+		m.config.IconsEnabled(),
+	)
+	textareaScr.SetCheckbox("Pinned", existing.Pinned)
+	textareaScr.SetValidation(func(value string) string {
+		noteText := strings.TrimSpace(value)
+		if len([]rune(noteText)) > worktreeNoteMaxChars {
+			return fmt.Sprintf("Note is too long (%d/%d characters).", len([]rune(noteText)), worktreeNoteMaxChars)
+		}
+		return ""
+	})
+	textareaScr.OnSubmit = func(value string, checked bool) tea.Cmd {
+		m.setWorktreeNote(wt.Path, value, checked)
+		m.updateTable()
+		if m.state.data.selectedIndex >= 0 && m.state.data.selectedIndex < len(m.state.data.filteredWts) {
+			m.infoContent = m.buildInfoContent(m.state.data.filteredWts[m.state.data.selectedIndex])
+		}
+		return nil
+	}
+	textareaScr.OnCancel = func() tea.Cmd {
+		return nil
+	}
+
+	m.state.ui.screenManager.Push(textareaScr)
+	return textarea.Blink
 }
 
 // showPruneMerged initiates the prune merged worktrees workflow.
