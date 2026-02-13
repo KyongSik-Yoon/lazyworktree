@@ -39,6 +39,7 @@ func (m *Model) renderLeftPane(layout layoutDims) string {
 	return m.paneStyle(m.state.view.FocusedPane == 0).
 		Width(layout.leftWidth).
 		Height(layout.bodyHeight).
+		MaxHeight(layout.bodyHeight).
 		Render(content)
 }
 
@@ -53,9 +54,13 @@ func (m *Model) renderRightPane(layout layoutDims) string {
 // renderRightTopPane renders the right top pane (status viewport).
 func (m *Model) renderRightTopPane(layout layoutDims) string {
 	title := m.renderPaneTitle(2, "Status", m.state.view.FocusedPane == 1, layout.rightInnerWidth)
-	infoBox := m.renderInnerBox("Info", m.infoContent, layout.rightInnerWidth, 0)
 
+	// Constrain info box height to prevent overflow when CI checks are numerous
 	innerBoxStyle := m.baseInnerBoxStyle()
+	minStatusBoxRendered := 3 + innerBoxStyle.GetVerticalFrameSize()
+	maxInfoBoxHeight := maxInt(3, layout.rightTopInnerHeight-lipgloss.Height(title)-minStatusBoxRendered)
+	infoBox := m.renderInnerBox("Info", m.infoContent, layout.rightInnerWidth, maxInfoBoxHeight)
+
 	statusBoxHeight := maxInt(layout.rightTopInnerHeight-lipgloss.Height(title)-lipgloss.Height(infoBox)-2, 3)
 	statusViewportWidth := maxInt(1, layout.rightInnerWidth-innerBoxStyle.GetHorizontalFrameSize())
 	statusViewportHeight := maxInt(1, statusBoxHeight-innerBoxStyle.GetVerticalFrameSize())
@@ -76,6 +81,7 @@ func (m *Model) renderRightTopPane(layout layoutDims) string {
 	return m.paneStyle(m.state.view.FocusedPane == 1).
 		Width(layout.rightWidth).
 		Height(layout.rightTopHeight).
+		MaxHeight(layout.rightTopHeight).
 		Render(content)
 }
 
@@ -86,6 +92,7 @@ func (m *Model) renderRightBottomPane(layout layoutDims) string {
 	return m.paneStyle(m.state.view.FocusedPane == 2).
 		Width(layout.rightWidth).
 		Height(layout.rightBottomHeight).
+		MaxHeight(layout.rightBottomHeight).
 		Render(content)
 }
 
@@ -97,15 +104,20 @@ func (m *Model) renderZoomedLeftPane(layout layoutDims) string {
 	return m.paneStyle(true).
 		Width(layout.leftWidth).
 		Height(layout.bodyHeight).
+		MaxHeight(layout.bodyHeight).
 		Render(content)
 }
 
 // renderZoomedRightTopPane renders the zoomed right top pane.
 func (m *Model) renderZoomedRightTopPane(layout layoutDims) string {
 	title := m.renderPaneTitle(2, "Status", true, layout.rightInnerWidth)
-	infoBox := m.renderInnerBox("Info", m.infoContent, layout.rightInnerWidth, 0)
 
+	// Constrain info box height to prevent overflow when CI checks are numerous
 	innerBoxStyle := m.baseInnerBoxStyle()
+	minStatusBoxRendered := 3 + innerBoxStyle.GetVerticalFrameSize()
+	maxInfoBoxHeight := maxInt(3, layout.rightTopInnerHeight-lipgloss.Height(title)-minStatusBoxRendered)
+	infoBox := m.renderInnerBox("Info", m.infoContent, layout.rightInnerWidth, maxInfoBoxHeight)
+
 	statusBoxHeight := maxInt(layout.rightTopInnerHeight-lipgloss.Height(title)-lipgloss.Height(infoBox)-2, 3)
 	statusViewportWidth := maxInt(1, layout.rightInnerWidth-innerBoxStyle.GetHorizontalFrameSize())
 	statusViewportHeight := maxInt(1, statusBoxHeight-innerBoxStyle.GetVerticalFrameSize())
@@ -126,6 +138,7 @@ func (m *Model) renderZoomedRightTopPane(layout layoutDims) string {
 	return m.paneStyle(true).
 		Width(layout.rightWidth).
 		Height(layout.bodyHeight).
+		MaxHeight(layout.bodyHeight).
 		Render(content)
 }
 
@@ -136,6 +149,7 @@ func (m *Model) renderZoomedRightBottomPane(layout layoutDims) string {
 	return m.paneStyle(true).
 		Width(layout.rightWidth).
 		Height(layout.bodyHeight).
+		MaxHeight(layout.bodyHeight).
 		Render(content)
 }
 

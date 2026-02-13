@@ -202,7 +202,7 @@ func (m *Model) renderInnerBox(title, content string, width, height int) string 
 
 	style := m.baseInnerBoxStyle().Width(width)
 	if height > 0 {
-		style = style.Height(height)
+		style = style.MaxHeight(height)
 	}
 
 	innerWidth := maxInt(1, width-style.GetHorizontalFrameSize())
