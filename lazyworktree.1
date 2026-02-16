@@ -154,6 +154,9 @@ Skip worktree creation entirely. Instead, creates a local branch and switches to
 .B \-\-silent
 Suppress all progress messages to stderr. Only the worktree path is written to stdout unless \-\-output\-selection is used. Useful for scripting and automation.
 .TP
+.B \-\-exec \fICOMMAND\fR
+Run a post\-create command through the current shell environment. The command runs in the created worktree directory, or in the current directory when used with \-\-no\-workspace. Shell mode follows \fB$SHELL\fR: zsh uses \fB\-ilc\fR, bash uses \fB\-ic\fR, and other shells use \fB\-lc\fR.
+.TP
 .B \-\-output\-selection \fIFILE\fR
 Write the created worktree path to FILE. When set, stdout output is suppressed.
 .
@@ -273,6 +276,11 @@ Interactively select PR and checkout without creating a worktree:
 Create with uncommitted changes:
 .br
 .B lazyworktree create my\-feature \-\-with\-change
+.
+.PP
+Create and run a setup command in the new worktree:
+.br
+.B lazyworktree create my\-feature \-\-exec "npm install"
 .
 .PP
 Delete worktree (and branch if name matches):

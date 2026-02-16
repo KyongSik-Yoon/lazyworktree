@@ -813,7 +813,10 @@ lazyworktree create --from-pr 123 --no-workspace        # Branch only, no worktr
 lazyworktree create --from-issue 42 --no-workspace      # Branch only, no worktree
 lazyworktree create -I --no-workspace                    # Interactively select issue, branch only
 lazyworktree create -P --no-workspace        # Interactively select PR, branch only
+lazyworktree create my-feature --exec 'npm test'        # Run command after creation
 ```
+
+`--exec` runs after a successful create. It executes in the new worktree directory, or in the current directory when used with `--no-workspace`. Shell mode follows your current shell (`zsh -ilc`, `bash -ic`, otherwise `-lc`).
 
 PR creation always uses the generated worktree name. The local branch name is conditional:
 if you are the PR author, lazyworktree keeps the PR branch name; otherwise it uses the generated name.

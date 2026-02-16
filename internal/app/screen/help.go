@@ -166,6 +166,7 @@ Search Mode:
 **{{HELP_SHELL_COMPLETION}}Shell Completion**
 Generate completions: lazyworktree --completion <bash|zsh|fish>
 CLI subcommands: create, rename, delete, list
+Post-create commands: lazyworktree create --exec '<command>'
 For CLI command details, see: man lazyworktree or lazyworktree --help
 
 **{{HELP_CONFIGURATION}}Configuration & Overrides**

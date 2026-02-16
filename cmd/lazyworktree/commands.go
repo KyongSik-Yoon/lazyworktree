@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -27,6 +28,7 @@ type (
 	renameWorktreeFuncType         func(ctx context.Context, gitSvc *git.Service, cfg *config.AppConfig, worktreePath, newName string, silent bool) error
 	selectIssueInteractiveFuncType func(ctx context.Context, gitSvc *git.Service) (int, error)
 	selectPRInteractiveFuncType    func(ctx context.Context, gitSvc *git.Service) (int, error)
+	runCreateExecFuncType          func(ctx context.Context, command, cwd string) error
 )
 
 var (
@@ -50,7 +52,8 @@ var (
 	selectPRInteractiveFunc selectPRInteractiveFuncType = func(ctx context.Context, gitSvc *git.Service) (int, error) {
 		return cli.SelectPRInteractiveFromStdio(ctx, gitSvc)
 	}
-	writeOutputSelectionFunc = writeOutputSelection
+	writeOutputSelectionFunc                       = writeOutputSelection
+	runCreateExecFunc        runCreateExecFuncType = runCreateExec
 )
 
 // handleSubcommandCompletion checks if completion is being requested and outputs flags.
@@ -203,6 +206,11 @@ func createCommand() *appiCli.Command {
 			&appiCli.StringFlag{
 				Name:  "output-selection",
 				Usage: "Write created worktree path to a file",
+			},
+			&appiCli.StringFlag{
+				Aliases: []string{"x"},
+				Name:    "exec",
+				Usage:   "Run a shell command after creation (in the created worktree, or current directory with --no-workspace)",
 			},
 		},
 	}
@@ -382,6 +390,7 @@ func handleCreateAction(ctx context.Context, cmd *appiCli.Command) error {
 	withChange := cmd.Bool("with-change")
 	noWorkspace := cmd.Bool("no-workspace")
 	silent := cmd.Bool("silent")
+	execCommand := strings.TrimSpace(cmd.String("exec"))
 
 	// Get name from positional argument if provided
 	var name string
@@ -451,6 +460,20 @@ func handleCreateAction(ctx context.Context, cmd *appiCli.Command) error {
 		return opErr
 	}
 
+	if execCommand != "" {
+		execCWD, err := resolveCreateExecCWD(outputPath, noWorkspace)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			_ = log.Close()
+			return err
+		}
+		if err := runCreateExecFunc(ctx, execCommand, execCWD); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			_ = log.Close()
+			return err
+		}
+	}
+
 	if outputSelection := cmd.String("output-selection"); outputSelection != "" {
 		if err := writeOutputSelectionFunc(outputSelection, outputPath); err != nil {
 			_ = log.Close()
@@ -466,6 +489,58 @@ func handleCreateAction(ctx context.Context, cmd *appiCli.Command) error {
 
 	_ = log.Close()
 	return nil
+}
+
+func resolveCreateExecCWD(outputPath string, noWorkspace bool) (string, error) {
+	if noWorkspace {
+		cwd, err := os.Getwd()
+		if err != nil {
+			return "", fmt.Errorf("failed to determine current directory for --exec: %w", err)
+		}
+		return cwd, nil
+	}
+
+	info, err := os.Stat(outputPath)
+	if err != nil {
+		return "", fmt.Errorf("failed to access created worktree for --exec: %w", err)
+	}
+	if !info.IsDir() {
+		return "", fmt.Errorf("created worktree path is not a directory: %s", outputPath)
+	}
+
+	return outputPath, nil
+}
+
+func runCreateExec(ctx context.Context, command, cwd string) error {
+	shellPath, shellArgs := shellInvocationForExec(command)
+	// #nosec G204 -- --exec is an explicit user-provided command executed by request
+	execCmd := exec.CommandContext(ctx, shellPath, shellArgs...)
+	execCmd.Dir = cwd
+	execCmd.Stdin = os.Stdin
+	execCmd.Stdout = os.Stdout
+	execCmd.Stderr = os.Stderr
+
+	if err := execCmd.Run(); err != nil {
+		return fmt.Errorf("--exec command failed: %w", err)
+	}
+
+	return nil
+}
+
+func shellInvocationForExec(command string) (string, []string) {
+	shellPath := strings.TrimSpace(os.Getenv("SHELL"))
+	if shellPath == "" {
+		return "bash", []string{"-lc", command}
+	}
+
+	switch strings.ToLower(filepath.Base(shellPath)) {
+	case "zsh":
+		return shellPath, []string{"-ilc", command}
+	case "bash":
+		return shellPath, []string{"-ic", command}
+	default:
+		return shellPath, []string{"-lc", command}
+	}
 }
 
 func writeOutputSelection(outputSelection, outputPath string) error {

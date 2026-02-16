@@ -37,6 +37,11 @@ func TestHandleCreateValidation(t *testing.T) {
 			expectError: false,
 		},
 		{
+			name:        "valid exec flag",
+			args:        []string{"lazyworktree", "create", "--from-branch", "main", "--exec", "echo ready"},
+			expectError: false,
+		},
+		{
 			name:        "valid from-pr",
 			args:        []string{"lazyworktree", "create", "--from-pr", "123"},
 			expectError: false,
@@ -319,6 +324,16 @@ func TestHandleCreateValidation(t *testing.T) {
 	}
 }
 
+func TestCreateCompletionIncludesExecFlag(t *testing.T) {
+	out := captureStdout(t, func() {
+		outputSubcommandFlags(createCommand())
+	})
+
+	if !strings.Contains(out, "--exec") {
+		t.Fatalf("expected --exec in completion flags, got %q", out)
+	}
+}
+
 func TestHandleListValidation(t *testing.T) {
 	tests := []struct {
 		name        string
@@ -535,6 +550,153 @@ func TestHandleCreateOutputSelectionFailureLeavesFile(t *testing.T) {
 	if string(output) != "existing\n" {
 		t.Fatalf("expected output file to remain unchanged, got %q", string(output))
 	}
+}
+
+func TestHandleCreateExecRunsInCreatedWorktree(t *testing.T) {
+	tmpDir := t.TempDir()
+	expectedPath := filepath.Join(tmpDir, "repo", "feature")
+
+	oldLoadCLIConfig := loadCLIConfigFunc
+	oldNewCLIGitService := newCLIGitServiceFunc
+	oldCreateFromBranch := createFromBranchFunc
+	oldCreateFromPR := createFromPRFunc
+	oldCreateFromIssue := createFromIssueFunc
+	oldSelectIssueInteractive := selectIssueInteractiveFunc
+	oldSelectPRInteractive := selectPRInteractiveFunc
+	oldRunCreateExec := runCreateExecFunc
+	t.Cleanup(func() {
+		loadCLIConfigFunc = oldLoadCLIConfig
+		newCLIGitServiceFunc = oldNewCLIGitService
+		createFromBranchFunc = oldCreateFromBranch
+		createFromPRFunc = oldCreateFromPR
+		createFromIssueFunc = oldCreateFromIssue
+		selectIssueInteractiveFunc = oldSelectIssueInteractive
+		selectPRInteractiveFunc = oldSelectPRInteractive
+		runCreateExecFunc = oldRunCreateExec
+	})
+
+	loadCLIConfigFunc = func(string, string, []string) (*config.AppConfig, error) {
+		return &config.AppConfig{WorktreeDir: tmpDir}, nil
+	}
+	newCLIGitServiceFunc = func(*config.AppConfig) *git.Service {
+		return &git.Service{}
+	}
+	createFromBranchFunc = func(_ context.Context, _ *git.Service, _ *config.AppConfig, _, _ string, _, _ bool) (string, error) {
+		if err := os.MkdirAll(expectedPath, 0o750); err != nil {
+			return "", err
+		}
+		return expectedPath, nil
+	}
+	createFromPRFunc = func(_ context.Context, _ *git.Service, _ *config.AppConfig, _ int, _, _ bool) (string, error) {
+		return "", os.ErrInvalid
+	}
+	createFromIssueFunc = func(_ context.Context, _ *git.Service, _ *config.AppConfig, _ int, _ string, _, _ bool) (string, error) {
+		return "", os.ErrInvalid
+	}
+	selectIssueInteractiveFunc = func(_ context.Context, _ *git.Service) (int, error) {
+		return 0, os.ErrInvalid
+	}
+	selectPRInteractiveFunc = func(_ context.Context, _ *git.Service) (int, error) {
+		return 0, os.ErrInvalid
+	}
+
+	var gotCommand, gotCWD string
+	runCreateExecFunc = func(_ context.Context, command, cwd string) error {
+		gotCommand = command
+		gotCWD = cwd
+		return nil
+	}
+
+	cmd := createCommand()
+	app := &urfavecli.Command{
+		Name:     "lazyworktree",
+		Commands: []*urfavecli.Command{cmd},
+	}
+
+	args := []string{"lazyworktree", "create", "--from-branch", "main", "--exec", "echo ready"}
+	if err := app.Run(context.Background(), args); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	assert.Equal(t, "echo ready", gotCommand)
+	assert.Equal(t, expectedPath, gotCWD)
+}
+
+func TestHandleCreateExecRunsInCurrentDirWithNoWorkspace(t *testing.T) {
+	tmpDir := t.TempDir()
+	oldWD, err := os.Getwd()
+	require.NoError(t, err)
+	require.NoError(t, os.Chdir(tmpDir))
+	t.Cleanup(func() {
+		_ = os.Chdir(oldWD)
+	})
+
+	oldLoadCLIConfig := loadCLIConfigFunc
+	oldNewCLIGitService := newCLIGitServiceFunc
+	oldCreateFromBranch := createFromBranchFunc
+	oldCreateFromPR := createFromPRFunc
+	oldCreateFromIssue := createFromIssueFunc
+	oldSelectIssueInteractive := selectIssueInteractiveFunc
+	oldSelectPRInteractive := selectPRInteractiveFunc
+	oldRunCreateExec := runCreateExecFunc
+	t.Cleanup(func() {
+		loadCLIConfigFunc = oldLoadCLIConfig
+		newCLIGitServiceFunc = oldNewCLIGitService
+		createFromBranchFunc = oldCreateFromBranch
+		createFromPRFunc = oldCreateFromPR
+		createFromIssueFunc = oldCreateFromIssue
+		selectIssueInteractiveFunc = oldSelectIssueInteractive
+		selectPRInteractiveFunc = oldSelectPRInteractive
+		runCreateExecFunc = oldRunCreateExec
+	})
+
+	loadCLIConfigFunc = func(string, string, []string) (*config.AppConfig, error) {
+		return &config.AppConfig{WorktreeDir: tmpDir}, nil
+	}
+	newCLIGitServiceFunc = func(*config.AppConfig) *git.Service {
+		return &git.Service{}
+	}
+	createFromBranchFunc = func(_ context.Context, _ *git.Service, _ *config.AppConfig, _, _ string, _, _ bool) (string, error) {
+		return "", os.ErrInvalid
+	}
+	createFromPRFunc = func(_ context.Context, _ *git.Service, _ *config.AppConfig, _ int, noWorkspace, _ bool) (string, error) {
+		if !noWorkspace {
+			return "", os.ErrInvalid
+		}
+		return "feature-branch", nil
+	}
+	createFromIssueFunc = func(_ context.Context, _ *git.Service, _ *config.AppConfig, _ int, _ string, _, _ bool) (string, error) {
+		return "", os.ErrInvalid
+	}
+	selectIssueInteractiveFunc = func(_ context.Context, _ *git.Service) (int, error) {
+		return 0, os.ErrInvalid
+	}
+	selectPRInteractiveFunc = func(_ context.Context, _ *git.Service) (int, error) {
+		return 0, os.ErrInvalid
+	}
+
+	var gotCWD string
+	runCreateExecFunc = func(_ context.Context, _ string, cwd string) error {
+		gotCWD = cwd
+		return nil
+	}
+
+	cmd := createCommand()
+	app := &urfavecli.Command{
+		Name:     "lazyworktree",
+		Commands: []*urfavecli.Command{cmd},
+	}
+
+	args := []string{"lazyworktree", "create", "--from-pr", "123", "--no-workspace", "--exec", "echo ok"}
+	if err := app.Run(context.Background(), args); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	gotInfo, err := os.Stat(gotCWD)
+	require.NoError(t, err)
+	wantInfo, err := os.Stat(tmpDir)
+	require.NoError(t, err)
+	assert.True(t, os.SameFile(gotInfo, wantInfo), "expected %q and %q to resolve to the same directory", gotCWD, tmpDir)
 }
 
 func TestHandleDeleteFlags(t *testing.T) {
