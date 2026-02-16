@@ -1,21 +1,27 @@
 const revealNodes = document.querySelectorAll(".reveal");
 
-const revealObserver = new IntersectionObserver(
-  (entries) => {
-    entries.forEach((entry) => {
-      if (entry.isIntersecting) {
-        entry.target.classList.add("visible");
-        revealObserver.unobserve(entry.target);
-      }
-    });
-  },
-  { threshold: 0.15 }
-);
+if ("IntersectionObserver" in window) {
+  const revealObserver = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add("visible");
+          revealObserver.unobserve(entry.target);
+        }
+      });
+    },
+    { threshold: 0.15 }
+  );
 
-revealNodes.forEach((node, index) => {
-  node.style.transitionDelay = `${Math.min(index * 80, 350)}ms`;
-  revealObserver.observe(node);
-});
+  revealNodes.forEach((node, index) => {
+    node.style.transitionDelay = `${Math.min(index * 80, 350)}ms`;
+    revealObserver.observe(node);
+  });
+} else {
+  revealNodes.forEach((node) => {
+    node.classList.add("visible");
+  });
+}
 
 const tabButtons = document.querySelectorAll(".tab-btn");
 const tabPanels = document.querySelectorAll(".tab-panel");

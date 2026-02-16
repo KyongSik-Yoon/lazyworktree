@@ -23,13 +23,13 @@
 
     <header class="site-header reveal">
       <a href="#" class="brand" aria-label="LazyWorktree home">
-        <span class="brand-mark">lw</span>
+        <img class="brand-mark" src="assets/logo.png" alt="LazyWorktree logo" />
         <span class="brand-text">lazyworktree</span>
       </a>
       <nav class="site-nav" aria-label="Main navigation">
         <a href="#features">Features</a>
-        <a href="#workflow">Workflow</a>
         <a href="#install">Install</a>
+        <a href="#screenshots">Screenshots</a>
       </nav>
       <a
         class="btn btn-small"
@@ -87,7 +87,7 @@ $ lazyworktree</code></pre>
           </article>
           <figure class="preview-card">
             <img
-              src="https://github.com/user-attachments/assets/229a4d6d-f26f-4b85-b909-fc28b9c524c2"
+              src="assets/screenshot-main.png"
               alt="LazyWorktree TUI screenshot"
             />
             <figcaption>
@@ -99,83 +99,53 @@ $ lazyworktree</code></pre>
 
       <section id="features" class="features reveal">
         <div class="section-heading">
-          <p class="kicker">Why teams choose it</p>
+          <p class="kicker">Features</p>
           <h2>Manage your worktree with Ease.</h2>
         </div>
         <div class="feature-grid">
           <article class="feature-card">
-            <h3>Smart worktree creation</h3>
+            <h3>Worktree management</h3>
             <p>
-              Create from branches, PRs, MRs, or issues with automatic naming
-              and optional file carry-over.
+              Create, rename, remove, absorb, and prune merged worktrees
+              directly from the keyboard.
+            </p>
+          </article>
+          <article class="feature-card">
+            <h3>Powerful creation modes</h3>
+            <p>
+              Create from branch, commit, PR/MR, issue, or custom menu item with
+              optional branch automation.
             </p>
           </article>
           <article class="feature-card">
             <h3>Deep Git tooling</h3>
             <p>
-              Stage, commit, diff, cherry-pick, synchronise, and open LazyGit
-              without context switching.
+              Stage, unstage, commit, diff, sync, push, and cherry-pick without
+              leaving the interface.
             </p>
           </article>
           <article class="feature-card">
             <h3>CI visibility</h3>
             <p>
-              Inspect checks, browse logs, and jump straight to job pages when
-              builds fail.
-            </p>
-          </article>
-          <article class="feature-card">
-            <h3>Command palette</h3>
-            <p>
-              Use a VSCode-style palette with MRU ranking to access actions
-              quickly and consistently.
+              Display checks, open job pages, inspect logs in pager, and restart
+              GitHub Actions jobs.
             </p>
           </article>
           <article class="feature-card">
             <h3>Session aware</h3>
             <p>
-              Integrate with tmux or zellij so each worktree can have a
-              dedicated terminal context.
+              Manage tmux or zellij sessions per worktree with configurable
+              session prefixes.
             </p>
           </article>
           <article class="feature-card">
-            <h3>Security-minded hooks</h3>
+            <h3>Extensible automation</h3>
             <p>
-              Run init and terminate hooks via `.wt` files with TOFU-based trust
-              controls.
+              Run init and terminate hooks via <code>.wt</code> and add custom
+              command bindings.
             </p>
           </article>
         </div>
-      </section>
-
-      <section id="workflow" class="workflow reveal">
-        <div class="workflow-content">
-          <div class="section-heading">
-            <p class="kicker">Built for momentum</p>
-            <h2>A clean loop from idea to merged branch.</h2>
-          </div>
-          <ol class="timeline">
-            <li>
-              <span>01</span>Spawn a worktree from your current branch, issue,
-              or open PR/MR.
-            </li>
-            <li>
-              <span>02</span>Code with live status, commit inspection, and
-              instant diffs in the same UI.
-            </li>
-            <li>
-              <span>03</span>Review CI, open the PR, prune merged branches, and
-              move to the next task.
-            </li>
-          </ol>
-        </div>
-        <figure class="workflow-preview">
-          <img
-            src="assets/ci-runs.png"
-            alt="CI runs view inside LazyWorktree"
-          />
-          <figcaption>CI checks stay one keystroke away.</figcaption>
-        </figure>
       </section>
 
       <section id="install" class="install reveal">
@@ -232,6 +202,59 @@ brew install lazyworktree --cask</code></pre>
         </p>
       </section>
 
+      <section id="screenshots" class="docs reveal">
+        <div class="section-heading">
+          <p class="kicker">Screenshots</p>
+          <h2>Visual tour of themes and workflows.</h2>
+        </div>
+        <div class="gallery">
+          <figure class="preview-card">
+            <img
+              src="assets/screenshot-light.png"
+              alt="Light theme screenshot"
+            />
+            <figcaption>Light theme (dracula-light).</figcaption>
+          </figure>
+          <figure class="preview-card">
+            <img
+              src="assets/screenshot-palette.png"
+              alt="Command palette screenshot"
+            />
+            <figcaption>Command palette (nord).</figcaption>
+          </figure>
+          <figure class="preview-card">
+            <img
+              src="assets/ci-runs.png"
+              alt="GitHub Actions logs viewer screenshot"
+            />
+            <figcaption>GitHub Actions logs viewer (rose-pine).</figcaption>
+          </figure>
+          <figure class="preview-card">
+            <img
+              src="assets/screenshot-branch.png"
+              alt="Branch creation screenshot"
+            />
+            <figcaption>Branch creation (tokyo-night).</figcaption>
+          </figure>
+          <figure class="preview-card">
+            <img
+              src="assets/screenshot-commit-files.png"
+              alt="Files in commit view screenshot"
+            />
+            <figcaption>Files in commit view (kanagawa).</figcaption>
+          </figure>
+          <figure class="preview-card">
+            <img
+              src="assets/screenshot-annotations.png"
+              alt="Add annotations to worktrees screenshot"
+            />
+            <figcaption>
+              Add annotations to worktrees (solarized-dark).
+            </figcaption>
+          </figure>
+        </div>
+      </section>
+
       <section class="cta reveal">
         <h2>Bring calm to your busiest repositories.</h2>
         <p>
@@ -258,7 +281,10 @@ brew install lazyworktree --cask</code></pre>
     </main>
 
     <footer class="site-footer">
-      <p>LazyWorktree is open source under the MIT licence.</p>
+      <p>
+        LazyWorktree is open source (Apache-2.0) and built for keyboard-driven
+        Git worktree workflows.
+      </p>
     </footer>
 
     <script src="app.js"></script>
