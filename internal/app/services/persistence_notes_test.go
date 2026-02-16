@@ -269,3 +269,124 @@ func TestSaveWorktreeNoteEmptyInputNoop(t *testing.T) {
 		t.Fatalf("expected notes file to be absent, got err=%v", err)
 	}
 }
+
+func TestMigrateRepoNotesToSharedFile(t *testing.T) {
+	worktreeDir := t.TempDir()
+	repoKey := "org/repo"
+	sharedPath := filepath.Join(t.TempDir(), "shared-notes.json")
+
+	// Create per-repo notes file with absolute-path keys.
+	wtPath := filepath.Join(worktreeDir, "org", "repo", "feature-x")
+	oldNotes := map[string]models.WorktreeNote{
+		wtPath: {Note: "migrate me", UpdatedAt: 100},
+	}
+	if err := SaveWorktreeNotes(repoKey, worktreeDir, "", oldNotes); err != nil {
+		t.Fatalf("save per-repo notes failed: %v", err)
+	}
+
+	n, err := MigrateRepoNotesToSharedFile(repoKey, worktreeDir, sharedPath)
+	if err != nil {
+		t.Fatalf("migration failed: %v", err)
+	}
+	if n != 1 {
+		t.Fatalf("expected 1 migrated note, got %d", n)
+	}
+
+	// Per-repo file should be deleted.
+	repoNotesPath := filepath.Join(worktreeDir, repoKey, models.WorktreeNotesFilename)
+	if _, err := os.Stat(repoNotesPath); !os.IsNotExist(err) {
+		t.Fatalf("expected per-repo file removed, got err=%v", err)
+	}
+
+	// Note should be readable from shared file with relative key.
+	notes, err := LoadWorktreeNotes(repoKey, worktreeDir, sharedPath)
+	if err != nil {
+		t.Fatalf("load shared notes failed: %v", err)
+	}
+	got, ok := notes["feature-x"]
+	if !ok {
+		t.Fatalf("expected key %q in shared notes, got %#v", "feature-x", notes)
+	}
+	if got.Note != "migrate me" {
+		t.Fatalf("unexpected note text: %q", got.Note)
+	}
+}
+
+func TestMigrateRepoNotesToSharedFileNoOp(t *testing.T) {
+	worktreeDir := t.TempDir()
+	repoKey := "org/repo"
+	sharedPath := filepath.Join(t.TempDir(), "shared-notes.json")
+
+	// No per-repo file exists.
+	n, err := MigrateRepoNotesToSharedFile(repoKey, worktreeDir, sharedPath)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if n != 0 {
+		t.Fatalf("expected 0 migrated notes, got %d", n)
+	}
+}
+
+func TestMigrateRepoNotesToSharedFileConflict(t *testing.T) {
+	worktreeDir := t.TempDir()
+	repoKey := "org/repo"
+	sharedPath := filepath.Join(t.TempDir(), "shared-notes.json")
+
+	wtPath := filepath.Join(worktreeDir, "org", "repo", "feature-y")
+
+	// Write a newer note to the shared file first.
+	sharedNotes := map[string]models.WorktreeNote{
+		"feature-y": {Note: "newer shared note", UpdatedAt: 500},
+	}
+	if err := SaveWorktreeNotes(repoKey, worktreeDir, sharedPath, sharedNotes); err != nil {
+		t.Fatalf("save shared notes failed: %v", err)
+	}
+
+	// Create per-repo notes with an older timestamp.
+	oldNotes := map[string]models.WorktreeNote{
+		wtPath: {Note: "older repo note", UpdatedAt: 100},
+	}
+	if err := SaveWorktreeNotes(repoKey, worktreeDir, "", oldNotes); err != nil {
+		t.Fatalf("save per-repo notes failed: %v", err)
+	}
+
+	n, err := MigrateRepoNotesToSharedFile(repoKey, worktreeDir, sharedPath)
+	if err != nil {
+		t.Fatalf("migration failed: %v", err)
+	}
+	if n != 0 {
+		t.Fatalf("expected 0 migrated (conflict), got %d", n)
+	}
+
+	// Shared file should still have the newer note.
+	notes, err := LoadWorktreeNotes(repoKey, worktreeDir, sharedPath)
+	if err != nil {
+		t.Fatalf("load shared notes failed: %v", err)
+	}
+	got := notes["feature-y"]
+	if got.Note != "newer shared note" {
+		t.Fatalf("expected newer note preserved, got %q", got.Note)
+	}
+	if got.UpdatedAt != 500 {
+		t.Fatalf("expected UpdatedAt=500, got %d", got.UpdatedAt)
+	}
+
+	// Per-repo file should still be cleaned up.
+	repoNotesPath := filepath.Join(worktreeDir, repoKey, models.WorktreeNotesFilename)
+	if _, err := os.Stat(repoNotesPath); !os.IsNotExist(err) {
+		t.Fatalf("expected per-repo file removed, got err=%v", err)
+	}
+}
+
+func TestMigrateRepoNotesToSharedFileNoSharedPath(t *testing.T) {
+	worktreeDir := t.TempDir()
+	repoKey := "org/repo"
+
+	n, err := MigrateRepoNotesToSharedFile(repoKey, worktreeDir, "")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if n != 0 {
+		t.Fatalf("expected 0 migrated notes, got %d", n)
+	}
+}

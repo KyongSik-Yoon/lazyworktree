@@ -240,6 +240,68 @@ func WorktreeNoteKey(repoKey, worktreeDir, worktreeNotesPath, worktreePath strin
 	return filepath.Base(cleanPath)
 }
 
+// MigrateRepoNotesToSharedFile moves per-repo worktree notes into the shared
+// notes file when worktreeNotesPath is configured. Old absolute-path keys are
+// converted to repo-relative keys. Entries already present in the shared file
+// with a newer UpdatedAt are preserved. The per-repo file is removed on success.
+// Returns the number of migrated notes.
+func MigrateRepoNotesToSharedFile(repoKey, worktreeDir, worktreeNotesPath string) (int, error) {
+	if strings.TrimSpace(worktreeNotesPath) == "" {
+		return 0, nil
+	}
+
+	repoNotesPath := filepath.Join(worktreeDir, repoKey, models.WorktreeNotesFilename)
+	oldNotes, err := loadRepoWorktreeNotes(repoNotesPath)
+	if err != nil {
+		return 0, err
+	}
+	if len(oldNotes) == 0 {
+		return 0, nil
+	}
+
+	allNotes, err := loadSharedWorktreeNotes(repoKey, worktreeNotesPath)
+	if err != nil {
+		return 0, err
+	}
+
+	repoNotes := allNotes[repoKey]
+	if repoNotes == nil {
+		repoNotes = map[string]models.WorktreeNote{}
+	}
+
+	migrated := 0
+	for oldKey, note := range oldNotes {
+		newKey := WorktreeNoteKey(repoKey, worktreeDir, worktreeNotesPath, oldKey)
+		if existing, ok := repoNotes[newKey]; ok && existing.UpdatedAt > note.UpdatedAt {
+			continue
+		}
+		repoNotes[newKey] = note
+		migrated++
+	}
+
+	if migrated == 0 {
+		// All entries already existed with newer timestamps; still clean up.
+		_ = os.Remove(repoNotesPath)
+		return 0, nil
+	}
+
+	allNotes[repoKey] = repoNotes
+
+	if err := os.MkdirAll(filepath.Dir(worktreeNotesPath), utils.DefaultDirPerms); err != nil {
+		return 0, err
+	}
+	data, err := json.Marshal(allNotes)
+	if err != nil {
+		return 0, err
+	}
+	if err := os.WriteFile(worktreeNotesPath, data, defaultFilePerms); err != nil {
+		return 0, err
+	}
+
+	_ = os.Remove(repoNotesPath)
+	return migrated, nil
+}
+
 // LoadWorktreeNotes loads worktree notes from file.
 func LoadWorktreeNotes(repoKey, worktreeDir, worktreeNotesPath string) (map[string]models.WorktreeNote, error) {
 	if strings.TrimSpace(worktreeNotesPath) == "" {

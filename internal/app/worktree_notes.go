@@ -38,6 +38,19 @@ func (m *Model) loadWorktreeNotes() {
 		notes = map[string]models.WorktreeNote{}
 	}
 	m.worktreeNotes = notes
+
+	// Auto-migrate per-repo notes to shared file if configured.
+	if n, err := services.MigrateRepoNotesToSharedFile(
+		m.getRepoKey(), m.getWorktreeDir(), m.getWorktreeNotesPath(),
+	); err != nil {
+		m.debugf("failed to migrate worktree notes: %v", err)
+	} else if n > 0 {
+		reloaded, err := services.LoadWorktreeNotes(m.getRepoKey(), m.getWorktreeDir(), m.getWorktreeNotesPath())
+		if err == nil && reloaded != nil {
+			m.worktreeNotes = reloaded
+		}
+		m.debugf("migrated %d worktree note(s) to shared file", n)
+	}
 }
 
 func (m *Model) saveWorktreeNotes() {
