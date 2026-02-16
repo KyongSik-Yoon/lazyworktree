@@ -47,3 +47,41 @@ tabButtons.forEach((button) => {
     panel.hidden = false;
   });
 });
+
+// Lightbox
+const lightbox = document.getElementById("lightbox");
+const lightboxImg = document.getElementById("lightbox-img");
+
+function openLightbox(src, alt) {
+  lightboxImg.src = src;
+  lightboxImg.alt = alt;
+  lightboxImg.classList.remove("zoomed");
+  lightbox.hidden = false;
+  document.body.style.overflow = "hidden";
+}
+
+function closeLightbox() {
+  lightbox.hidden = true;
+  lightboxImg.src = "";
+  document.body.style.overflow = "";
+}
+
+document.querySelectorAll(".preview-card img").forEach((img) => {
+  img.addEventListener("click", () => {
+    openLightbox(img.src, img.alt);
+  });
+});
+
+lightbox.addEventListener("click", (e) => {
+  if (e.target === lightboxImg) {
+    lightboxImg.classList.toggle("zoomed");
+  } else {
+    closeLightbox();
+  }
+});
+
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && !lightbox.hidden) {
+    closeLightbox();
+  }
+});
