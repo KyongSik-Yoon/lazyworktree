@@ -79,6 +79,29 @@ func TestCommandPaletteViewWithMRU(t *testing.T) {
 	assert.Contains(t, view, "Recent Action", "should contain MRU item")
 }
 
+func TestCommandPaletteFilterHidesEmptySections(t *testing.T) {
+	items := []PaletteItem{
+		{Label: "Worktree Actions", IsSection: true},
+		{ID: "create", Label: "Create worktree", Description: "Add a new worktree"},
+		{Label: "Status Pane", IsSection: true},
+		{ID: "refresh-status", Label: "Refresh status", Description: "Reload status pane"},
+		{Label: "Navigation", IsSection: true},
+		{ID: "focus-worktrees", Label: "Focus worktrees", Description: "Focus worktree pane"},
+	}
+
+	scr := NewCommandPaletteScreen(items, 100, 24, theme.Dracula())
+	next, _ := scr.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'w'}})
+	nextScr, ok := next.(*CommandPaletteScreen)
+	require.True(t, ok)
+	require.NotNil(t, nextScr)
+
+	require.Len(t, nextScr.Filtered, 4)
+	assert.Equal(t, "Worktree Actions", nextScr.Filtered[0].Label)
+	assert.Equal(t, "create", nextScr.Filtered[1].ID)
+	assert.Equal(t, "Navigation", nextScr.Filtered[2].Label)
+	assert.Equal(t, "focus-worktrees", nextScr.Filtered[3].ID)
+}
+
 func TestCommandPaletteHighlightMatches(t *testing.T) {
 	items := []PaletteItem{
 		{ID: "create", Label: "Create worktree", Description: "Add a new worktree", Icon: ""},

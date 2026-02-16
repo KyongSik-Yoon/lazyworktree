@@ -195,10 +195,13 @@ func (s *CommandPaletteScreen) applyFilter() {
 		s.Filtered = s.Items
 	} else {
 		s.Filtered = make([]PaletteItem, 0, len(s.Items))
+		var pendingSection PaletteItem
+		hasPendingSection := false
+
 		for _, item := range s.Items {
-			// Always include sections for visual grouping
 			if item.IsSection {
-				s.Filtered = append(s.Filtered, item)
+				pendingSection = item
+				hasPendingSection = true
 				continue
 			}
 
@@ -219,6 +222,10 @@ func (s *CommandPaletteScreen) applyFilter() {
 			}
 
 			if matched {
+				if hasPendingSection {
+					s.Filtered = append(s.Filtered, pendingSection)
+					hasPendingSection = false
+				}
 				s.Filtered = append(s.Filtered, item)
 			}
 		}
@@ -326,7 +333,7 @@ func (s *CommandPaletteScreen) View() string {
 
 	// Selection pointer for selected item
 	pointerStyle := lipgloss.NewStyle().
-		Foreground(s.Thm.Accent).
+		Foreground(s.Thm.WarnFg).
 		Bold(true)
 
 	descStyle := lipgloss.NewStyle().
@@ -464,7 +471,7 @@ func (s *CommandPaletteScreen) View() string {
 			}
 
 			// Add selection pointer
-			pointer := pointerStyle.Render("▸")
+			pointer := pointerStyle.Render("▶")
 			itemContent := selectedStyle.Render(line)
 			itemViews = append(itemViews, pointer+itemContent)
 		} else {
