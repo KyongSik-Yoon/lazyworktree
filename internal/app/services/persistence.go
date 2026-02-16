@@ -2,8 +2,10 @@ package services
 
 import (
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/chmouel/lazyworktree/internal/models"
 	"github.com/chmouel/lazyworktree/internal/utils"
@@ -217,13 +219,32 @@ func LoadWorktreeNotes(repoKey, worktreeDir string) (map[string]models.WorktreeN
 // SaveWorktreeNotes saves worktree notes to file.
 func SaveWorktreeNotes(repoKey, worktreeDir string, notes map[string]models.WorktreeNote) error {
 	notesPath := filepath.Join(worktreeDir, repoKey, models.WorktreeNotesFilename)
-	if err := os.MkdirAll(filepath.Dir(notesPath), utils.DefaultDirPerms); err != nil {
-		return err
-	}
 	if notes == nil {
 		notes = map[string]models.WorktreeNote{}
 	}
-	data, err := json.Marshal(notes)
+
+	normalized := make(map[string]models.WorktreeNote, len(notes))
+	for path, note := range notes {
+		trimmed := strings.TrimSpace(note.Note)
+		if trimmed == "" {
+			continue
+		}
+		note.Note = trimmed
+		normalized[path] = note
+	}
+
+	if len(normalized) == 0 {
+		if err := os.Remove(notesPath); err != nil && !errors.Is(err, os.ErrNotExist) {
+			return err
+		}
+		return nil
+	}
+
+	if err := os.MkdirAll(filepath.Dir(notesPath), utils.DefaultDirPerms); err != nil {
+		return err
+	}
+
+	data, err := json.Marshal(normalized)
 	if err != nil {
 		return err
 	}

@@ -157,7 +157,7 @@ Zsh helpers are in `shell/functions.zsh`. See [./shell/README.md](./shell/README
 | `=` | Toggle zoom for focused pane (full screen) |
 | `L` | Toggle layout (default / top) |
 
-In the annotation editor (`i`): `Ctrl+S` saves, `Enter` adds a new line, and `Esc` cancels.
+In the annotation editor (`i`): `Ctrl+S` saves, `Enter` adds a new line, and `Esc` cancels. Worktrees with non-empty annotations show a note marker beside the name.
 
 **Log Pane** (when focused on commit log):
 

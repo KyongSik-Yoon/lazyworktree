@@ -93,7 +93,7 @@ const (
 	nerdFontUIIconWorktreeMain      = ""
 	nerdFontUIIconWorktree          = ""
 	nerdFontUIIconStatusClean       = "-"
-	nerdFontUIIconStatusDirty       = ""
+	nerdFontUIIconStatusDirty       = "✎"
 	nerdFontUIIconAhead             = "↑"
 	nerdFontUIIconBehind            = "↓"
 	nerdFontUIIconArrowLeft         = "←"

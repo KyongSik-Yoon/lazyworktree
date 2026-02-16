@@ -92,6 +92,7 @@ When CI checks are displayed in the info panel:
 - Space: Toggle "Include current file changes"
 - i: Annotate selected worktree (multiline note)
 - Annotation editor: Ctrl+S saves, Enter adds a new line, Esc cancels
+- Worktrees with non-empty annotations show a note marker beside the name
 - m: Rename selected worktree
 - D: Delete selected worktree
 - A: Absorb worktree into main (merge or rebase based on configuration, then delete)

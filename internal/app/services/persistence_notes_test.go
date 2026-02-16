@@ -59,3 +59,48 @@ func TestLoadWorktreeNotesInvalidJSON(t *testing.T) {
 		t.Fatal("expected JSON parsing error")
 	}
 }
+
+func TestSaveWorktreeNotesRemovesFileWhenEmpty(t *testing.T) {
+	worktreeDir := t.TempDir()
+	repoKey := "repo"
+	notesPath := filepath.Join(worktreeDir, repoKey, models.WorktreeNotesFilename)
+
+	notes := map[string]models.WorktreeNote{
+		"/tmp/worktrees/feat": {
+			Note:      "keep",
+			UpdatedAt: 1234,
+		},
+	}
+	if err := SaveWorktreeNotes(repoKey, worktreeDir, notes); err != nil {
+		t.Fatalf("initial save failed: %v", err)
+	}
+	if _, err := os.Stat(notesPath); err != nil {
+		t.Fatalf("expected notes file to exist, stat failed: %v", err)
+	}
+
+	if err := SaveWorktreeNotes(repoKey, worktreeDir, map[string]models.WorktreeNote{}); err != nil {
+		t.Fatalf("empty save failed: %v", err)
+	}
+	if _, err := os.Stat(notesPath); !os.IsNotExist(err) {
+		t.Fatalf("expected notes file to be removed, got err=%v", err)
+	}
+}
+
+func TestSaveWorktreeNotesSkipsWhitespaceOnlyNotes(t *testing.T) {
+	worktreeDir := t.TempDir()
+	repoKey := "repo"
+	notesPath := filepath.Join(worktreeDir, repoKey, models.WorktreeNotesFilename)
+
+	notes := map[string]models.WorktreeNote{
+		"/tmp/worktrees/feat": {
+			Note:      "   \n\t ",
+			UpdatedAt: 1234,
+		},
+	}
+	if err := SaveWorktreeNotes(repoKey, worktreeDir, notes); err != nil {
+		t.Fatalf("save failed: %v", err)
+	}
+	if _, err := os.Stat(notesPath); !os.IsNotExist(err) {
+		t.Fatalf("expected no notes file for whitespace-only note, got err=%v", err)
+	}
+}

@@ -37,7 +37,13 @@ func (m *Model) getWorktreeNote(path string) (models.WorktreeNote, bool) {
 	}
 	key := worktreeNoteKey(path)
 	note, ok := m.worktreeNotes[key]
-	return note, ok
+	if !ok {
+		return models.WorktreeNote{}, false
+	}
+	if strings.TrimSpace(note.Note) == "" {
+		return models.WorktreeNote{}, false
+	}
+	return note, true
 }
 
 func (m *Model) setWorktreeNote(path, noteText string) {
@@ -119,7 +125,7 @@ func (m *Model) pruneStaleWorktreeNotes(worktrees []*models.WorktreeInfo) {
 func (m *Model) worktreeNoteBadge(_ models.WorktreeNote) string {
 	iconSet := strings.ToLower(strings.TrimSpace(m.config.IconSet))
 	if iconSet == "nerd-font-v3" {
-		return "✎"
+		return ""
 	}
 	return "[N]"
 }
