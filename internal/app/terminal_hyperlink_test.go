@@ -22,7 +22,7 @@ func stripTerminalSequences(s string) string {
 	return stripANSISequences(osc8EscapeRegex.ReplaceAllString(s, ""))
 }
 
-func TestBuildInfoContentPRNumberUsesOSCHyperlink(t *testing.T) {
+func TestBuildInfoContentPRNumberWithURLUsesPlainText(t *testing.T) {
 	cfg := config.DefaultConfig()
 	cfg.WorktreeDir = t.TempDir()
 	m := NewModel(cfg, "")
@@ -39,8 +39,11 @@ func TestBuildInfoContentPRNumberUsesOSCHyperlink(t *testing.T) {
 	}
 
 	info := m.buildInfoContent(wt)
-	if !strings.Contains(info, osc8Hyperlink("#2446", wt.PR.URL)) {
-		t.Fatalf("expected OSC-8 hyperlink for PR number, got %q", info)
+	if !strings.Contains(info, "#2446") {
+		t.Fatalf("expected PR number text, got %q", info)
+	}
+	if strings.Contains(info, "\x1b]8;;") {
+		t.Fatalf("did not expect OSC-8 hyperlink sequence in PR header, got %q", info)
 	}
 }
 

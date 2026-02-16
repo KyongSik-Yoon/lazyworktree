@@ -260,7 +260,7 @@ func TestIntegrationPRAndCIFlowUpdatesView(t *testing.T) {
 	m = updated.(*Model)
 
 	view := m.View()
-	if !strings.Contains(view, "PR:") {
+	if !strings.Contains(view, "PR #12") {
 		t.Fatalf("expected PR info to be rendered, got %q", view)
 	}
 	if !strings.Contains(view, getIconPR()) {
