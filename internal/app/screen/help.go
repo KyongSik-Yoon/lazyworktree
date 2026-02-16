@@ -94,6 +94,7 @@ When CI checks are displayed in the info panel:
 - i: Annotate selected worktree (multiline note)
 - Annotation editor: Ctrl+S saves, Enter adds a new line, Esc cancels
 - Worktrees with non-empty annotations show a note marker beside the name
+- In the Info pane, uppercase annotation tags such as TODO, FIXME, or WARNING: are highlighted with icons; lowercase tags are left unchanged
 - m: Rename selected worktree
 - D: Delete selected worktree
 - A: Absorb worktree into main (merge or rebase based on configuration, then delete)

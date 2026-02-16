@@ -2,6 +2,8 @@ package app
 
 import (
 	"fmt"
+	"regexp"
+	"sort"
 	"strings"
 	"time"
 
@@ -9,6 +11,163 @@ import (
 	"github.com/chmouel/lazyworktree/internal/app/state"
 	"github.com/chmouel/lazyworktree/internal/models"
 )
+
+type annotationKeywordSpec struct {
+	Canonical string
+	Aliases   []string
+	NerdIcon  string
+	TextIcon  string
+}
+
+var annotationKeywordSpecs = []annotationKeywordSpec{
+	{
+		Canonical: "FIX",
+		Aliases:   []string{"FIX", "FIXME", "BUG", "FIXIT", "ISSUE"},
+		NerdIcon:  "",
+		TextIcon:  "[!]",
+	},
+	{
+		Canonical: "TODO",
+		Aliases:   []string{"TODO"},
+		NerdIcon:  "",
+		TextIcon:  "[ ]",
+	},
+	{
+		Canonical: "HACK",
+		Aliases:   []string{"HACK"},
+		NerdIcon:  "",
+		TextIcon:  "[~]",
+	},
+	{
+		Canonical: "WARN",
+		Aliases:   []string{"WARN", "WARNING", "XXX"},
+		NerdIcon:  "",
+		TextIcon:  "[!]",
+	},
+	{
+		Canonical: "PERF",
+		Aliases:   []string{"PERF", "OPTIM", "PERFORMANCE", "OPTIMIZE"},
+		NerdIcon:  "",
+		TextIcon:  "[>]",
+	},
+	{
+		Canonical: "NOTE",
+		Aliases:   []string{"NOTE", "INFO"},
+		NerdIcon:  "",
+		TextIcon:  "[i]",
+	},
+	{
+		Canonical: "TEST",
+		Aliases:   []string{"TEST", "TESTING", "PASSED", "FAILED"},
+		NerdIcon:  "⏲",
+		TextIcon:  "[t]",
+	},
+}
+
+var (
+	annotationAliasMap     = buildAnnotationAliasMap()
+	annotationKeywordRegex = regexp.MustCompile(buildAnnotationKeywordPattern())
+)
+
+func buildAnnotationAliasMap() map[string]annotationKeywordSpec {
+	aliases := make(map[string]annotationKeywordSpec, 32)
+	for _, spec := range annotationKeywordSpecs {
+		for _, alias := range spec.Aliases {
+			aliases[alias] = spec
+		}
+	}
+	return aliases
+}
+
+func buildAnnotationKeywordPattern() string {
+	aliases := make([]string, 0, 32)
+	seen := make(map[string]struct{}, 32)
+	for _, spec := range annotationKeywordSpecs {
+		for _, alias := range spec.Aliases {
+			if _, ok := seen[alias]; ok {
+				continue
+			}
+			seen[alias] = struct{}{}
+			aliases = append(aliases, regexp.QuoteMeta(alias))
+		}
+	}
+	sort.Slice(aliases, func(i, j int) bool {
+		return len(aliases[i]) > len(aliases[j])
+	})
+	return `\b(` + strings.Join(aliases, "|") + `)\b(:?)`
+}
+
+func (m *Model) annotationKeywordIcon(spec annotationKeywordSpec) string {
+	iconSet := strings.ToLower(strings.TrimSpace(m.config.IconSet))
+	if iconSet == "nerd-font-v3" {
+		return spec.NerdIcon
+	}
+	return spec.TextIcon
+}
+
+func (m *Model) annotationKeywordStyle(spec annotationKeywordSpec) lipgloss.Style {
+	style := lipgloss.NewStyle().Bold(true)
+	switch spec.Canonical {
+	case "FIX":
+		return style.Foreground(m.theme.ErrorFg)
+	case "WARN", "HACK":
+		return style.Foreground(m.theme.WarnFg)
+	case "TODO":
+		return style.Foreground(m.theme.Cyan)
+	case "NOTE":
+		return style.Foreground(m.theme.SuccessFg)
+	case "PERF", "TEST":
+		return style.Foreground(m.theme.Accent)
+	default:
+		return style.Foreground(m.theme.TextFg)
+	}
+}
+
+func (m *Model) renderAnnotationKeywords(line string, valueStyle lipgloss.Style) string {
+	matches := annotationKeywordRegex.FindAllStringSubmatchIndex(line, -1)
+	if len(matches) == 0 {
+		return valueStyle.Render(line)
+	}
+
+	var b strings.Builder
+	last := 0
+	for _, idx := range matches {
+		if len(idx) < 6 {
+			continue
+		}
+
+		matchStart := idx[0]
+		matchEnd := idx[1]
+		kwStart := idx[2]
+		kwEnd := idx[3]
+		colonStart := idx[4]
+		colonEnd := idx[5]
+
+		if matchStart > last {
+			b.WriteString(valueStyle.Render(line[last:matchStart]))
+		}
+
+		alias := line[kwStart:kwEnd]
+		spec, ok := annotationAliasMap[alias]
+		if !ok {
+			b.WriteString(valueStyle.Render(line[matchStart:matchEnd]))
+			last = matchEnd
+			continue
+		}
+
+		token := iconWithSpace(m.annotationKeywordIcon(spec)) + alias
+		if colonStart >= 0 && colonEnd > colonStart {
+			token += ":"
+		}
+		b.WriteString(m.annotationKeywordStyle(spec).Render(token))
+		last = matchEnd
+	}
+
+	if last < len(line) {
+		b.WriteString(valueStyle.Render(line[last:]))
+	}
+	return b.String()
+}
 
 // renderBody renders the main body area with panes.
 func (m *Model) renderBody(layout layoutDims) string {
@@ -283,7 +442,7 @@ func (m *Model) buildInfoContent(wt *models.WorktreeInfo) string {
 		infoLines = append(infoLines, "")
 		infoLines = append(infoLines, sectionStyle.Render("Annotation:"))
 		for _, line := range strings.Split(note.Note, "\n") {
-			infoLines = append(infoLines, "  "+valueStyle.Render(line))
+			infoLines = append(infoLines, "  "+m.renderAnnotationKeywords(line, valueStyle))
 		}
 	}
 	hidePRDetails := wt.PR != nil && wt.IsMain && (wt.PR.State == prStateMerged || wt.PR.State == prStateClosed)
