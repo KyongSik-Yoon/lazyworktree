@@ -159,11 +159,3 @@ func (m *Model) pruneStaleWorktreeNotes(worktrees []*models.WorktreeInfo) {
 		m.saveWorktreeNotes()
 	}
 }
-
-func (m *Model) worktreeNoteBadge(_ models.WorktreeNote) string {
-	iconSet := strings.ToLower(strings.TrimSpace(m.config.IconSet))
-	if iconSet == "nerd-font-v3" {
-		return ""
-	}
-	return "[N]"
-}

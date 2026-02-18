@@ -182,9 +182,6 @@ func (m *Model) updateTable() {
 			worktreeIcon = UIIconWorktreeMain
 			name = mainWorktreeName
 		}
-		if note, ok := m.getWorktreeNote(wt.Path); ok {
-			name = m.worktreeNoteBadge(note) + " " + name
-		}
 		if showIcons {
 			name = iconPrefix(worktreeIcon, showIcons) + name
 		} else {

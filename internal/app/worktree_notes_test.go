@@ -243,31 +243,6 @@ func TestUpdateRenameWorktreeResultMigratesNote(t *testing.T) {
 	}
 }
 
-func TestUpdateTableShowsNoteIconForAnnotatedWorktree(t *testing.T) {
-	cfg := &config.AppConfig{
-		WorktreeDir: t.TempDir(),
-		IconSet:     "text",
-	}
-	m := NewModel(cfg, "")
-	wtPath := filepath.Join(cfg.WorktreeDir, "with-note")
-	m.state.data.worktrees = []*models.WorktreeInfo{
-		{Path: wtPath, Branch: "feat"},
-	}
-	m.state.data.filteredWts = m.state.data.worktrees
-	m.state.data.selectedIndex = 0
-
-	m.setWorktreeNote(wtPath, "remember this")
-	m.updateTable()
-
-	rows := m.state.ui.worktreeTable.Rows()
-	if len(rows) != 1 {
-		t.Fatalf("expected 1 row, got %d", len(rows))
-	}
-	if !strings.Contains(rows[0][0], "[N] with-note") {
-		t.Fatalf("expected note icon beside worktree name, got %q", rows[0][0])
-	}
-}
-
 func TestUpdateTableHidesNoteIconForEmptyNote(t *testing.T) {
 	cfg := &config.AppConfig{
 		WorktreeDir: t.TempDir(),
