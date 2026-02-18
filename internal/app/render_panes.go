@@ -29,13 +29,25 @@ var annotationKeywordSpecs = []annotationKeywordSpec{
 	{
 		Canonical: "TODO",
 		Aliases:   []string{"TODO"},
-		NerdIcon:  "",
+		NerdIcon:  "",
 		TextIcon:  "[ ]",
 	},
 	{
 		Canonical: "DONE",
 		Aliases:   []string{"DONE"},
-		NerdIcon:  "",
+		NerdIcon:  "",
+		TextIcon:  "[x]",
+	},
+	{
+		Canonical: "TODO_CHECKBOX",
+		Aliases:   []string{"TODO_CHECKBOX"},
+		NerdIcon:  " TODO", // U+F0131, checkbox blank circle outline
+		TextIcon:  "[ ]",
+	},
+	{
+		Canonical: "DONE_CHECKBOX",
+		Aliases:   []string{"DONE_CHECKBOX"},
+		NerdIcon:  " DONE", // U+F0134, checkbox marked circle outline
 		TextIcon:  "[x]",
 	},
 	{
@@ -125,6 +137,10 @@ func (m *Model) annotationKeywordStyle(spec annotationKeywordSpec) lipgloss.Styl
 		return style.Foreground(m.theme.Cyan)
 	case "DONE":
 		return style.Foreground(m.theme.SuccessFg)
+	case "TODO_CHECKBOX":
+		return style.Foreground(m.theme.WarnFg)
+	case "DONE_CHECKBOX":
+		return style.Foreground(m.theme.SuccessFg).Strikethrough(true).Bold(false)
 	case "NOTE":
 		return style.Foreground(m.theme.SuccessFg)
 	case "PERF", "TEST":
@@ -208,6 +224,52 @@ func parseMarkdownUnorderedList(line string) (int, string, bool) {
 
 	leading := len(line) - len(trimmed)
 	return leading / 2, strings.TrimSpace(trimmed[2:]), true
+}
+
+// parseMarkdownCheckbox parses markdown checkbox lines like "- [ ] task" or "- [x] task".
+// Returns indent level (based on leading spaces / 2), checked status, task text, and ok.
+func parseMarkdownCheckbox(line string) (int, bool, string, bool) {
+	trimmed := strings.TrimLeft(line, " \t")
+	if len(trimmed) < 6 { // Minimum: "- [ ] "
+		return 0, false, "", false
+	}
+
+	// Check for list marker (-, *, +)
+	marker := trimmed[0]
+	if marker != '-' && marker != '*' && marker != '+' {
+		return 0, false, "", false
+	}
+	if trimmed[1] != ' ' {
+		return 0, false, "", false
+	}
+
+	// Check for checkbox pattern "[ ]" or "[x]" / "[X]"
+	if len(trimmed) < 6 || trimmed[2] != '[' || trimmed[4] != ']' {
+		return 0, false, "", false
+	}
+
+	checkChar := trimmed[3]
+	var checked bool
+	switch checkChar {
+	case ' ':
+		checked = false
+	case 'x', 'X':
+		checked = true
+	default:
+		return 0, false, "", false
+	}
+
+	if trimmed[5] != ' ' {
+		return 0, false, "", false
+	}
+
+	leading := len(line) - len(trimmed)
+	text := strings.TrimSpace(trimmed[6:])
+	if text == "" {
+		text = "(empty task)"
+	}
+
+	return leading / 2, checked, text, true
 }
 
 func parseMarkdownOrderedList(line string) (int, string, string, bool) {
@@ -356,6 +418,26 @@ func (m *Model) renderMarkdownNoteLines(noteText string, valueStyle lipgloss.Sty
 			continue
 		}
 
+		// Try checkbox first (more specific than regular list)
+		if indent, checked, text, ok := parseMarkdownCheckbox(rawLine); ok {
+			// Select spec based on checked status
+			var spec annotationKeywordSpec
+			if checked {
+				spec = annotationKeywordSpecs[4] // DONE_CHECKBOX
+			} else {
+				spec = annotationKeywordSpecs[3] // TODO_CHECKBOX
+			}
+
+			icon := m.annotationKeywordIcon(spec)
+			style := m.annotationKeywordStyle(spec)
+			indentStr := strings.Repeat("  ", indent)
+			styledLine := style.Render(iconWithSpace(icon) + text)
+
+			rendered = append(rendered, "  "+indentStr+styledLine)
+			continue
+		}
+
+		// Fall back to regular unordered list
 		if indent, item, ok := parseMarkdownUnorderedList(rawLine); ok {
 			prefix := strings.Repeat("  ", indent) + "- "
 			line := m.renderAnnotationKeywords(prefix+item, valueStyle)
