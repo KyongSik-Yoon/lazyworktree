@@ -845,6 +845,36 @@ lazyworktree rename /path/to/worktree new-worktree-name
 
 When renaming, the branch is renamed only if the current worktree directory name matches the branch name.
 
+### Running Commands in Worktrees
+
+Execute commands or trigger custom command key actions in a worktree from the CLI:
+
+```bash
+# Run a shell command in a specific worktree
+lazyworktree exec --workspace=my-feature "make test"
+lazyworktree exec -w my-feature "git status"
+
+# Auto-detect worktree from current directory
+cd ~/worktrees/repo/my-feature
+lazyworktree exec "npm run build"
+
+# Trigger a custom command key (e.g. tmux session)
+lazyworktree exec --key=t --workspace=my-feature  # Launches tmux session
+lazyworktree exec -k z -w my-feature              # Launches zellij session
+
+# Auto-detect worktree and trigger key action
+cd ~/worktrees/repo/my-feature
+lazyworktree exec --key=t
+```
+
+The `exec` command:
+- Uses `--workspace` (or `-w`) to specify the target worktree by name or path
+- Auto-detects the worktree from the current directory if `--workspace` is not provided
+- Accepts either a shell command as a positional argument, or `--key` to trigger a custom command
+- Sets `WORKTREE_*` environment variables (same as custom commands in the TUI)
+- Supports all custom command types: shell, tmux, zellij, and show-output
+- Note: `new-tab` commands are not supported in CLI mode
+
 ## Screenshots
 
 ### Light Theme (dracula-light theme)

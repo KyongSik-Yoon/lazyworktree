@@ -198,6 +198,46 @@ Skip branch deletion entirely (even if worktree name matches branch name).
 .B \-\-silent
 Suppress all progress messages to stderr. Useful for scripting and automation.
 .
+.SS exec
+Run a command or trigger a custom command key action in a worktree from the CLI.
+.
+.PP
+The exec subcommand bridges CLI scripting with the TUI's custom command system, allowing you to execute shell commands or trigger tmux/zellij sessions without entering the TUI.
+.
+.PP
+.B Options:
+.TP
+.B \fICOMMAND\fR
+Optional positional argument for the shell command to execute. Mutually exclusive with \-\-key. The command runs through your shell environment (\fB$SHELL\fR) with appropriate flags (\fBzsh -ilc\fR, \fBbash -ic\fR, or fallback \fB-lc\fR).
+.
+.TP
+.B \-\-workspace \fINAME\fR, \-w \fINAME\fR
+Target worktree by name, path, or branch name. If not provided, lazyworktree auto-detects the worktree from the current directory. Shell completion suggests available worktree names.
+.
+.TP
+.B \-\-key \fIKEY\fR, \-k \fIKEY\fR
+Custom command key to trigger (e.g., 't' for tmux, 'z' for zellij). Mutually exclusive with the positional command argument. The key must exist in your configuration's \fBcustom_commands\fR. Supports shell, tmux, zellij, and show-output command types. Note: new-tab commands are not supported in CLI mode.
+.
+.PP
+.B Environment:
+.PP
+The exec command sets the same \fBWORKTREE_*\fR environment variables as custom commands in the TUI:
+.TP
+.B WORKTREE_PATH
+The absolute path to the worktree directory.
+.TP
+.B WORKTREE_BRANCH
+The branch name of the worktree.
+.TP
+.B WORKTREE_NAME
+The basename of the worktree directory.
+.TP
+.B REPO_NAME
+The repository name.
+.TP
+.B MAIN_WORKTREE_PATH
+The path to the main worktree.
+.
 .SH EXAMPLES
 .SS Worktree Management
 List worktrees (table format):
@@ -303,6 +343,26 @@ Rename a worktree:
 Rename by path:
 .br
 .B lazyworktree rename /path/to/worktree new\-worktree
+.
+.PP
+Run a command in a specific worktree:
+.br
+.B lazyworktree exec \-\-workspace=my\-feature "make test"
+.
+.PP
+Run a command in the current worktree (auto-detected):
+.br
+.B lazyworktree exec "npm run build"
+.
+.PP
+Trigger a tmux custom command:
+.br
+.B lazyworktree exec \-\-key=t \-\-workspace=my\-feature
+.
+.PP
+Trigger a zellij custom command in the current worktree:
+.br
+.B lazyworktree exec \-k z
 .
 .SS TUI Launch
 Launch the TUI (default):

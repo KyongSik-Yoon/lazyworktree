@@ -12,11 +12,13 @@ import (
 	"strings"
 	"text/tabwriter"
 
+	"github.com/chmouel/lazyworktree/internal/app/services"
 	"github.com/chmouel/lazyworktree/internal/cli"
 	"github.com/chmouel/lazyworktree/internal/config"
 	"github.com/chmouel/lazyworktree/internal/git"
 	"github.com/chmouel/lazyworktree/internal/log"
 	"github.com/chmouel/lazyworktree/internal/models"
+	"github.com/chmouel/lazyworktree/internal/multiplexer"
 	"github.com/chmouel/lazyworktree/internal/utils"
 	appiCli "github.com/urfave/cli/v3"
 )
@@ -142,6 +144,11 @@ func isExactSubcommandFlag(cmd *appiCli.Command, candidate string) bool {
 }
 
 func completionWorktreeBasenames(ctx context.Context, cmd *appiCli.Command) []string {
+	// For exec command, complete anytime (handled by custom ShellComplete)
+	if cmd.Name == "exec" {
+		return listSubcommandWorktreeNamesFunc(ctx, cmd)
+	}
+
 	if (cmd.Name != "delete" && cmd.Name != "rename") || cmd.NArg() != 0 {
 		return nil
 	}
@@ -908,4 +915,317 @@ func handleRenameAction(ctx context.Context, cmd *appiCli.Command) error {
 
 	_ = log.Close()
 	return nil
+}
+
+func execCommand() *appiCli.Command {
+	return &appiCli.Command{
+		Name:      "exec",
+		Usage:     "Run a command or trigger a key action in a worktree",
+		ArgsUsage: "[command]",
+		Action: func(ctx context.Context, cmd *appiCli.Command) error {
+			if handleSubcommandCompletion(ctx, cmd) {
+				return nil
+			}
+			return handleExecAction(ctx, cmd)
+		},
+		ShellComplete: func(ctx context.Context, cmd *appiCli.Command) {
+			// Handle workspace flag completion
+			if len(os.Args) >= 2 {
+				prevArg := os.Args[len(os.Args)-2]
+				if prevArg == "--workspace" || prevArg == "-w" {
+					completionWorktreeBasenames(ctx, cmd)
+					return
+				}
+			}
+			subcommandShellComplete(ctx, cmd)
+		},
+		Flags: []appiCli.Flag{
+			&appiCli.StringFlag{
+				Name:    "workspace",
+				Aliases: []string{"w"},
+				Usage:   "Target worktree name or path",
+			},
+			&appiCli.StringFlag{
+				Name:    "key",
+				Aliases: []string{"k"},
+				Usage:   "Custom command key to trigger (e.g. 't' for tmux)",
+			},
+		},
+	}
+}
+
+func handleExecAction(ctx context.Context, cmd *appiCli.Command) error {
+	key := cmd.String("key")
+	workspace := cmd.String("workspace")
+	var command string
+	if cmd.NArg() > 0 {
+		command = cmd.Args().Get(0)
+	}
+
+	// Validate: key and command are mutually exclusive
+	if key != "" && command != "" {
+		fmt.Fprintf(os.Stderr, "Error: --key and command argument are mutually exclusive\n")
+		return fmt.Errorf("--key and command argument are mutually exclusive")
+	}
+	if key == "" && command == "" {
+		fmt.Fprintf(os.Stderr, "Error: either --key or command argument is required\n")
+		return fmt.Errorf("either --key or command argument is required")
+	}
+
+	// Load config
+	cfg, err := loadCLIConfigFunc(
+		cmd.String("config-file"),
+		cmd.String("worktree-dir"),
+		cmd.StringSlice("config-override"),
+	)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error loading config: %v\n", err)
+		return err
+	}
+
+	// Create git service
+	gitSvc := newCLIGitServiceFunc(cfg)
+
+	// Get worktrees
+	worktrees, err := gitSvc.GetWorktrees(ctx)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error getting worktrees: %v\n", err)
+		return err
+	}
+
+	// Resolve target worktree
+	var targetWorktree *models.WorktreeInfo
+	if workspace != "" {
+		// User provided workspace flag
+		targetWorktree, err = cli.FindWorktreeByPathOrName(workspace, worktrees, cfg.WorktreeDir, gitSvc.ResolveRepoName(ctx))
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			return err
+		}
+	} else {
+		// Auto-detect from cwd
+		cwd, err := os.Getwd()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error getting current directory: %v\n", err)
+			return err
+		}
+		for _, wt := range worktrees {
+			if strings.HasPrefix(cwd, wt.Path) {
+				targetWorktree = wt
+				break
+			}
+		}
+		if targetWorktree == nil {
+			fmt.Fprintf(os.Stderr, "Error: could not auto-detect worktree from current directory\n")
+			fmt.Fprintf(os.Stderr, "Use --workspace to specify a worktree\n")
+			return fmt.Errorf("could not auto-detect worktree")
+		}
+	}
+
+	// Get main worktree path
+	var mainWorktreePath string
+	for _, wt := range worktrees {
+		if wt.IsMain {
+			mainWorktreePath = wt.Path
+			break
+		}
+	}
+
+	// Build environment variables
+	env := services.BuildCommandEnv(targetWorktree.Branch, targetWorktree.Path, gitSvc.ResolveRepoName(ctx), mainWorktreePath)
+
+	// Execute command or key action
+	if command != "" {
+		// Command mode - run shell command
+		return executeShellCommand(ctx, command, targetWorktree.Path, env)
+	}
+
+	// Key mode - trigger custom command
+	return executeKeyAction(ctx, key, cfg, targetWorktree, env)
+}
+
+func executeShellCommand(ctx context.Context, command, cwd string, env map[string]string) error {
+	shellPath, shellArgs := shellInvocationForExec(command)
+	// #nosec G204 -- explicit user-provided command executed by request
+	execCmd := exec.CommandContext(ctx, shellPath, shellArgs...)
+	execCmd.Dir = cwd
+	execCmd.Stdin = os.Stdin
+	execCmd.Stdout = os.Stdout
+	execCmd.Stderr = os.Stderr
+	execCmd.Env = append(os.Environ(), services.EnvMapToList(env)...)
+
+	if err := execCmd.Run(); err != nil {
+		fmt.Fprintf(os.Stderr, "Error: command failed: %v\n", err)
+		return err
+	}
+	return nil
+}
+
+func executeKeyAction(ctx context.Context, key string, cfg *config.AppConfig, wt *models.WorktreeInfo, env map[string]string) error {
+	customCmd, exists := cfg.CustomCommands[key]
+	if !exists {
+		fmt.Fprintf(os.Stderr, "Error: custom command key %q not found in config\n", key)
+		return fmt.Errorf("custom command key %q not found", key)
+	}
+
+	// Determine command type based on config fields
+	if customCmd.Tmux != nil {
+		return executeTmuxAction(ctx, customCmd.Tmux, cfg, wt, env)
+	}
+
+	if customCmd.Zellij != nil {
+		return executeZellijAction(ctx, customCmd.Zellij, cfg, wt, env)
+	}
+
+	if customCmd.NewTab {
+		fmt.Fprintf(os.Stderr, "Error: new-tab commands are not supported in CLI mode\n")
+		return fmt.Errorf("new-tab commands are not supported in CLI mode")
+	}
+
+	if customCmd.ShowOutput {
+		return executeShowOutputAction(ctx, customCmd.Command, cfg, wt, env)
+	}
+
+	// Default: shell command
+	return executeShellCommand(ctx, customCmd.Command, wt.Path, env)
+}
+
+func executeTmuxAction(ctx context.Context, tmuxCfg *config.TmuxCommand, cfg *config.AppConfig, wt *models.WorktreeInfo, env map[string]string) error {
+	if tmuxCfg == nil {
+		return fmt.Errorf("tmux configuration is nil")
+	}
+
+	// Expand and sanitise session name
+	sessionName := strings.TrimSpace(services.ExpandWithEnv(tmuxCfg.SessionName, env))
+	if sessionName == "" {
+		sessionName = fmt.Sprintf("%s%s", cfg.SessionPrefix, filepath.Base(wt.Path))
+	}
+	sessionName = multiplexer.SanitizeTmuxSessionName(sessionName)
+
+	// Resolve windows
+	windows, ok := multiplexer.ResolveTmuxWindows(tmuxCfg.Windows, env, wt.Path)
+	if !ok {
+		return fmt.Errorf("failed to resolve tmux windows")
+	}
+
+	// Create session file for script to write final session name
+	sessionFile, err := os.CreateTemp("", "lazyworktree-tmux-")
+	if err != nil {
+		return err
+	}
+	sessionPath := sessionFile.Name()
+	if closeErr := sessionFile.Close(); closeErr != nil {
+		return closeErr
+	}
+	defer func() { _ = os.Remove(sessionPath) }() //#nosec G703 -- controlled temp file cleanup
+
+	// Build script with attach=true
+	scriptCfg := *tmuxCfg
+	scriptCfg.Attach = true
+	env["LW_TMUX_SESSION_FILE"] = sessionPath
+	script := multiplexer.BuildTmuxScript(sessionName, &scriptCfg, windows, env)
+
+	// Execute script
+	// #nosec G204 -- command is built from user-configured tmux session settings
+	execCmd := exec.CommandContext(ctx, "bash", "-lc", script)
+	execCmd.Dir = wt.Path
+	execCmd.Env = append(os.Environ(), services.EnvMapToList(env)...)
+	execCmd.Stdin = os.Stdin
+	execCmd.Stdout = os.Stdout
+	execCmd.Stderr = os.Stderr
+
+	return execCmd.Run()
+}
+
+func executeZellijAction(ctx context.Context, zellijCfg *config.TmuxCommand, cfg *config.AppConfig, wt *models.WorktreeInfo, env map[string]string) error {
+	if zellijCfg == nil {
+		return fmt.Errorf("zellij configuration is nil")
+	}
+
+	// Expand and sanitise session name
+	sessionName := strings.TrimSpace(services.ExpandWithEnv(zellijCfg.SessionName, env))
+	if sessionName == "" {
+		sessionName = fmt.Sprintf("%s%s", cfg.SessionPrefix, filepath.Base(wt.Path))
+	}
+	sessionName = multiplexer.SanitizeZellijSessionName(sessionName)
+
+	// Resolve windows
+	windows, ok := multiplexer.ResolveTmuxWindows(zellijCfg.Windows, env, wt.Path)
+	if !ok {
+		return fmt.Errorf("failed to resolve zellij windows")
+	}
+
+	// Write layout files
+	layoutPaths, err := multiplexer.WriteZellijLayouts(windows)
+	if err != nil {
+		return err
+	}
+	defer multiplexer.CleanupZellijLayouts(layoutPaths)
+
+	// Create session file
+	sessionFile, err := os.CreateTemp("", "lazyworktree-zellij-")
+	if err != nil {
+		return err
+	}
+	sessionPath := sessionFile.Name()
+	if closeErr := sessionFile.Close(); closeErr != nil {
+		return closeErr
+	}
+	defer func() { _ = os.Remove(sessionPath) }() //#nosec G703 -- controlled temp file cleanup
+
+	// Build script
+	scriptCfg := *zellijCfg
+	scriptCfg.Attach = false
+	env["LW_ZELLIJ_SESSION_FILE"] = sessionPath
+	script := multiplexer.BuildZellijScript(sessionName, &scriptCfg, layoutPaths)
+
+	// Execute script
+	// #nosec G204 -- command is built from user-configured zellij session settings
+	execCmd := exec.CommandContext(ctx, "bash", "-lc", script)
+	execCmd.Dir = wt.Path
+	execCmd.Env = append(os.Environ(), services.EnvMapToList(env)...)
+	execCmd.Stdin = os.Stdin
+	execCmd.Stdout = os.Stdout
+	execCmd.Stderr = os.Stderr
+
+	if err := execCmd.Run(); err != nil {
+		return err
+	}
+
+	// Read final session name and attach
+	finalSession := multiplexer.ReadSessionFile(sessionPath, sessionName)
+	// #nosec G204 G702 -- zellij session name comes from user configuration
+	attachCmd := exec.CommandContext(ctx, "zellij", "attach", finalSession)
+	attachCmd.Stdin = os.Stdin
+	attachCmd.Stdout = os.Stdout
+	attachCmd.Stderr = os.Stderr
+
+	return attachCmd.Run()
+}
+
+func executeShowOutputAction(ctx context.Context, command string, cfg *config.AppConfig, wt *models.WorktreeInfo, env map[string]string) error {
+	// Run command and capture output
+	shellPath, shellArgs := shellInvocationForExec(command)
+	// #nosec G204 -- explicit user-provided command executed by request
+	execCmd := exec.CommandContext(ctx, shellPath, shellArgs...)
+	execCmd.Dir = wt.Path
+	execCmd.Env = append(os.Environ(), services.EnvMapToList(env)...)
+
+	output, err := execCmd.CombinedOutput()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: command failed: %v\n", err)
+		return err
+	}
+
+	// Get pager command
+	pagerCmd := services.PagerCommand(cfg)
+
+	// Pipe output through pager
+	// #nosec G204 -- pager command comes from config or environment
+	pager := exec.CommandContext(ctx, "sh", "-c", pagerCmd)
+	pager.Stdin = strings.NewReader(string(output))
+	pager.Stdout = os.Stdout
+	pager.Stderr = os.Stderr
+
+	return pager.Run()
 }

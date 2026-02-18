@@ -538,7 +538,7 @@ func DeleteWorktree(ctx context.Context, gitSvc gitService, cfg *config.AppConfi
 	}
 
 	// Find the worktree to delete
-	selectedWorktree, err := findWorktreeByPathOrName(worktreePath, nonMainWorktrees, cfg.WorktreeDir, gitSvc.ResolveRepoName(ctx))
+	selectedWorktree, err := FindWorktreeByPathOrName(worktreePath, nonMainWorktrees, cfg.WorktreeDir, gitSvc.ResolveRepoName(ctx))
 	if err != nil {
 		return err
 	}
@@ -619,7 +619,7 @@ func RenameWorktree(ctx context.Context, gitSvc gitService, cfg *config.AppConfi
 		return fmt.Errorf("invalid new name: must contain at least one alphanumeric character")
 	}
 
-	selectedWorktree, err := findWorktreeByPathOrName(worktreePath, nonMainWorktrees, cfg.WorktreeDir, gitSvc.ResolveRepoName(ctx))
+	selectedWorktree, err := FindWorktreeByPathOrName(worktreePath, nonMainWorktrees, cfg.WorktreeDir, gitSvc.ResolveRepoName(ctx))
 	if err != nil {
 		return err
 	}
@@ -647,8 +647,8 @@ func RenameWorktree(ctx context.Context, gitSvc gitService, cfg *config.AppConfi
 	return nil
 }
 
-// findWorktreeByPathOrName finds a worktree by its path or name.
-func findWorktreeByPathOrName(pathOrName string, worktrees []*models.WorktreeInfo, worktreeDir, repoName string) (*models.WorktreeInfo, error) {
+// FindWorktreeByPathOrName finds a worktree by its path or name.
+func FindWorktreeByPathOrName(pathOrName string, worktrees []*models.WorktreeInfo, worktreeDir, repoName string) (*models.WorktreeInfo, error) {
 	// Try to match by exact path
 	for _, wt := range worktrees {
 		if wt.Path == pathOrName {

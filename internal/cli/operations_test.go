@@ -214,7 +214,7 @@ func TestFindWorktreeByPathOrName(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			found, err := findWorktreeByPathOrName(tt.pathOrName, worktrees, worktreeDir, repoName)
+			found, err := FindWorktreeByPathOrName(tt.pathOrName, worktrees, worktreeDir, repoName)
 			if tt.wantErr {
 				if err == nil {
 					t.Fatalf("expected error")
