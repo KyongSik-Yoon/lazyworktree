@@ -48,9 +48,9 @@ as emacs!).
 * Press ? to view the interactive help screen
 * When pressing ENTER Lazyworktree will by default output the path
   of the worktree. To let you "jump" to it from your shell
-  you need to configure some shell aliases like:
+  you may want to automate it like this:
 
-  ```alias cl="cd $(lazyworktree")```
+  ```cd $(lazyworktree)```
 
   See below for more advanced [shell integrations](#shell-integration).
 
