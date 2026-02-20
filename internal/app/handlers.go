@@ -2,7 +2,6 @@ package app
 
 import (
 	"path/filepath"
-	"sort"
 
 	tea "github.com/charmbracelet/bubbletea"
 	appscreen "github.com/chmouel/lazyworktree/internal/app/screen"
@@ -98,10 +97,6 @@ func (m *Model) handleSearchInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.state.ui.filterInput.Blur()
 		m.restoreFocusAfterSearch()
 		return m, nil
-	case "n":
-		return m, m.advanceSearchMatch(true)
-	case "N":
-		return m, m.advanceSearchMatch(false)
 	}
 	if isEscKey(keyStr) || keyStr == keyCtrlC {
 		m.clearSearchQuery()
@@ -567,6 +562,11 @@ func (m *Model) handleBuiltInKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		return m, m.startSearch(target)
 
+	case "n":
+		return m, m.advanceSearchMatch(true)
+	case "N":
+		return m, m.advanceSearchMatch(false)
+
 	case "s":
 		// In status pane: stage/unstage selected file or directory
 		if m.state.view.FocusedPane == 1 && len(m.state.services.statusTree.TreeFlat) > 0 && m.state.services.statusTree.Index >= 0 && m.state.services.statusTree.Index < len(m.state.services.statusTree.TreeFlat) {
@@ -801,20 +801,7 @@ func (m *Model) handleFilterNavigation(keyStr string, fillInput bool) (tea.Model
 		// Alt+n/Alt+p: navigate through all worktrees (sorted)
 		workList = make([]*models.WorktreeInfo, len(m.state.data.worktrees))
 		copy(workList, m.state.data.worktrees)
-		switch m.sortMode {
-		case sortModeLastActive:
-			sort.Slice(workList, func(i, j int) bool {
-				return workList[i].LastActiveTS > workList[j].LastActiveTS
-			})
-		case sortModeLastSwitched:
-			sort.Slice(workList, func(i, j int) bool {
-				return workList[i].LastSwitchedTS > workList[j].LastSwitchedTS
-			})
-		default: // sortModePath
-			sort.Slice(workList, func(i, j int) bool {
-				return workList[i].Path < workList[j].Path
-			})
-		}
+		sortWorktrees(workList, m.sortMode)
 	} else {
 		// Up/Down: navigate through filtered worktrees
 		workList = m.state.data.filteredWts

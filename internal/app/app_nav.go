@@ -117,13 +117,39 @@ func (m *Model) startFilter(target filterTarget) tea.Cmd {
 	return textinput.Blink
 }
 
+func sortWorktrees(wts []*models.WorktreeInfo, mode int) {
+	switch mode {
+	case sortModeLastActive:
+		sort.SliceStable(wts, func(i, j int) bool {
+			ti, tj := wts[i].LastActiveTS, wts[j].LastActiveTS
+			if ti != tj {
+				return ti > tj
+			}
+			return wts[i].Path < wts[j].Path
+		})
+	case sortModeLastSwitched:
+		sort.SliceStable(wts, func(i, j int) bool {
+			ti, tj := wts[i].LastSwitchedTS, wts[j].LastSwitchedTS
+			if ti != tj {
+				return ti > tj
+			}
+			return wts[i].Path < wts[j].Path
+		})
+	default: // sortModePath
+		sort.SliceStable(wts, func(i, j int) bool {
+			return wts[i].Path < wts[j].Path
+		})
+	}
+}
+
 func (m *Model) updateTable() {
 	// Filter worktrees
 	query := strings.ToLower(strings.TrimSpace(m.state.services.filter.FilterQuery))
 	m.state.data.filteredWts = []*models.WorktreeInfo{}
 
 	if query == "" {
-		m.state.data.filteredWts = m.state.data.worktrees
+		m.state.data.filteredWts = make([]*models.WorktreeInfo, len(m.state.data.worktrees))
+		copy(m.state.data.filteredWts, m.state.data.worktrees)
 	} else {
 		hasPathSep := strings.Contains(query, "/")
 		for _, wt := range m.state.data.worktrees {
@@ -144,21 +170,7 @@ func (m *Model) updateTable() {
 		}
 	}
 
-	// Sort based on current sort mode
-	switch m.sortMode {
-	case sortModeLastActive:
-		sort.Slice(m.state.data.filteredWts, func(i, j int) bool {
-			return m.state.data.filteredWts[i].LastActiveTS > m.state.data.filteredWts[j].LastActiveTS
-		})
-	case sortModeLastSwitched:
-		sort.Slice(m.state.data.filteredWts, func(i, j int) bool {
-			return m.state.data.filteredWts[i].LastSwitchedTS > m.state.data.filteredWts[j].LastSwitchedTS
-		})
-	default: // sortModePath
-		sort.Slice(m.state.data.filteredWts, func(i, j int) bool {
-			return m.state.data.filteredWts[i].Path < m.state.data.filteredWts[j].Path
-		})
-	}
+	sortWorktrees(m.state.data.filteredWts, m.sortMode)
 
 	// Update table rows
 	showIcons := m.config.IconsEnabled()

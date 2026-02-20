@@ -833,6 +833,14 @@ func TestSearchLogSelectsNextMatch(t *testing.T) {
 		t.Fatalf("expected first match at cursor 0, got %d", m.state.ui.logTable.Cursor())
 	}
 
+	// Confirm search with Enter, then use n to advance to next match
+	updated, _ = m.handleKeyMsg(tea.KeyMsg{Type: tea.KeyEnter})
+	updatedModel, ok = updated.(*Model)
+	if !ok {
+		t.Fatalf("expected updated model, got %T", updated)
+	}
+	m = updatedModel
+
 	_, _ = m.handleKeyMsg(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'n'}})
 	if m.state.ui.logTable.Cursor() != 2 {
 		t.Fatalf("expected next match at cursor 2, got %d", m.state.ui.logTable.Cursor())
