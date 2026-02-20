@@ -353,7 +353,7 @@ func renameCommand() *appiCli.Command {
 	return &appiCli.Command{
 		Name:      "rename",
 		Usage:     "Rename a worktree",
-		ArgsUsage: "[worktree-path-or-name] [new-name]",
+		ArgsUsage: "<new-name> | <worktree> <new-name>",
 		Action: func(ctx context.Context, cmd *appiCli.Command) error {
 			if handleSubcommandCompletion(ctx, cmd) {
 				return nil
@@ -897,12 +897,19 @@ func handleRenameAction(ctx context.Context, cmd *appiCli.Command) error {
 	}
 
 	worktreePath := ""
-	if cmd.NArg() > 0 {
-		worktreePath = cmd.Args().Get(0)
-	}
-
 	newName := ""
-	if cmd.NArg() > 1 {
+	switch {
+	case cmd.NArg() == 1:
+		cwd, err := os.Getwd()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			_ = log.Close()
+			return fmt.Errorf("failed to determine current directory: %w", err)
+		}
+		worktreePath = cwd
+		newName = cmd.Args().Get(0)
+	case cmd.NArg() == 2:
+		worktreePath = cmd.Args().Get(0)
 		newName = cmd.Args().Get(1)
 	}
 

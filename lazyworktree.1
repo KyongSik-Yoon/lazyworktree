@@ -170,12 +170,12 @@ Shell completion for the first rename argument suggests available worktree basen
 .PP
 .B Options:
 .TP
-.B \fIWORKTREE\fR
-Worktree path, branch name, or worktree directory name to rename. If omitted, lazyworktree lists available worktrees and prints usage.
+.B \fINEW\-NAME\fR
+New worktree name. It is sanitised to lowercase letters, numbers, and hyphens. When given as the only argument, the current worktree (detected from the working directory) is renamed.
 .
 .TP
-.B \fINEW\-NAME\fR
-New worktree name. It is sanitised to lowercase letters, numbers, and hyphens. Required when \fIWORKTREE\fR is provided.
+.B \fIWORKTREE\fR \fINEW\-NAME\fR
+When two arguments are given, \fIWORKTREE\fR is the worktree path, branch name, or directory name to rename, and \fINEW\-NAME\fR is the new name. If no arguments are given, lazyworktree lists available worktrees and prints usage.
 .
 .TP
 .B \-\-silent
@@ -335,7 +335,12 @@ Delete worktree without deleting branch:
 .B lazyworktree delete \-\-no\-branch
 .
 .PP
-Rename a worktree:
+Rename the current worktree (detected from cwd):
+.br
+.B lazyworktree rename new\-feature
+.
+.PP
+Rename a worktree by name:
 .br
 .B lazyworktree rename feature new\-feature
 .

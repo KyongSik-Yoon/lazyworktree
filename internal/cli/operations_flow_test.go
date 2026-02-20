@@ -779,6 +779,31 @@ func TestRenameWorktree(t *testing.T) {
 		}
 	})
 
+	t.Run("renames worktree by full path (simulating cwd resolution)", func(t *testing.T) {
+		svc := &fakeGitService{
+			resolveRepoName:  "repo",
+			renameWorktreeOK: true,
+			worktrees: []*models.WorktreeInfo{
+				{Path: "/main", Branch: "main", IsMain: true},
+				{Path: "/worktrees/repo/feature", Branch: "feature"},
+			},
+		}
+
+		err := RenameWorktree(ctx, svc, cfg, "/worktrees/repo/feature", "new-feature", true)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if !svc.renameWorktreeCalled {
+			t.Fatalf("expected rename to be called")
+		}
+		if svc.lastRenameOldPath != "/worktrees/repo/feature" {
+			t.Fatalf("unexpected old path: %q", svc.lastRenameOldPath)
+		}
+		if svc.lastRenameNewPath != "/worktrees/repo/new-feature" {
+			t.Fatalf("unexpected new path: %q", svc.lastRenameNewPath)
+		}
+	})
+
 	t.Run("rejects empty new name", func(t *testing.T) {
 		svc := &fakeGitService{
 			resolveRepoName: "repo",

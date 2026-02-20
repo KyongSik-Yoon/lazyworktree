@@ -605,7 +605,8 @@ func RenameWorktree(ctx context.Context, gitSvc gitService, cfg *config.AppConfi
 		for _, wt := range nonMainWorktrees {
 			fmt.Fprintf(os.Stderr, "  %s\n", formatWorktreeForList(wt))
 		}
-		fmt.Fprintf(os.Stderr, "\nUsage: lazyworktree rename <worktree-name-or-path> <new-name>\n")
+		fmt.Fprintf(os.Stderr, "\nUsage: lazyworktree rename <new-name>                  (rename current worktree)\n")
+		fmt.Fprintf(os.Stderr, "       lazyworktree rename <worktree-name-or-path> <new-name>\n")
 		return nil
 	}
 
@@ -652,6 +653,13 @@ func FindWorktreeByPathOrName(pathOrName string, worktrees []*models.WorktreeInf
 	// Try to match by exact path
 	for _, wt := range worktrees {
 		if wt.Path == pathOrName {
+			return wt, nil
+		}
+	}
+
+	// Try prefix path match (cwd is inside worktree)
+	for _, wt := range worktrees {
+		if strings.HasPrefix(pathOrName, wt.Path+string(filepath.Separator)) {
 			return wt, nil
 		}
 	}

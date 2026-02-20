@@ -208,6 +208,7 @@ func TestFindWorktreeByPathOrName(t *testing.T) {
 		{name: "branch match", pathOrName: "feature", want: wtFeature},
 		{name: "constructed path match", pathOrName: "bugfix", want: wtBugfix},
 		{name: "basename match", pathOrName: filepath.Base(wtFeature.Path), want: wtFeature},
+		{name: "prefix path match (cwd inside worktree)", pathOrName: "/worktrees/repo/feature/src/pkg", want: wtFeature},
 		{name: "not found", pathOrName: "nope", wantErr: true},
 	}
 

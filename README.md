@@ -849,6 +849,7 @@ lazyworktree delete --no-branch    # Delete worktree only
 ### Renaming Worktrees
 
 ```bash
+lazyworktree rename new-feature-name              # rename current worktree (detected from cwd)
 lazyworktree rename feature new-feature-name
 lazyworktree rename /path/to/worktree new-worktree-name
 ```

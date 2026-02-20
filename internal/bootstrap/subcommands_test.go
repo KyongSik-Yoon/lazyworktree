@@ -889,6 +889,13 @@ func TestHandleRenameFlags(t *testing.T) {
 			silent: false,
 		},
 		{
+			name:     "single argument (new name only)",
+			args:     []string{"lazyworktree", "rename", "new-feature"},
+			silent:   false,
+			worktree: "new-feature",
+			newName:  "",
+		},
+		{
 			name:     "with worktree and new name",
 			args:     []string{"lazyworktree", "rename", "feature", "new-feature"},
 			silent:   false,
