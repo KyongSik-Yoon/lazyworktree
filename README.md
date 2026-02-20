@@ -46,6 +46,13 @@ as emacs!).
 * Navigate to a Git repository in your terminal
 * Run lazyworktree to launch the TUI
 * Press ? to view the interactive help screen
+* When pressing ENTER Lazyworktree will by default output the path
+  of the worktree. To let you "jump" to it from your shell
+  you need to configure some shell aliases like:
+
+  ```alias cl="cd $(lazyworktree")```
+
+  See below for more advanced [shell integrations](#shell-integration).
 
 ## Requirements
 
