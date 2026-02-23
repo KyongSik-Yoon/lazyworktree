@@ -114,10 +114,7 @@ func (m *Model) overlayPopup(base, popup string, marginTop int) string {
 
 		// Preserve left and right portions of the base line using
 		// ANSI-aware truncation so box borders stay intact.
-		leftPart := ansi.Truncate(baseLines[row], leftPad, "")
-		if w := lipgloss.Width(leftPart); w < leftPad {
-			leftPart += strings.Repeat(" ", leftPad-w)
-		}
+                leftPart := lipgloss.NewStyle().Width(leftPad).Render(ansi.Truncate(baseLines[row], leftPad, ""))
 		rightPart := ansi.TruncateLeft(baseLines[row], leftPad+popupWidth, "")
 
 		newLine := leftPart + line + rightPart
