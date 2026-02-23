@@ -120,7 +120,11 @@ func (m *Model) overlayPopup(base, popup string, marginTop int) string {
 		}
 		rightPart := ansi.TruncateLeft(baseLines[row], leftPad+popupWidth, "")
 
-		baseLines[row] = leftPart + line + rightPart
+		newLine := leftPart + line + rightPart
+		if w := lipgloss.Width(newLine); w < baseWidth {
+			newLine += strings.Repeat(" ", baseWidth-w)
+		}
+		baseLines[row] = newLine
 	}
 
 	return strings.Join(baseLines, "\n")
