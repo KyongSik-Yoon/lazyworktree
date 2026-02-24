@@ -286,6 +286,29 @@ func TestHandleCreateValidation(t *testing.T) {
 			expectError: true,
 			errorMsg:    "--generate flag cannot be used with --from-pr-interactive",
 		},
+		// --query tests
+		{
+			name:        "query with from-pr-interactive (valid)",
+			args:        []string{"lazyworktree", "create", "-P", "-q", "dark"},
+			expectError: false,
+		},
+		{
+			name:        "query with from-issue-interactive (valid)",
+			args:        []string{"lazyworktree", "create", "-I", "--query", "login"},
+			expectError: false,
+		},
+		{
+			name:        "query alone (invalid)",
+			args:        []string{"lazyworktree", "create", "--query", "dark"},
+			expectError: true,
+			errorMsg:    "--query requires --from-pr-interactive or --from-issue-interactive",
+		},
+		{
+			name:        "query with from-pr number (invalid)",
+			args:        []string{"lazyworktree", "create", "--from-pr", "123", "--query", "dark"},
+			expectError: true,
+			errorMsg:    "--query requires --from-pr-interactive or --from-issue-interactive",
+		},
 	}
 
 	for _, tt := range tests {
@@ -527,10 +550,10 @@ func TestHandleCreateOutputSelection(t *testing.T) {
 	createFromIssueFunc = func(_ context.Context, _ *git.Service, _ *config.AppConfig, _ int, _ string, _, _ bool) (string, error) {
 		return "", os.ErrInvalid
 	}
-	selectIssueInteractiveFunc = func(_ context.Context, _ *git.Service) (int, error) {
+	selectIssueInteractiveFunc = func(_ context.Context, _ *git.Service, _ string) (int, error) {
 		return 0, os.ErrInvalid
 	}
-	selectPRInteractiveFunc = func(_ context.Context, _ *git.Service) (int, error) {
+	selectPRInteractiveFunc = func(_ context.Context, _ *git.Service, _ string) (int, error) {
 		return 0, os.ErrInvalid
 	}
 	writeOutputSelectionFunc = writeOutputSelection
@@ -618,10 +641,10 @@ func TestHandleCreateOutputSelectionFailureLeavesFile(t *testing.T) {
 	createFromIssueFunc = func(_ context.Context, _ *git.Service, _ *config.AppConfig, _ int, _ string, _, _ bool) (string, error) {
 		return "", os.ErrInvalid
 	}
-	selectIssueInteractiveFunc = func(_ context.Context, _ *git.Service) (int, error) {
+	selectIssueInteractiveFunc = func(_ context.Context, _ *git.Service, _ string) (int, error) {
 		return 0, os.ErrInvalid
 	}
-	selectPRInteractiveFunc = func(_ context.Context, _ *git.Service) (int, error) {
+	selectPRInteractiveFunc = func(_ context.Context, _ *git.Service, _ string) (int, error) {
 		return 0, os.ErrInvalid
 	}
 	writeOutputSelectionFunc = writeOutputSelection
@@ -688,10 +711,10 @@ func TestHandleCreateExecRunsInCreatedWorktree(t *testing.T) {
 	createFromIssueFunc = func(_ context.Context, _ *git.Service, _ *config.AppConfig, _ int, _ string, _, _ bool) (string, error) {
 		return "", os.ErrInvalid
 	}
-	selectIssueInteractiveFunc = func(_ context.Context, _ *git.Service) (int, error) {
+	selectIssueInteractiveFunc = func(_ context.Context, _ *git.Service, _ string) (int, error) {
 		return 0, os.ErrInvalid
 	}
-	selectPRInteractiveFunc = func(_ context.Context, _ *git.Service) (int, error) {
+	selectPRInteractiveFunc = func(_ context.Context, _ *git.Service, _ string) (int, error) {
 		return 0, os.ErrInvalid
 	}
 
@@ -763,10 +786,10 @@ func TestHandleCreateExecRunsInCurrentDirWithNoWorkspace(t *testing.T) {
 	createFromIssueFunc = func(_ context.Context, _ *git.Service, _ *config.AppConfig, _ int, _ string, _, _ bool) (string, error) {
 		return "", os.ErrInvalid
 	}
-	selectIssueInteractiveFunc = func(_ context.Context, _ *git.Service) (int, error) {
+	selectIssueInteractiveFunc = func(_ context.Context, _ *git.Service, _ string) (int, error) {
 		return 0, os.ErrInvalid
 	}
-	selectPRInteractiveFunc = func(_ context.Context, _ *git.Service) (int, error) {
+	selectPRInteractiveFunc = func(_ context.Context, _ *git.Service, _ string) (int, error) {
 		return 0, os.ErrInvalid
 	}
 

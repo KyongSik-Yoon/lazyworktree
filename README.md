@@ -824,6 +824,8 @@ lazyworktree create --from-issue 42 --from-branch main  # From issue with explic
 lazyworktree create -I                       # Interactively select issue (fzf or list)
 lazyworktree create -I --from-branch main    # Interactive issue with explicit base
 lazyworktree create -P                       # Interactively select PR (fzf or list)
+lazyworktree create -P -q "dark"             # Pre-filter interactive PR selection
+lazyworktree create -I --query "login"       # Pre-filter interactive issue selection
 lazyworktree create --from-pr 123 --no-workspace        # Branch only, no worktree
 lazyworktree create --from-issue 42 --no-workspace      # Branch only, no worktree
 lazyworktree create -I --no-workspace                    # Interactively select issue, branch only

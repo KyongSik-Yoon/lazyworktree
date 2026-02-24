@@ -28,8 +28,8 @@ type (
 	createFromPRFuncType           func(ctx context.Context, gitSvc *git.Service, cfg *config.AppConfig, prNumber int, noWorkspace, silent bool) (string, error)
 	createFromIssueFuncType        func(ctx context.Context, gitSvc *git.Service, cfg *config.AppConfig, issueNumber int, baseBranch string, noWorkspace, silent bool) (string, error)
 	renameWorktreeFuncType         func(ctx context.Context, gitSvc *git.Service, cfg *config.AppConfig, worktreePath, newName string, silent bool) error
-	selectIssueInteractiveFuncType func(ctx context.Context, gitSvc *git.Service) (int, error)
-	selectPRInteractiveFuncType    func(ctx context.Context, gitSvc *git.Service) (int, error)
+	selectIssueInteractiveFuncType func(ctx context.Context, gitSvc *git.Service, query string) (int, error)
+	selectPRInteractiveFuncType    func(ctx context.Context, gitSvc *git.Service, query string) (int, error)
 	runCreateExecFuncType          func(ctx context.Context, command, cwd string) error
 )
 
@@ -48,11 +48,11 @@ var (
 	renameWorktreeFunc renameWorktreeFuncType = func(ctx context.Context, gitSvc *git.Service, cfg *config.AppConfig, worktreePath, newName string, silent bool) error {
 		return cli.RenameWorktree(ctx, gitSvc, cfg, worktreePath, newName, silent)
 	}
-	selectIssueInteractiveFunc selectIssueInteractiveFuncType = func(ctx context.Context, gitSvc *git.Service) (int, error) {
-		return cli.SelectIssueInteractiveFromStdio(ctx, gitSvc)
+	selectIssueInteractiveFunc selectIssueInteractiveFuncType = func(ctx context.Context, gitSvc *git.Service, query string) (int, error) {
+		return cli.SelectIssueInteractiveFromStdio(ctx, gitSvc, query)
 	}
-	selectPRInteractiveFunc selectPRInteractiveFuncType = func(ctx context.Context, gitSvc *git.Service) (int, error) {
-		return cli.SelectPRInteractiveFromStdio(ctx, gitSvc)
+	selectPRInteractiveFunc selectPRInteractiveFuncType = func(ctx context.Context, gitSvc *git.Service, query string) (int, error) {
+		return cli.SelectPRInteractiveFromStdio(ctx, gitSvc, query)
 	}
 	writeOutputSelectionFunc                       = writeOutputSelection
 	runCreateExecFunc        runCreateExecFuncType = runCreateExec
@@ -320,6 +320,11 @@ func createCommand() *appiCli.Command {
 				Name:    "exec",
 				Usage:   "Run a shell command after creation (in the created worktree, or current directory with --no-workspace)",
 			},
+			&appiCli.StringFlag{
+				Name:    "query",
+				Aliases: []string{"q"},
+				Usage:   "Pre-filter interactive selection (pre-fills fzf search or filters numbered list); requires --from-pr-interactive or --from-issue-interactive",
+			},
 		},
 	}
 }
@@ -440,6 +445,11 @@ func validateCreateFlags(ctx context.Context, cmd *appiCli.Command) error {
 		}
 	}
 
+	query := cmd.String("query")
+	if query != "" && !fromPRInteractive && !fromIssueInteractive {
+		return fmt.Errorf("--query requires --from-pr-interactive or --from-issue-interactive")
+	}
+
 	if noWorkspace {
 		if fromPR == 0 && !fromPRInteractive && fromIssue == 0 && !fromIssueInteractive {
 			return fmt.Errorf("--no-workspace requires --from-pr, --from-pr-interactive, --from-issue, or --from-issue-interactive")
@@ -499,6 +509,7 @@ func handleCreateAction(ctx context.Context, cmd *appiCli.Command) error {
 	noWorkspace := cmd.Bool("no-workspace")
 	silent := cmd.Bool("silent")
 	execCommand := strings.TrimSpace(cmd.String("exec"))
+	query := cmd.String("query")
 
 	// Get name from positional argument if provided
 	var name string
@@ -514,7 +525,7 @@ func handleCreateAction(ctx context.Context, cmd *appiCli.Command) error {
 	case fromPR > 0:
 		outputPath, opErr = createFromPRFunc(ctx, gitSvc, cfg, fromPR, noWorkspace, silent)
 	case fromPRInteractive:
-		prNumber, err := selectPRInteractiveFunc(ctx, gitSvc)
+		prNumber, err := selectPRInteractiveFunc(ctx, gitSvc, query)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			_ = log.Close()
@@ -522,7 +533,7 @@ func handleCreateAction(ctx context.Context, cmd *appiCli.Command) error {
 		}
 		outputPath, opErr = createFromPRFunc(ctx, gitSvc, cfg, prNumber, noWorkspace, silent)
 	case fromIssueInteractive:
-		issueNumber, err := selectIssueInteractiveFunc(ctx, gitSvc)
+		issueNumber, err := selectIssueInteractiveFunc(ctx, gitSvc, query)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			_ = log.Close()

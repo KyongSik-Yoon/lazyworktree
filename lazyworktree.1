@@ -10,6 +10,7 @@ lazyworktree \- A TUI tool to manage git worktrees
 [\-\-from\-branch \fIBRANCH\fR] [\-\-name \fINAME\fR] | [\-\-from\-pr \fINUMBER\fR]
 | [\-\-from\-pr\-interactive|\-P] | [\-\-from\-issue \fINUMBER\fR]
 | [\-\-from\-issue\-interactive|\-I]
+[\-\-query|\-q \fISTRING\fR]
 [\-\-with\-change] [\-\-silent]
 .br
 .B lazyworktree wt\-rename
@@ -137,6 +138,10 @@ Interactively select an open issue to create a worktree from. When \fBfzf\fR is 
 .TP
 .B \-\-from\-pr\-interactive\fR, \fB\-P\fR
 Interactively select an open pull request to create a worktree from. When \fBfzf\fR is installed, presents a searchable list with PR metadata preview (author, branches, draft status, CI); otherwise displays a numbered list for selection. Mutually exclusive with \-\-from\-pr, \-\-from\-issue, \-\-from\-issue\-interactive, and \-\-from\-branch. Cannot combine with \-\-with\-change or a positional name.
+.
+.TP
+.B \-\-query \fISTRING\fR\fR, \fB\-q \fISTRING\fR
+Pre\-filter the interactive selection list. Requires \-\-from\-pr\-interactive or \-\-from\-issue\-interactive. When \fBfzf\fR is available, the search box is pre\-filled with the given string; otherwise the numbered list is filtered to items whose display line contains the string (case\-insensitive substring match).
 .
 .TP
 .B \-\-generate
@@ -293,6 +298,16 @@ Create from issue number with explicit base branch:
 Interactively select a PR (fzf or numbered list):
 .br
 .B lazyworktree create \-P
+.
+.PP
+Interactively select a PR, pre\-filtered:
+.br
+.B lazyworktree create \-P \-q "dark"
+.
+.PP
+Interactively select an issue, pre\-filtered:
+.br
+.B lazyworktree create \-I \-\-query "login"
 .
 .PP
 Checkout PR branch without creating a worktree:

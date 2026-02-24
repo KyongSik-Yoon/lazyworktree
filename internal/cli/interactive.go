@@ -77,8 +77,8 @@ func (p prItem) FormatPreview() string {
 
 // selector function types used for test injection.
 type (
-	issueSelector func(issues []*models.IssueInfo, stdin io.Reader, stderr io.Writer) (*models.IssueInfo, error)
-	prSelector    func(prs []*models.PRInfo, stdin io.Reader, stderr io.Writer) (*models.PRInfo, error)
+	issueSelector func(issues []*models.IssueInfo, query string, stdin io.Reader, stderr io.Writer) (*models.IssueInfo, error)
+	prSelector    func(prs []*models.PRInfo, query string, stdin io.Reader, stderr io.Writer) (*models.PRInfo, error)
 )
 
 var (
@@ -90,7 +90,7 @@ var (
 // --- Generic selection helpers ---
 
 // selectWithFzf pipes items through fzf and returns the selected item.
-func selectWithFzf[T selectableItem](items []T, prompt, header, cancelMsg, notFoundMsg string, stderr io.Writer) (T, error) {
+func selectWithFzf[T selectableItem](items []T, query, prompt, header, cancelMsg, notFoundMsg string, stderr io.Writer) (T, error) {
 	var zero T
 	lookup := make(map[int]T, len(items))
 	var lines []string
@@ -101,14 +101,19 @@ func selectWithFzf[T selectableItem](items []T, prompt, header, cancelMsg, notFo
 	input := strings.Join(lines, "\n")
 	previewScript := buildGenericPreviewScript(items)
 
-	//nolint:gosec // This is not executing user input, just a static script we built
-	cmd := exec.Command("fzf",
+	fzfArgs := []string{
 		"--ansi",
 		"--prompt", prompt,
 		"--header", header,
 		"--preview", previewScript,
 		"--preview-window", "wrap:down:40%",
-	)
+	}
+	if query != "" {
+		fzfArgs = append(fzfArgs, "--query", query)
+	}
+
+	//nolint:gosec // This is not executing user input, just a static script we built
+	cmd := exec.Command("fzf", fzfArgs...)
 	cmd.Stdin = strings.NewReader(input)
 	cmd.Stderr = stderr
 
@@ -133,9 +138,28 @@ func selectWithFzf[T selectableItem](items []T, prompt, header, cancelMsg, notFo
 	return item, nil
 }
 
+// filterItems returns items whose FormatLine() contains query (case-insensitive).
+func filterItems[T selectableItem](items []T, query string) []T {
+	if query == "" {
+		return items
+	}
+	lower := strings.ToLower(query)
+	var result []T
+	for _, item := range items {
+		if strings.Contains(strings.ToLower(item.FormatLine()), lower) {
+			result = append(result, item)
+		}
+	}
+	return result
+}
+
 // selectWithPrompt displays a numbered list and reads the user's choice.
-func selectWithPrompt[T selectableItem](items []T, noun string, stdin io.Reader, stderr io.Writer) (T, error) {
+func selectWithPrompt[T selectableItem](items []T, query, noun string, stdin io.Reader, stderr io.Writer) (T, error) {
 	var zero T
+	items = filterItems(items, query)
+	if len(items) == 0 {
+		return zero, fmt.Errorf("no %ss matching %q", noun, query)
+	}
 	fmt.Fprintf(stderr, "\nOpen %ss:\n\n", noun)
 	for i, item := range items {
 		fmt.Fprintf(stderr, "  [%d] %s\n", i+1, item.FormatLine())
@@ -200,7 +224,7 @@ func parseNumberFromLine(line string) (int, error) {
 // --- Issue selectors (thin wrappers around generic helpers) ---
 
 // SelectIssueInteractive presents an interactive issue selector (fzf when available, numbered list otherwise).
-func SelectIssueInteractive(ctx context.Context, gitSvc gitService, stdin io.Reader, stderr io.Writer) (int, error) {
+func SelectIssueInteractive(ctx context.Context, gitSvc gitService, query string, stdin io.Reader, stderr io.Writer) (int, error) {
 	fmt.Fprintf(stderr, "Fetching open issues...\n")
 
 	issues, err := gitSvc.FetchAllOpenIssues(ctx)
@@ -211,32 +235,32 @@ func SelectIssueInteractive(ctx context.Context, gitSvc gitService, stdin io.Rea
 		return 0, fmt.Errorf("no open issues found")
 	}
 
-	selected, err := selectIssueFunc(issues, stdin, stderr)
+	selected, err := selectIssueFunc(issues, query, stdin, stderr)
 	if err != nil {
 		return 0, err
 	}
 	return selected.Number, nil
 }
 
-func selectIssueDefault(issues []*models.IssueInfo, stdin io.Reader, stderr io.Writer) (*models.IssueInfo, error) {
+func selectIssueDefault(issues []*models.IssueInfo, query string, stdin io.Reader, stderr io.Writer) (*models.IssueInfo, error) {
 	if _, err := fzfLookPath("fzf"); err == nil {
-		return selectIssueWithFzf(issues, stderr)
+		return selectIssueWithFzf(issues, query, stderr)
 	}
-	return selectIssueWithPrompt(issues, stdin, stderr)
+	return selectIssueWithPrompt(issues, query, stdin, stderr)
 }
 
-func selectIssueWithFzf(issues []*models.IssueInfo, stderr io.Writer) (*models.IssueInfo, error) {
+func selectIssueWithFzf(issues []*models.IssueInfo, query string, stderr io.Writer) (*models.IssueInfo, error) {
 	items := wrapIssues(issues)
-	selected, err := selectWithFzf(items, "Select issue> ", "Issue selection (type to filter)", "issue selection cancelled", "no issue selected", stderr)
+	selected, err := selectWithFzf(items, query, "Select issue> ", "Issue selection (type to filter)", "issue selection cancelled", "no issue selected", stderr)
 	if err != nil {
 		return nil, err
 	}
 	return selected.IssueInfo, nil
 }
 
-func selectIssueWithPrompt(issues []*models.IssueInfo, stdin io.Reader, stderr io.Writer) (*models.IssueInfo, error) {
+func selectIssueWithPrompt(issues []*models.IssueInfo, query string, stdin io.Reader, stderr io.Writer) (*models.IssueInfo, error) {
 	items := wrapIssues(issues)
-	selected, err := selectWithPrompt(items, "issue", stdin, stderr)
+	selected, err := selectWithPrompt(items, query, "issue", stdin, stderr)
 	if err != nil {
 		return nil, err
 	}
@@ -249,14 +273,14 @@ func buildPreviewScript(issues []*models.IssueInfo) string {
 }
 
 // SelectIssueInteractiveFromStdio wraps SelectIssueInteractive with os.Stdin/os.Stderr.
-func SelectIssueInteractiveFromStdio(ctx context.Context, gitSvc gitService) (int, error) {
-	return SelectIssueInteractive(ctx, gitSvc, os.Stdin, os.Stderr)
+func SelectIssueInteractiveFromStdio(ctx context.Context, gitSvc gitService, query string) (int, error) {
+	return SelectIssueInteractive(ctx, gitSvc, query, os.Stdin, os.Stderr)
 }
 
 // --- PR selectors (thin wrappers around generic helpers) ---
 
 // SelectPRInteractive presents an interactive PR selector (fzf when available, numbered list otherwise).
-func SelectPRInteractive(ctx context.Context, gitSvc gitService, stdin io.Reader, stderr io.Writer) (int, error) {
+func SelectPRInteractive(ctx context.Context, gitSvc gitService, query string, stdin io.Reader, stderr io.Writer) (int, error) {
 	fmt.Fprintf(stderr, "Fetching open pull requests...\n")
 
 	prs, err := gitSvc.FetchAllOpenPRs(ctx)
@@ -267,32 +291,32 @@ func SelectPRInteractive(ctx context.Context, gitSvc gitService, stdin io.Reader
 		return 0, fmt.Errorf("no open pull requests found")
 	}
 
-	selected, err := selectPRFunc(prs, stdin, stderr)
+	selected, err := selectPRFunc(prs, query, stdin, stderr)
 	if err != nil {
 		return 0, err
 	}
 	return selected.Number, nil
 }
 
-func selectPRDefault(prs []*models.PRInfo, stdin io.Reader, stderr io.Writer) (*models.PRInfo, error) {
+func selectPRDefault(prs []*models.PRInfo, query string, stdin io.Reader, stderr io.Writer) (*models.PRInfo, error) {
 	if _, err := fzfLookPath("fzf"); err == nil {
-		return selectPRWithFzf(prs, stderr)
+		return selectPRWithFzf(prs, query, stderr)
 	}
-	return selectPRWithPrompt(prs, stdin, stderr)
+	return selectPRWithPrompt(prs, query, stdin, stderr)
 }
 
-func selectPRWithFzf(prs []*models.PRInfo, stderr io.Writer) (*models.PRInfo, error) {
+func selectPRWithFzf(prs []*models.PRInfo, query string, stderr io.Writer) (*models.PRInfo, error) {
 	items := wrapPRs(prs)
-	selected, err := selectWithFzf(items, "Select PR> ", "Pull request selection (type to filter)", "pull request selection cancelled", "no pull request selected", stderr)
+	selected, err := selectWithFzf(items, query, "Select PR> ", "Pull request selection (type to filter)", "pull request selection cancelled", "no pull request selected", stderr)
 	if err != nil {
 		return nil, err
 	}
 	return selected.PRInfo, nil
 }
 
-func selectPRWithPrompt(prs []*models.PRInfo, stdin io.Reader, stderr io.Writer) (*models.PRInfo, error) {
+func selectPRWithPrompt(prs []*models.PRInfo, query string, stdin io.Reader, stderr io.Writer) (*models.PRInfo, error) {
 	items := wrapPRs(prs)
-	selected, err := selectWithPrompt(items, "pull request", stdin, stderr)
+	selected, err := selectWithPrompt(items, query, "pull request", stdin, stderr)
 	if err != nil {
 		return nil, err
 	}
@@ -305,8 +329,8 @@ func buildPRPreviewScript(prs []*models.PRInfo) string {
 }
 
 // SelectPRInteractiveFromStdio wraps SelectPRInteractive with os.Stdin/os.Stderr.
-func SelectPRInteractiveFromStdio(ctx context.Context, gitSvc gitService) (int, error) {
-	return SelectPRInteractive(ctx, gitSvc, os.Stdin, os.Stderr)
+func SelectPRInteractiveFromStdio(ctx context.Context, gitSvc gitService, query string) (int, error) {
+	return SelectPRInteractive(ctx, gitSvc, query, os.Stdin, os.Stderr)
 }
 
 // --- Conversion helpers ---

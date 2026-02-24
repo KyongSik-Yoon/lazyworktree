@@ -26,7 +26,7 @@ func TestSelectIssueWithPrompt_ValidSelection(t *testing.T) {
 	stdin := strings.NewReader("2\n")
 	stderr := &bytes.Buffer{}
 
-	selected, err := selectIssueWithPrompt(issues, stdin, stderr)
+	selected, err := selectIssueWithPrompt(issues, "", stdin, stderr)
 	require.NoError(t, err)
 	assert.Equal(t, 42, selected.Number)
 	assert.Equal(t, "Add dark mode", selected.Title)
@@ -44,7 +44,7 @@ func TestSelectIssueWithPrompt_FirstItem(t *testing.T) {
 	stdin := strings.NewReader("1\n")
 	stderr := &bytes.Buffer{}
 
-	selected, err := selectIssueWithPrompt(issues, stdin, stderr)
+	selected, err := selectIssueWithPrompt(issues, "", stdin, stderr)
 	require.NoError(t, err)
 	assert.Equal(t, 10, selected.Number)
 }
@@ -54,7 +54,7 @@ func TestSelectIssueWithPrompt_LastItem(t *testing.T) {
 	stdin := strings.NewReader("3\n")
 	stderr := &bytes.Buffer{}
 
-	selected, err := selectIssueWithPrompt(issues, stdin, stderr)
+	selected, err := selectIssueWithPrompt(issues, "", stdin, stderr)
 	require.NoError(t, err)
 	assert.Equal(t, 99, selected.Number)
 }
@@ -64,7 +64,7 @@ func TestSelectIssueWithPrompt_OutOfRangeTooHigh(t *testing.T) {
 	stdin := strings.NewReader("5\n")
 	stderr := &bytes.Buffer{}
 
-	_, err := selectIssueWithPrompt(issues, stdin, stderr)
+	_, err := selectIssueWithPrompt(issues, "", stdin, stderr)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "selection out of range")
 }
@@ -74,7 +74,7 @@ func TestSelectIssueWithPrompt_OutOfRangeZero(t *testing.T) {
 	stdin := strings.NewReader("0\n")
 	stderr := &bytes.Buffer{}
 
-	_, err := selectIssueWithPrompt(issues, stdin, stderr)
+	_, err := selectIssueWithPrompt(issues, "", stdin, stderr)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "selection out of range")
 }
@@ -84,7 +84,7 @@ func TestSelectIssueWithPrompt_NegativeNumber(t *testing.T) {
 	stdin := strings.NewReader("-1\n")
 	stderr := &bytes.Buffer{}
 
-	_, err := selectIssueWithPrompt(issues, stdin, stderr)
+	_, err := selectIssueWithPrompt(issues, "", stdin, stderr)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "selection out of range")
 }
@@ -94,7 +94,7 @@ func TestSelectIssueWithPrompt_NonNumeric(t *testing.T) {
 	stdin := strings.NewReader("abc\n")
 	stderr := &bytes.Buffer{}
 
-	_, err := selectIssueWithPrompt(issues, stdin, stderr)
+	_, err := selectIssueWithPrompt(issues, "", stdin, stderr)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "invalid selection")
 }
@@ -104,7 +104,7 @@ func TestSelectIssueWithPrompt_EmptyInput(t *testing.T) {
 	stdin := strings.NewReader("\n")
 	stderr := &bytes.Buffer{}
 
-	_, err := selectIssueWithPrompt(issues, stdin, stderr)
+	_, err := selectIssueWithPrompt(issues, "", stdin, stderr)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "no issue selected")
 }
@@ -114,7 +114,7 @@ func TestSelectIssueWithPrompt_EOF(t *testing.T) {
 	stdin := strings.NewReader("") // EOF immediately
 	stderr := &bytes.Buffer{}
 
-	_, err := selectIssueWithPrompt(issues, stdin, stderr)
+	_, err := selectIssueWithPrompt(issues, "", stdin, stderr)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "cancelled")
 }
@@ -247,7 +247,7 @@ func TestSelectIssueInteractive_NoIssues(t *testing.T) {
 	gitSvc := &mockGitServiceForInteractive{issues: []*models.IssueInfo{}}
 	stderr := &bytes.Buffer{}
 
-	_, err := SelectIssueInteractive(context.Background(), gitSvc, strings.NewReader(""), stderr)
+	_, err := SelectIssueInteractive(context.Background(), gitSvc, "", strings.NewReader(""), stderr)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "no open issues found")
 }
@@ -256,7 +256,7 @@ func TestSelectIssueInteractive_FetchError(t *testing.T) {
 	gitSvc := &mockGitServiceForInteractive{err: assert.AnError}
 	stderr := &bytes.Buffer{}
 
-	_, err := SelectIssueInteractive(context.Background(), gitSvc, strings.NewReader(""), stderr)
+	_, err := SelectIssueInteractive(context.Background(), gitSvc, "", strings.NewReader(""), stderr)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to fetch issues")
 }
@@ -270,7 +270,7 @@ func TestSelectIssueInteractive_UsesPromptFallback(t *testing.T) {
 	gitSvc := &mockGitServiceForInteractive{issues: sampleIssues()}
 	stderr := &bytes.Buffer{}
 
-	num, err := SelectIssueInteractive(context.Background(), gitSvc, strings.NewReader("2\n"), stderr)
+	num, err := SelectIssueInteractive(context.Background(), gitSvc, "", strings.NewReader("2\n"), stderr)
 	require.NoError(t, err)
 	assert.Equal(t, 42, num)
 }
@@ -286,7 +286,7 @@ func TestSelectIssueDefault_FallsBackToPromptWhenNoFzf(t *testing.T) {
 	stdin := strings.NewReader("1\n")
 	stderr := &bytes.Buffer{}
 
-	selected, err := selectIssueDefault(issues, stdin, stderr)
+	selected, err := selectIssueDefault(issues, "", stdin, stderr)
 	require.NoError(t, err)
 	assert.Equal(t, 10, selected.Number)
 }
@@ -339,7 +339,7 @@ func TestSelectPRWithPrompt_ValidSelection(t *testing.T) {
 	stdin := strings.NewReader("2\n")
 	stderr := &bytes.Buffer{}
 
-	selected, err := selectPRWithPrompt(prs, stdin, stderr)
+	selected, err := selectPRWithPrompt(prs, "", stdin, stderr)
 	require.NoError(t, err)
 	assert.Equal(t, 42, selected.Number)
 	assert.Equal(t, "Add dark mode", selected.Title)
@@ -357,7 +357,7 @@ func TestSelectPRWithPrompt_FirstItem(t *testing.T) {
 	stdin := strings.NewReader("1\n")
 	stderr := &bytes.Buffer{}
 
-	selected, err := selectPRWithPrompt(prs, stdin, stderr)
+	selected, err := selectPRWithPrompt(prs, "", stdin, stderr)
 	require.NoError(t, err)
 	assert.Equal(t, 10, selected.Number)
 }
@@ -367,7 +367,7 @@ func TestSelectPRWithPrompt_LastItem(t *testing.T) {
 	stdin := strings.NewReader("3\n")
 	stderr := &bytes.Buffer{}
 
-	selected, err := selectPRWithPrompt(prs, stdin, stderr)
+	selected, err := selectPRWithPrompt(prs, "", stdin, stderr)
 	require.NoError(t, err)
 	assert.Equal(t, 99, selected.Number)
 }
@@ -377,7 +377,7 @@ func TestSelectPRWithPrompt_OutOfRangeTooHigh(t *testing.T) {
 	stdin := strings.NewReader("5\n")
 	stderr := &bytes.Buffer{}
 
-	_, err := selectPRWithPrompt(prs, stdin, stderr)
+	_, err := selectPRWithPrompt(prs, "", stdin, stderr)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "selection out of range")
 }
@@ -387,7 +387,7 @@ func TestSelectPRWithPrompt_OutOfRangeZero(t *testing.T) {
 	stdin := strings.NewReader("0\n")
 	stderr := &bytes.Buffer{}
 
-	_, err := selectPRWithPrompt(prs, stdin, stderr)
+	_, err := selectPRWithPrompt(prs, "", stdin, stderr)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "selection out of range")
 }
@@ -397,7 +397,7 @@ func TestSelectPRWithPrompt_NonNumeric(t *testing.T) {
 	stdin := strings.NewReader("abc\n")
 	stderr := &bytes.Buffer{}
 
-	_, err := selectPRWithPrompt(prs, stdin, stderr)
+	_, err := selectPRWithPrompt(prs, "", stdin, stderr)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "invalid selection")
 }
@@ -407,7 +407,7 @@ func TestSelectPRWithPrompt_EmptyInput(t *testing.T) {
 	stdin := strings.NewReader("\n")
 	stderr := &bytes.Buffer{}
 
-	_, err := selectPRWithPrompt(prs, stdin, stderr)
+	_, err := selectPRWithPrompt(prs, "", stdin, stderr)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "no pull request selected")
 }
@@ -417,7 +417,7 @@ func TestSelectPRWithPrompt_EOF(t *testing.T) {
 	stdin := strings.NewReader("")
 	stderr := &bytes.Buffer{}
 
-	_, err := selectPRWithPrompt(prs, stdin, stderr)
+	_, err := selectPRWithPrompt(prs, "", stdin, stderr)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "cancelled")
 }
@@ -427,7 +427,7 @@ func TestSelectPRWithPrompt_DraftAndCITags(t *testing.T) {
 	stdin := strings.NewReader("2\n")
 	stderr := &bytes.Buffer{}
 
-	_, err := selectPRWithPrompt(prs, stdin, stderr)
+	_, err := selectPRWithPrompt(prs, "", stdin, stderr)
 	require.NoError(t, err)
 
 	output := stderr.String()
@@ -465,7 +465,7 @@ func TestSelectPRInteractive_NoPRs(t *testing.T) {
 	gitSvc := &mockGitServiceForInteractive{prs: []*models.PRInfo{}}
 	stderr := &bytes.Buffer{}
 
-	_, err := SelectPRInteractive(context.Background(), gitSvc, strings.NewReader(""), stderr)
+	_, err := SelectPRInteractive(context.Background(), gitSvc, "", strings.NewReader(""), stderr)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "no open pull requests found")
 }
@@ -474,7 +474,7 @@ func TestSelectPRInteractive_FetchError(t *testing.T) {
 	gitSvc := &mockGitServiceForInteractive{prsErr: assert.AnError}
 	stderr := &bytes.Buffer{}
 
-	_, err := SelectPRInteractive(context.Background(), gitSvc, strings.NewReader(""), stderr)
+	_, err := SelectPRInteractive(context.Background(), gitSvc, "", strings.NewReader(""), stderr)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to fetch pull requests")
 }
@@ -488,7 +488,7 @@ func TestSelectPRInteractive_UsesPromptFallback(t *testing.T) {
 	gitSvc := &mockGitServiceForInteractive{prs: samplePRs()}
 	stderr := &bytes.Buffer{}
 
-	num, err := SelectPRInteractive(context.Background(), gitSvc, strings.NewReader("2\n"), stderr)
+	num, err := SelectPRInteractive(context.Background(), gitSvc, "", strings.NewReader("2\n"), stderr)
 	require.NoError(t, err)
 	assert.Equal(t, 42, num)
 }
@@ -505,7 +505,7 @@ func TestSelectPRDefault_FallsBackToPromptWhenNoFzf(t *testing.T) {
 	stdin := strings.NewReader("1\n")
 	stderr := &bytes.Buffer{}
 
-	selected, err := selectPRDefault(prs, stdin, stderr)
+	selected, err := selectPRDefault(prs, "", stdin, stderr)
 	require.NoError(t, err)
 	assert.Equal(t, 10, selected.Number)
 }
@@ -543,4 +543,104 @@ func TestSelectPRWithFzf_Integration(t *testing.T) {
 	num, err := parseIssueNumberFromLine(firstLine)
 	require.NoError(t, err)
 	assert.Equal(t, 42, num)
+}
+
+// --- Query filtering tests ---
+
+func TestFilterItems_Issues(t *testing.T) {
+	items := wrapIssues(sampleIssues())
+
+	tests := []struct {
+		name      string
+		query     string
+		wantCount int
+		wantFirst int
+	}{
+		{name: "empty query returns all", query: "", wantCount: 3, wantFirst: 10},
+		{name: "match one", query: "dark", wantCount: 1, wantFirst: 42},
+		{name: "case insensitive", query: "DARK", wantCount: 1, wantFirst: 42},
+		{name: "match none", query: "nonexistent", wantCount: 0},
+		{name: "match by number", query: "#99", wantCount: 1, wantFirst: 99},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := filterItems(items, tt.query)
+			assert.Len(t, result, tt.wantCount)
+			if tt.wantCount > 0 {
+				assert.Equal(t, tt.wantFirst, result[0].ItemNumber())
+			}
+		})
+	}
+}
+
+func TestFilterItems_PRs(t *testing.T) {
+	items := wrapPRs(samplePRs())
+
+	tests := []struct {
+		name      string
+		query     string
+		wantCount int
+		wantFirst int
+	}{
+		{name: "empty query returns all", query: "", wantCount: 3, wantFirst: 10},
+		{name: "match by author", query: "bob", wantCount: 1, wantFirst: 42},
+		{name: "match by title", query: "performance", wantCount: 1, wantFirst: 99},
+		{name: "case insensitive author", query: "BOB", wantCount: 1, wantFirst: 42},
+		{name: "no match", query: "zzz", wantCount: 0},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := filterItems(items, tt.query)
+			assert.Len(t, result, tt.wantCount)
+			if tt.wantCount > 0 {
+				assert.Equal(t, tt.wantFirst, result[0].ItemNumber())
+			}
+		})
+	}
+}
+
+func TestSelectIssueWithPrompt_QueryFiltersResults(t *testing.T) {
+	issues := sampleIssues()
+	stdin := strings.NewReader("1\n")
+	stderr := &bytes.Buffer{}
+
+	selected, err := selectIssueWithPrompt(issues, "dark", stdin, stderr)
+	require.NoError(t, err)
+	assert.Equal(t, 42, selected.Number)
+
+	output := stderr.String()
+	assert.Contains(t, output, "[1] #42")
+	assert.NotContains(t, output, "[2]")
+}
+
+func TestSelectIssueWithPrompt_QueryNoMatch(t *testing.T) {
+	issues := sampleIssues()
+	stdin := strings.NewReader("1\n")
+	stderr := &bytes.Buffer{}
+
+	_, err := selectIssueWithPrompt(issues, "nonexistent", stdin, stderr)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), `no issues matching "nonexistent"`)
+}
+
+func TestSelectPRWithPrompt_QueryFiltersResults(t *testing.T) {
+	prs := samplePRs()
+	stdin := strings.NewReader("1\n")
+	stderr := &bytes.Buffer{}
+
+	selected, err := selectPRWithPrompt(prs, "dark", stdin, stderr)
+	require.NoError(t, err)
+	assert.Equal(t, 42, selected.Number)
+}
+
+func TestSelectPRWithPrompt_QueryNoMatch(t *testing.T) {
+	prs := samplePRs()
+	stdin := strings.NewReader("1\n")
+	stderr := &bytes.Buffer{}
+
+	_, err := selectPRWithPrompt(prs, "nonexistent", stdin, stderr)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), `no pull requests matching "nonexistent"`)
 }
