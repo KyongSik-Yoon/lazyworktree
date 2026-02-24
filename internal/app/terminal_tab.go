@@ -204,10 +204,6 @@ type terminalTabReadyMsg struct {
 	err          error
 }
 
-func buildTerminalTabInfoMessage(terminal, title string) string {
-	return fmt.Sprintf("Command launched in new %s tab: %s", terminal, title)
-}
-
 // writeCommandScript writes a command string to a self-deleting temp script
 // file. This is used when the command contains newlines, since terminal remote
 // control protocols (Kitty, WezTerm) may not handle multi-line positional

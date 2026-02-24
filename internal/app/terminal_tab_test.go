@@ -391,14 +391,6 @@ func TestDetectTerminalLauncher(t *testing.T) {
 	})
 }
 
-func TestBuildTerminalTabInfoMessage(t *testing.T) {
-	msg := buildTerminalTabInfoMessage("Kitty", "Claude Code")
-	expected := "Command launched in new Kitty tab: Claude Code"
-	if msg != expected {
-		t.Errorf("expected %q, got %q", expected, msg)
-	}
-}
-
 func TestOpenTerminalTabNilCommand(t *testing.T) {
 	cfg := &config.AppConfig{WorktreeDir: t.TempDir()}
 	m := NewModel(cfg, "")
@@ -733,7 +725,7 @@ func TestTerminalTabReadyMsgHandling(t *testing.T) {
 	// Test success case
 	updated, _ = m.Update(terminalTabReadyMsg{terminalName: "Kitty", tabTitle: "Test Tab"})
 	model = updated.(*Model)
-	if !model.state.ui.screenManager.IsActive() {
-		t.Error("expected info screen to be shown for success")
+	if model.state.ui.screenManager.IsActive() {
+		t.Error("expected no info screen to be shown for success")
 	}
 }
