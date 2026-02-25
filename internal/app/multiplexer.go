@@ -375,8 +375,7 @@ func (m *Model) zellijNewPaneCmd(sessionName, direction, cwd string) tea.Cmd {
 		if shell == "" {
 			shell = "bash"
 		}
-		// #nosec G204 -- session name, direction and shell come from user env/selection
-		// If $SHELL is not set, defaults to bash
+		// #nosec G204 -- session name, direction come from user selection; shell defaults to bash if $SHELL is unset
 		c := m.commandRunner(m.ctx, "zellij", "action", "new-pane", "--direction", direction, "--cwd", cwd, "--", shell)
 		c.Env = append(os.Environ(), "ZELLIJ_SESSION_NAME="+sessionName)
 		if err := c.Run(); err != nil {
@@ -442,7 +441,7 @@ func (m *Model) showZellijDirectionPickerExternal(sessionName string, wt *models
 }
 
 // showZellijSessionPickerWithAttach shows a session picker for outside-zellij use.
-// On selection, shows a direction picker to create a pane with the worktree cwd, then attaches.
+// On selection, shows a direction picker to create a pane with the worktree cwd (TUI stays active).
 func (m *Model) showZellijSessionPickerWithAttach(sessions []string, wt *models.WorktreeInfo) {
 	items := make([]appscreen.SelectionItem, len(sessions))
 	for i, s := range sessions {
